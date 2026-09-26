@@ -2889,6 +2889,93 @@
         }
       }
     },
+    "/api/v1/asset-labels/ptouch-csv": {
+      "post": {
+        "tags": ["asset-label-controller"],
+        "operationId": "ptouchCsv",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePtouchCsvRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/asset-labels/pdf": {
+      "post": {
+        "tags": ["asset-label-controller"],
+        "operationId": "pdf",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAssetLabelPdfRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/asset-labels/calibration": {
+      "post": {
+        "tags": ["asset-label-controller"],
+        "operationId": "calibration",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAssetLabelCalibrationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/media/{mediaId}": {
       "get": {
         "tags": ["media-controller"],
@@ -4587,6 +4674,83 @@
             "format": "date"
           }
         }
+      },
+      "CreatePtouchCsvRequest": {
+        "type": "object",
+        "properties": {
+          "assetIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "maxItems": 500,
+            "minItems": 0
+          }
+        },
+        "required": ["assetIds"]
+      },
+      "AssetLabelCalibrationParameters": {
+        "type": "object",
+        "properties": {
+          "marginLeftMm": {
+            "type": "number",
+            "format": "float"
+          },
+          "marginTopMm": {
+            "type": "number",
+            "format": "float"
+          },
+          "horizontalPitchMm": {
+            "type": "number",
+            "format": "float"
+          },
+          "verticalPitchMm": {
+            "type": "number",
+            "format": "float"
+          }
+        }
+      },
+      "CreateAssetLabelPdfRequest": {
+        "type": "object",
+        "properties": {
+          "assetIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "maxItems": 500,
+            "minItems": 0
+          },
+          "format": {
+            "type": "string",
+            "enum": ["A4_70X36_24", "A4_97X42_3_12"]
+          },
+          "skipFirstPositions": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 23,
+            "minimum": 0
+          },
+          "calibration": {
+            "$ref": "#/components/schemas/AssetLabelCalibrationParameters"
+          }
+        },
+        "required": ["assetIds", "format"]
+      },
+      "CreateAssetLabelCalibrationRequest": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "type": "string",
+            "enum": ["A4_70X36_24", "A4_97X42_3_12"]
+          },
+          "calibration": {
+            "$ref": "#/components/schemas/AssetLabelCalibrationParameters"
+          }
+        },
+        "required": ["format"]
       },
       "StreamingResponseBody": {},
       "StockMovementResponse": {

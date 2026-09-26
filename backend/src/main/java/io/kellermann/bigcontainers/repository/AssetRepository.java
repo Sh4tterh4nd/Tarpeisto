@@ -19,6 +19,28 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
 
     Optional<Asset> findByOrganizationIdAndPublicCode(UUID organizationId, String publicCode);
 
+    /**
+     * Reads the immutable-at-request-time values needed to render labels in one organization-scoped
+     * query. Historical assets, models, and categories intentionally remain eligible for reprints.
+     */
+    @Query("""
+            SELECT a.id AS assetId,
+                   a.publicCode AS publicCode,
+                   model.name AS modelName,
+                   a.individualName AS individualName,
+                   a.unitNumber AS unitNumber,
+                   category.name AS categoryName,
+                   category.color AS categoryColor
+            FROM Asset a
+            JOIN AssetModel model
+                ON model.id = a.assetModelId AND model.organizationId = a.organizationId
+            JOIN Category category
+                ON category.id = model.categoryId AND category.organizationId = a.organizationId
+            WHERE a.organizationId = :organizationId AND a.id IN :assetIds
+            """)
+    List<AssetLabelProjection> findLabelProjectionsByOrganizationIdAndIdIn(
+            @Param("organizationId") UUID organizationId, @Param("assetIds") List<UUID> assetIds);
+
     /** Used as {@code AssetCodeUniquenessChecker} (a method reference) by {@code AssetService}. */
     boolean existsByOrganizationIdAndPublicCode(UUID organizationId, String publicCode);
 
@@ -77,4 +99,21 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
               )
             """)
     boolean isMetadataIncomplete(@Param("assetId") UUID assetId, @Param("assetModelId") UUID assetModelId);
+
+    interface AssetLabelProjection {
+
+        UUID getAssetId();
+
+        String getPublicCode();
+
+        String getModelName();
+
+        String getIndividualName();
+
+        int getUnitNumber();
+
+        String getCategoryName();
+
+        String getCategoryColor();
+    }
 }

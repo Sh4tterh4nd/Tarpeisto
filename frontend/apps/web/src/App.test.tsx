@@ -53,7 +53,7 @@ describe("App shell", () => {
     expect(await screen.findByText("BigContainers", { selector: "p" })).toBeInTheDocument();
   });
 
-  it("navigates to the asset-code check route", async () => {
+  it("navigates to the continuous scanner route", async () => {
     const user = userEvent.setup();
     render(
       <MemoryRouter initialEntries={["/"]}>
@@ -61,8 +61,11 @@ describe("App shell", () => {
       </MemoryRouter>,
     );
 
-    await user.click(await screen.findByRole("link", { name: "Find asset" }));
+    await user.click(await screen.findByRole("link", { name: "Scan equipment" }));
 
-    expect(await screen.findByRole("heading", { name: "Find an asset" })).toBeInTheDocument();
+    // The scanner's ZXing fallback is intentionally lazy-loaded with this route.
+    expect(
+      await screen.findByRole("heading", { name: "Scan equipment" }, { timeout: 5000 }),
+    ).toBeInTheDocument();
   });
 });

@@ -1044,6 +1044,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/asset-labels/ptouch-csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ptouchCsv"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/asset-labels/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["pdf"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/asset-labels/calibration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["calibration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/media/{mediaId}": {
         parameters: {
             query?: never;
@@ -1767,6 +1815,32 @@ export interface components {
             count?: number;
             /** Format: date */
             purchaseDate?: string;
+        };
+        CreatePtouchCsvRequest: {
+            assetIds: string[];
+        };
+        AssetLabelCalibrationParameters: {
+            /** Format: float */
+            marginLeftMm?: number;
+            /** Format: float */
+            marginTopMm?: number;
+            /** Format: float */
+            horizontalPitchMm?: number;
+            /** Format: float */
+            verticalPitchMm?: number;
+        };
+        CreateAssetLabelPdfRequest: {
+            assetIds: string[];
+            /** @enum {string} */
+            format: "A4_70X36_24" | "A4_97X42_3_12";
+            /** Format: int32 */
+            skipFirstPositions?: number;
+            calibration?: components["schemas"]["AssetLabelCalibrationParameters"];
+        };
+        CreateAssetLabelCalibrationRequest: {
+            /** @enum {string} */
+            format: "A4_70X36_24" | "A4_97X42_3_12";
+            calibration?: components["schemas"]["AssetLabelCalibrationParameters"];
         };
         StreamingResponseBody: unknown;
         StockMovementResponse: {
@@ -3838,6 +3912,78 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    ptouchCsv: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePtouchCsvRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+        };
+    };
+    pdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAssetLabelPdfRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+        };
+    };
+    calibration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAssetLabelCalibrationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
             };
         };
     };

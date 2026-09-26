@@ -45,6 +45,7 @@ import {
 import { MediaPanel } from "./MediaPanel";
 import { AssetPlacementPanel } from "./AssetPlacementPanel";
 import { PackingPanel } from "./PackingPanel";
+import { AssetLabelExportDialog } from "./AssetLabelExportDialog";
 
 interface AssetDetailsDialogProps {
   asset: AssetRecord;
@@ -312,6 +313,7 @@ export function AssetPage() {
   }>();
   const [actionError, setActionError] = useState<{ routeId: string; message: string }>();
   const [archiveBusyRouteId, setArchiveBusyRouteId] = useState<string>();
+  const [labelExportOpen, setLabelExportOpen] = useState(false);
   const loadRequest = useRef(0);
 
   const load = useCallback(async () => {
@@ -394,25 +396,28 @@ export function AssetPage() {
         title={asset.displayName}
         description={`${asset.assetModelName} · unit ${asset.unitNumber}`}
         actions={
-          canManage ? (
-            <Stack direction="row" spacing={1}>
-              <Button
-                startIcon={<EditIcon />}
-                onClick={() => setDialog({ routeId: asset.id, kind: "details" })}
-                disabled={archiveBusy}
-              >
-                Edit details
-              </Button>
-              <Button
-                color={asset.archived ? "primary" : "warning"}
-                startIcon={asset.archived ? <UnarchiveIcon /> : <ArchiveIcon />}
-                onClick={() => void toggleArchive()}
-                disabled={archiveBusy}
-              >
-                {archiveBusy ? "Saving…" : asset.archived ? "Restore" : "Archive"}
-              </Button>
-            </Stack>
-          ) : undefined
+          <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
+            <Button onClick={() => setLabelExportOpen(true)}>Export label</Button>
+            {canManage ? (
+              <Stack direction="row" spacing={1}>
+                <Button
+                  startIcon={<EditIcon />}
+                  onClick={() => setDialog({ routeId: asset.id, kind: "details" })}
+                  disabled={archiveBusy}
+                >
+                  Edit details
+                </Button>
+                <Button
+                  color={asset.archived ? "primary" : "warning"}
+                  startIcon={asset.archived ? <UnarchiveIcon /> : <ArchiveIcon />}
+                  onClick={() => void toggleArchive()}
+                  disabled={archiveBusy}
+                >
+                  {archiveBusy ? "Saving…" : asset.archived ? "Restore" : "Archive"}
+                </Button>
+              </Stack>
+            ) : null}
+          </Stack>
         }
       />
       {currentActionError ? (
@@ -560,6 +565,9 @@ export function AssetPage() {
           onClose={() => setDialog(undefined)}
           onSaved={load}
         />
+      ) : null}
+      {labelExportOpen ? (
+        <AssetLabelExportDialog assetIds={[asset.id]} onClose={() => setLabelExportOpen(false)} />
       ) : null}
     </>
   );

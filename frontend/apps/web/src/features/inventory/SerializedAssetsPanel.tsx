@@ -3,6 +3,7 @@ import AddIcon from "@mui/icons-material/Add";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import Checkbox from "@mui/material/Checkbox";
 import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
 import Dialog from "@mui/material/Dialog";
@@ -35,6 +36,7 @@ import {
   type CustomFieldOptionRecord,
   type CustomFieldRecord,
 } from "./inventoryApi";
+import { AssetLabelExportDialog } from "./AssetLabelExportDialog";
 
 interface SerializedAssetsPanelProps {
   assetModelId: string;
@@ -282,6 +284,8 @@ export function SerializedAssetsPanel(props: SerializedAssetsPanelProps) {
   const [error, setError] = useState<string>();
   const [createOpen, setCreateOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [labelExportOpen, setLabelExportOpen] = useState(false);
+  const [selectedAssetIds, setSelectedAssetIds] = useState<Set<string>>(() => new Set());
   const loadRequest = useRef(0);
 
   const load = useCallback(async () => {
@@ -302,6 +306,32 @@ export function SerializedAssetsPanel(props: SerializedAssetsPanelProps) {
       await load();
     })();
   }, [load]);
+
+  const visibleAssetIds = assets?.map((asset) => asset.id) ?? [];
+  const selectedVisibleCount = visibleAssetIds.filter((assetId) =>
+    selectedAssetIds.has(assetId),
+  ).length;
+
+  function toggleAssetSelection(assetId: string) {
+    setSelectedAssetIds((current) => {
+      const next = new Set(current);
+      if (next.has(assetId)) next.delete(assetId);
+      else next.add(assetId);
+      return next;
+    });
+  }
+
+  function toggleVisibleSelection() {
+    setSelectedAssetIds((current) => {
+      const next = new Set(current);
+      const allVisibleSelected = visibleAssetIds.every((assetId) => next.has(assetId));
+      for (const assetId of visibleAssetIds) {
+        if (allVisibleSelected) next.delete(assetId);
+        else next.add(assetId);
+      }
+      return next;
+    });
+  }
 
   return (
     <>
@@ -327,6 +357,9 @@ export function SerializedAssetsPanel(props: SerializedAssetsPanelProps) {
               }
               label="Show inactive"
             />
+            <Button onClick={() => setLabelExportOpen(true)} disabled={selectedVisibleCount === 0}>
+              Export labels{selectedVisibleCount ? ` (${selectedVisibleCount})` : ""}
+            </Button>
             {canManage ? (
               <>
                 {!containerCapable ? (
@@ -362,6 +395,19 @@ export function SerializedAssetsPanel(props: SerializedAssetsPanelProps) {
             <Table>
               <TableHead>
                 <TableRow>
+                  <TableCell padding="checkbox">
+                    <Checkbox
+                      slotProps={{ input: { "aria-label": "Select all visible units" } }}
+                      checked={
+                        visibleAssetIds.length > 0 &&
+                        selectedVisibleCount === visibleAssetIds.length
+                      }
+                      indeterminate={
+                        selectedVisibleCount > 0 && selectedVisibleCount < visibleAssetIds.length
+                      }
+                      onChange={toggleVisibleSelection}
+                    />
+                  </TableCell>
                   <TableCell>Unit</TableCell>
                   <TableCell>Public code</TableCell>
                   <TableCell>Condition</TableCell>
@@ -371,6 +417,13 @@ export function SerializedAssetsPanel(props: SerializedAssetsPanelProps) {
               <TableBody>
                 {assets.map((asset) => (
                   <TableRow key={asset.id} hover>
+                    <TableCell padding="checkbox">
+                      <Checkbox
+                        slotProps={{ input: { "aria-label": `Select ${asset.displayName}` } }}
+                        checked={selectedAssetIds.has(asset.id)}
+                        onChange={() => toggleAssetSelection(asset.id)}
+                      />
+                    </TableCell>
                     <TableCell>
                       <Button
                         component={RouterLink}
@@ -411,6 +464,12 @@ export function SerializedAssetsPanel(props: SerializedAssetsPanelProps) {
           canManage={canManage}
           onClose={() => setBulkOpen(false)}
           onCreated={load}
+        />
+      ) : null}
+      {labelExportOpen && selectedVisibleCount > 0 ? (
+        <AssetLabelExportDialog
+          assetIds={visibleAssetIds.filter((assetId) => selectedAssetIds.has(assetId))}
+          onClose={() => setLabelExportOpen(false)}
         />
       ) : null}
     </>

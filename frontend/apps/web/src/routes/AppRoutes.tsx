@@ -2,9 +2,8 @@ import { lazy, Suspense } from "react";
 import CircularProgress from "@mui/material/CircularProgress";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import { ApplicationInfoPage } from "../features/application-info/ApplicationInfoPage";
-import { AssetCodeCheckPage } from "../features/asset-code/AssetCodeCheckPage";
 import { RequireRole } from "../features/identity/RequireRole";
 import { SignInPage } from "../features/identity/SignInPage";
 import { UsersPage } from "../features/identity/UsersPage";
@@ -26,6 +25,14 @@ const LocationsPage = lazy(() =>
     default: module.LocationsPage,
   })),
 );
+const ScannerPage = lazy(() =>
+  import("../features/scanner/ScannerPage").then((module) => ({ default: module.ScannerPage })),
+);
+const ScannerResultPage = lazy(() =>
+  import("../features/scanner/ScannerResultPage").then((module) => ({
+    default: module.ScannerResultPage,
+  })),
+);
 
 const INVENTORY_ROLES = ["OWNER", "DEPUTY", "OPERATOR_AUDITOR", "VIEWER"] as const;
 
@@ -43,13 +50,26 @@ export function AppRoutes() {
     <Routes>
       <Route path="/" element={<ApplicationInfoPage />} />
       <Route
-        path="/asset-code"
+        path="/scan"
         element={
           <RequireRole allow={[...INVENTORY_ROLES]}>
-            <AssetCodeCheckPage />
+            <Suspense fallback={<LoadingPage />}>
+              <ScannerPage />
+            </Suspense>
           </RequireRole>
         }
       />
+      <Route
+        path="/scan/assets/:assetId"
+        element={
+          <RequireRole allow={[...INVENTORY_ROLES]}>
+            <Suspense fallback={<LoadingPage />}>
+              <ScannerResultPage />
+            </Suspense>
+          </RequireRole>
+        }
+      />
+      <Route path="/asset-code" element={<Navigate to="/scan" replace />} />
       <Route
         path="/inventory"
         element={

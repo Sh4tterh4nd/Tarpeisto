@@ -129,6 +129,8 @@ dependencies {
     implementation("org.flywaydb:flyway-database-postgresql")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.1")
     implementation("software.amazon.awssdk:s3:2.32.20")
+    implementation("org.apache.pdfbox:pdfbox:3.0.8")
+    implementation("com.google.zxing:core:3.5.4")
 
     runtimeOnly("org.postgresql:postgresql")
 
@@ -141,6 +143,7 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-resttestclient")
     testImplementation("org.springframework.boot:spring-boot-starter-restclient")
     testImplementation("org.springframework.security:spring-security-test")
+    testImplementation("com.google.zxing:javase:3.5.4")
     // Embedded (not containerized) mock OpenID Connect provider for the OIDC authorization-code
     // end-to-end tests (implementation plan section 3.3). Chosen over running the same project's
     // ghcr.io/navikt/mock-oauth2-server *container* (verified anonymously pullable) because the
