@@ -9,6 +9,7 @@ import io.kellermann.bigcontainers.model.Location;
 import io.kellermann.bigcontainers.model.OrganizationRole;
 import io.kellermann.bigcontainers.repository.AssetModelRepository;
 import io.kellermann.bigcontainers.repository.AssetRepository;
+import io.kellermann.bigcontainers.repository.CheckoutManifestAssetRepository;
 import io.kellermann.bigcontainers.repository.LocationRepository;
 import io.kellermann.bigcontainers.repository.OrganizationRepository;
 import io.kellermann.bigcontainers.security.BigContainersPrincipal;
@@ -32,6 +33,7 @@ public class AssetPlacementService {
     private final OrganizationRepository organizations;
     private final ActivityLogService activity;
     private final BookingImpactService bookingImpact;
+    private final CheckoutManifestAssetRepository checkoutManifestAssets;
     private final Clock clock;
 
     public AssetPlacementService(
@@ -41,6 +43,7 @@ public class AssetPlacementService {
             OrganizationRepository organizations,
             ActivityLogService activity,
             BookingImpactService bookingImpact,
+            CheckoutManifestAssetRepository checkoutManifestAssets,
             Clock clock) {
         this.assets = assets;
         this.models = models;
@@ -48,6 +51,7 @@ public class AssetPlacementService {
         this.organizations = organizations;
         this.activity = activity;
         this.bookingImpact = bookingImpact;
+        this.checkoutManifestAssets = checkoutManifestAssets;
         this.clock = clock;
     }
 
@@ -82,6 +86,11 @@ public class AssetPlacementService {
         lockOrganization(principal.organizationId());
         Asset asset = assets.findWithLockByIdAndOrganizationId(assetId, principal.organizationId())
                 .orElseThrow(() -> new NotFoundException("Asset not found."));
+        if (checkoutManifestAssets.existsByOrganizationIdAndAssetIdAndAuditReleasedAtIsNull(
+                principal.organizationId(), assetId)) {
+            throw new ValidationFailedException(
+                    "A checked-out asset cannot be moved until it is checked in and audited.");
+        }
         if (asset.getVersion() != expectedVersion) throw new StalePlacementVersionException();
         if (locationId != null) {
             Location location = locations
@@ -90,8 +99,13 @@ public class AssetPlacementService {
             if (location.isArchived())
                 throw new ValidationFailedException("An archived location cannot hold inventory.");
         }
-        if (parentContainerAssetId != null)
+        if (parentContainerAssetId != null) {
+            if (checkoutManifestAssets.existsByOrganizationIdAndAssetIdAndAuditReleasedAtIsNull(
+                    principal.organizationId(), parentContainerAssetId)) {
+                throw new ValidationFailedException("A checked-out container cannot have its packing changed.");
+            }
             validateContainerParent(principal.organizationId(), asset, parentContainerAssetId);
+        }
         UUID previousLocationId = asset.getDirectLocationId();
         UUID previousParentContainerAssetId = asset.getParentContainerAssetId();
         try {

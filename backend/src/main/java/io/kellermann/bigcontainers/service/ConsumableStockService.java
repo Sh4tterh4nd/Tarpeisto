@@ -12,6 +12,7 @@ import io.kellermann.bigcontainers.model.StockMovement;
 import io.kellermann.bigcontainers.model.StockMovementReason;
 import io.kellermann.bigcontainers.repository.AssetModelRepository;
 import io.kellermann.bigcontainers.repository.AssetRepository;
+import io.kellermann.bigcontainers.repository.CheckoutManifestAssetRepository;
 import io.kellermann.bigcontainers.repository.ConsumableStockLedgerRepository;
 import io.kellermann.bigcontainers.repository.ConsumableStockLedgerRepository.BalanceState;
 import io.kellermann.bigcontainers.repository.ConsumableStockLedgerRepository.StockPlace;
@@ -75,6 +76,7 @@ public class ConsumableStockService {
     private final ActivityLogService activityLogService;
     private final BookingImpactService bookingImpact;
     private final Clock clock;
+    private final CheckoutManifestAssetRepository checkoutAssets;
 
     public ConsumableStockService(
             ConsumableStockRepository consumableStockRepository,
@@ -87,7 +89,8 @@ public class ConsumableStockService {
             OrganizationRepository organizationRepository,
             ActivityLogService activityLogService,
             BookingImpactService bookingImpact,
-            Clock clock) {
+            Clock clock,
+            CheckoutManifestAssetRepository checkoutAssets) {
         this.consumableStockRepository = consumableStockRepository;
         this.stockMovementRepository = stockMovementRepository;
         this.ledgerRepository = ledgerRepository;
@@ -99,6 +102,7 @@ public class ConsumableStockService {
         this.activityLogService = activityLogService;
         this.bookingImpact = bookingImpact;
         this.clock = clock;
+        this.checkoutAssets = checkoutAssets;
     }
 
     @Transactional(readOnly = true)
@@ -572,6 +576,95 @@ public class ConsumableStockService {
                 .toList();
     }
 
+    /**
+     * Event-scoped stock mutation seam. It is intentionally not exposed by the stock controller:
+     * Operators may perform a checkout/check-in assigned by the booking workflow without gaining
+     * generic receipt, transfer, consumption, or adjustment authority.
+     */
+    @Transactional
+    public void issueForCheckout(
+            BigContainersPrincipal principal, UUID balanceId, BigDecimal quantity, UUID bookingId) {
+        moveForEvent(principal, balanceId, quantity.negate(), StockMovementReason.EVENT_ISSUE, bookingId);
+    }
+
+    @Transactional
+    public void returnFromCheckout(
+            BigContainersPrincipal principal,
+            UUID balanceId,
+            BigDecimal quantity,
+            UUID bookingId,
+            UUID destinationContainerAssetId,
+            UUID destinationLocationId) {
+        moveForEvent(
+                principal,
+                balanceId,
+                quantity,
+                StockMovementReason.EVENT_RETURN,
+                bookingId,
+                requirePlace(principal.organizationId(), destinationContainerAssetId, destinationLocationId));
+    }
+
+    private void moveForEvent(
+            BigContainersPrincipal principal,
+            UUID balanceId,
+            BigDecimal delta,
+            StockMovementReason reason,
+            UUID bookingId) {
+        ConsumableStock balance = requireBalance(principal.organizationId(), balanceId);
+        moveForEvent(
+                principal,
+                balanceId,
+                delta,
+                reason,
+                bookingId,
+                requirePlace(principal.organizationId(), balance.getContainerAssetId(), balance.getLocationId()));
+    }
+
+    private void moveForEvent(
+            BigContainersPrincipal principal,
+            UUID balanceId,
+            BigDecimal delta,
+            StockMovementReason reason,
+            UUID bookingId,
+            StockPlace place) {
+        requireAuthenticated(principal);
+        if (principal.role() == OrganizationRole.VIEWER) {
+            throw new AccessDeniedException("Operator, Deputy, or Owner role required.");
+        }
+        BigDecimal valid = requireNonZeroValidScale(delta);
+        ConsumableStock balance = requireBalance(principal.organizationId(), balanceId);
+        AssetModel model =
+                assetModelService.requireQuantityStockAssetModel(principal.organizationId(), balance.getAssetModelId());
+        BalanceState result = ledgerRepository
+                .applyDeltaToPlace(principal.organizationId(), model.getId(), place, valid, clock.instant())
+                .orElseThrow(() -> new InsufficientStockException("Insufficient stock for this event."));
+        stockMovementRepository.saveAndFlush(new StockMovement(
+                UUID.randomUUID(),
+                principal.organizationId(),
+                result.balanceId(),
+                valid,
+                result.quantity(),
+                model.getStockUnitLabel(),
+                reason,
+                principal.userId(),
+                null,
+                null,
+                bookingId,
+                null,
+                clock.instant()));
+        activityLogService.record(
+                principal.organizationId(),
+                principal.userId(),
+                reason.name(),
+                "BOOKING",
+                bookingId,
+                Map.of(
+                        "consumableStockBalanceId",
+                        balanceId,
+                        "quantity",
+                        valid.abs().toPlainString()));
+    }
+
     private AssetModelStockSummaryView toSummary(AssetModel assetModel) {
         BigDecimal total = consumableStockRepository
                 .findAllByOrganizationIdAndAssetModelIdOrderByCreatedAtAsc(
@@ -685,8 +778,10 @@ public class ConsumableStockService {
     private StockPlace requirePlace(UUID organizationId, UUID containerAssetId, UUID locationId) {
         try {
             StockPlace place = new StockPlace(containerAssetId, locationId);
-            if (containerAssetId != null) requireContainerAsset(organizationId, containerAssetId);
-            else {
+            if (containerAssetId != null) {
+                requireContainerAsset(organizationId, containerAssetId);
+                rejectCustodyPlace(organizationId, containerAssetId);
+            } else {
                 Location location = locationRepository
                         .findByIdAndOrganizationId(locationId, organizationId)
                         .orElseThrow(() -> new NotFoundException("Location not found."));
@@ -732,6 +827,19 @@ public class ConsumableStockService {
                 result.quantity(),
                 result.createdAt(),
                 result.updatedAt());
+    }
+
+    private void rejectCustodyPlace(UUID org, UUID container) {
+        java.util.Set<UUID> seen = new java.util.HashSet<>();
+        while (container != null && seen.add(container)) {
+            if (checkoutAssets.existsByOrganizationIdAndAssetIdAndAuditReleasedAtIsNull(org, container))
+                throw new ValidationFailedException(
+                        "A checked-out or audit-pending container cannot supply or receive separate stock.");
+            container = assetRepository
+                    .findByIdAndOrganizationId(container, org)
+                    .map(Asset::getParentContainerAssetId)
+                    .orElse(null);
+        }
     }
 
     private void recordMovement(

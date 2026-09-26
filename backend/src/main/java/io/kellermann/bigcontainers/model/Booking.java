@@ -150,7 +150,33 @@ public class Booking {
         updatedAt = now;
     }
 
+    /** Phase 8 custody transition; the immutable manifest is created in the same transaction. */
+    public void checkOut(Instant now) {
+        if (status != BookingStatus.RESERVED) {
+            throw new IllegalStateException("Only reserved bookings can be checked out.");
+        }
+        status = BookingStatus.CHECKED_OUT;
+        updatedAt = Objects.requireNonNull(now);
+    }
+
+    /** Return facts are separate from the manifest and imply a Phase-9 audit is required. */
+    public void markReturnedAuditsPending(Instant now) {
+        if (status != BookingStatus.CHECKED_OUT && status != BookingStatus.RETURNED_AUDITS_PENDING) {
+            throw new IllegalStateException("Only checked-out bookings can be checked in.");
+        }
+        status = BookingStatus.RETURNED_AUDITS_PENDING;
+        updatedAt = Objects.requireNonNull(now);
+    }
+
     public void touch(Instant now) {
+        updatedAt = Objects.requireNonNull(now);
+    }
+
+    public void completeReturn(Instant now) {
+        if (status != BookingStatus.CHECKED_OUT && status != BookingStatus.RETURNED_AUDITS_PENDING)
+            throw new IllegalStateException("Booking is not awaiting return.");
+        status = BookingStatus.COMPLETED;
+        reservationStatus = BookingReservationStatus.NONE;
         updatedAt = Objects.requireNonNull(now);
     }
 

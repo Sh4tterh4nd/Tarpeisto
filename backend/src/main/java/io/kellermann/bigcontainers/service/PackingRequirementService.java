@@ -18,6 +18,7 @@ import io.kellermann.bigcontainers.model.PackingTemplate;
 import io.kellermann.bigcontainers.model.PackingTemplateRequirement;
 import io.kellermann.bigcontainers.repository.AssetModelRepository;
 import io.kellermann.bigcontainers.repository.AssetRepository;
+import io.kellermann.bigcontainers.repository.CheckoutManifestAssetRepository;
 import io.kellermann.bigcontainers.repository.ConsumableStockRepository;
 import io.kellermann.bigcontainers.repository.OrganizationRepository;
 import io.kellermann.bigcontainers.repository.PackingRequirementHistoryRepository;
@@ -60,6 +61,7 @@ public class PackingRequirementService {
     private final OrganizationRepository organizations;
     private final ActivityLogService activity;
     private final BookingImpactService bookingImpact;
+    private final CheckoutManifestAssetRepository checkoutManifestAssets;
     private final Clock clock;
     private final ObjectMapper objectMapper;
 
@@ -74,6 +76,7 @@ public class PackingRequirementService {
             OrganizationRepository organizations,
             ActivityLogService activity,
             BookingImpactService bookingImpact,
+            CheckoutManifestAssetRepository checkoutManifestAssets,
             Clock clock,
             ObjectMapper objectMapper) {
         this.requirements = requirements;
@@ -86,6 +89,7 @@ public class PackingRequirementService {
         this.organizations = organizations;
         this.activity = activity;
         this.bookingImpact = bookingImpact;
+        this.checkoutManifestAssets = checkoutManifestAssets;
         this.clock = clock;
         this.objectMapper = objectMapper;
     }
@@ -696,11 +700,32 @@ public class PackingRequirementService {
         if (!a.isActive()) {
             throw new ValidationFailedException("Packing requirements can only be managed on an active container.");
         }
+        requireNoActiveCustody(org, a);
         if (a.getIndividualName() == null || a.getIndividualName().isBlank()) {
             throw new ValidationFailedException(
                     "A container needs an individual name before packing requirements can be managed.");
         }
         return a;
+    }
+
+    /** A container is frozen while it, or any enclosing container, remains in event custody. */
+    private void requireNoActiveCustody(UUID organizationId, Asset container) {
+        Set<UUID> visited = new HashSet<>();
+        for (Asset current = container; current != null; ) {
+            if (!visited.add(current.getId())) {
+                throw new ValidationFailedException("Containment hierarchy is invalid.");
+            }
+            if (checkoutManifestAssets.existsByOrganizationIdAndAssetIdAndAuditReleasedAtIsNull(
+                    organizationId, current.getId())) {
+                throw new ValidationFailedException(
+                        "Packing requirements cannot change while this container is checked out or awaiting audit.");
+            }
+            UUID parentId = current.getParentContainerAssetId();
+            current = parentId == null
+                    ? null
+                    : assets.findByIdAndOrganizationId(parentId, organizationId)
+                            .orElseThrow(() -> new ValidationFailedException("Containment hierarchy is invalid."));
+        }
     }
 
     private void validateQuantity(BigDecimal quantity, boolean positive) {

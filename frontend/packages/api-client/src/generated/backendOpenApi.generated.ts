@@ -740,6 +740,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/bookings/{bookingId}/checkout-manifest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["checkoutManifest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bookings/{bookingId}/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["checkout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bookings/{bookingId}/checkout-manifest.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["checkoutPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bookings/{bookingId}/check-in/assets/{assetId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["checkInAsset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bookings/{bookingId}/check-in/consumables/{manifestConsumableId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["returnConsumable"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bookings/{bookingId}/check-in/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["completeReturn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/assets/{containerAssetId}/packing-templates/{templateId}/apply": {
         parameters: {
             query?: never;
@@ -1925,6 +2021,92 @@ export interface components {
         CancelBookingRequest: {
             /** Format: int64 */
             expectedVersion: number;
+        };
+        CheckoutBookingRequest: {
+            /** Format: int64 */
+            expectedVersion: number;
+            /** Format: uuid */
+            mutationId: string;
+            overrideReason?: string;
+            selectedAssetIds?: string[];
+        };
+        CheckInBookingAssetRequest: {
+            /** Format: uuid */
+            mutationId: string;
+        };
+        ReturnBookingConsumableRequest: {
+            /** Format: uuid */
+            mutationId: string;
+            quantity: number;
+            /** Format: uuid */
+            destinationContainerAssetId?: string;
+            /** Format: uuid */
+            destinationLocationId?: string;
+        };
+        CompleteBookingReturnRequest: {
+            /** Format: uuid */
+            mutationId: string;
+        };
+        CheckoutManifestAssetResponse: {
+            /** Format: uuid */
+            assetId?: string;
+            /** Format: uuid */
+            containerAssetId?: string;
+            /** Format: uuid */
+            actualParentContainerAssetId?: string;
+            isContainer?: boolean;
+            snapshot?: {
+                [key: string]: unknown;
+            };
+            containerSnapshot?: {
+                [key: string]: unknown;
+            };
+            /** Format: date-time */
+            returnedAt?: string;
+        };
+        CheckoutManifestConsumableResponse: {
+            /** Format: uuid */
+            id?: string;
+            quantity?: number;
+            returnedQuantity?: number;
+            consumedQuantity?: number;
+            /** Format: date-time */
+            accountedAt?: string;
+            /** @enum {string} */
+            semantics?: "SEPARATELY_ISSUED" | "CARRIED_IN_CONTAINER";
+            snapshot?: {
+                [key: string]: unknown;
+            };
+        };
+        AuditTaskResponse: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            containerAssetId?: string;
+            dependsOnTaskIds?: string[];
+            /** @enum {string} */
+            state?: "READY" | "BLOCKED" | "COMPLETED";
+        };
+        CheckoutManifestResponse: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            bookingId?: string;
+            /** @enum {string} */
+            bookingStatus?: "DRAFT" | "RESERVED" | "CHECKED_OUT" | "RETURNED_AUDITS_PENDING" | "REVIEW_REQUIRED" | "COMPLETED" | "CANCELLED";
+            /** Format: date-time */
+            checkedOutAt?: string;
+            /** Format: uuid */
+            checkedOutByUserId?: string;
+            /** Format: uuid */
+            auditBatchId?: string;
+            bookingSnapshot?: {
+                [key: string]: unknown;
+            };
+            assets?: components["schemas"]["CheckoutManifestAssetResponse"][];
+            consumables?: components["schemas"]["CheckoutManifestConsumableResponse"][];
+            overrides?: string[];
+            auditTasks?: components["schemas"]["AuditTaskResponse"][];
         };
         PackingPreviewRequest: {
             observedConsumableQuantities?: {
@@ -3579,6 +3761,156 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["BookingResponse"];
+                };
+            };
+        };
+    };
+    checkoutManifest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CheckoutManifestResponse"];
+                };
+            };
+        };
+    };
+    checkout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckoutBookingRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CheckoutManifestResponse"];
+                };
+            };
+        };
+    };
+    checkoutPdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+        };
+    };
+    checkInAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookingId: string;
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckInBookingAssetRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CheckoutManifestResponse"];
+                };
+            };
+        };
+    };
+    returnConsumable: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookingId: string;
+                manifestConsumableId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReturnBookingConsumableRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CheckoutManifestResponse"];
+                };
+            };
+        };
+    };
+    completeReturn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompleteBookingReturnRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CheckoutManifestResponse"];
                 };
             };
         };

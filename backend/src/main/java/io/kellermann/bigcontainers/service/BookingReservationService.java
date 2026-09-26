@@ -21,6 +21,7 @@ import io.kellermann.bigcontainers.repository.BookingLineRepository;
 import io.kellermann.bigcontainers.repository.BookingRepository;
 import io.kellermann.bigcontainers.repository.BookingReservationClaimRepository;
 import io.kellermann.bigcontainers.repository.BookingReservationRevisionRepository;
+import io.kellermann.bigcontainers.repository.CheckoutManifestAssetRepository;
 import io.kellermann.bigcontainers.repository.ConsumableStockRepository;
 import io.kellermann.bigcontainers.repository.OrganizationRepository;
 import io.kellermann.bigcontainers.repository.PackingRequirementRepository;
@@ -49,6 +50,7 @@ public class BookingReservationService {
     private final AssetRepository assets;
     private final AssetModelRepository models;
     private final ConsumableStockRepository stocks;
+    private final CheckoutManifestAssetRepository checkoutManifestAssets;
     private final PackingRequirementRepository requirements;
     private final OrganizationRepository organizations;
     private final BookingReservationCalculator calculator;
@@ -66,6 +68,7 @@ public class BookingReservationService {
             AssetRepository assets,
             AssetModelRepository models,
             ConsumableStockRepository stocks,
+            CheckoutManifestAssetRepository checkoutManifestAssets,
             PackingRequirementRepository requirements,
             OrganizationRepository organizations,
             BookingReservationCalculator calculator,
@@ -81,6 +84,7 @@ public class BookingReservationService {
         this.assets = assets;
         this.models = models;
         this.stocks = stocks;
+        this.checkoutManifestAssets = checkoutManifestAssets;
         this.requirements = requirements;
         this.organizations = organizations;
         this.calculator = calculator;
@@ -254,7 +258,12 @@ public class BookingReservationService {
             if (c.type() == BookingClaimType.ASSET || c.type() == BookingClaimType.FLEXIBLE_ASSET) {
                 Asset a = inventory.assets().get(c.assetId());
                 AssetModel m = a == null ? null : inventory.models().get(a.getAssetModelId());
-                if (a == null || !a.isActive() || m == null || m.isArchived())
+                if (a == null
+                        || !a.isActive()
+                        || m == null
+                        || m.isArchived()
+                        || checkoutManifestAssets.existsByOrganizationIdAndAssetIdAndAuditReleasedAtIsNull(
+                                org, c.assetId()))
                     conflicts.add(conflict(
                             "ASSET_UNAVAILABLE",
                             "A selected or required asset is inactive.",
@@ -305,6 +314,7 @@ public class BookingReservationService {
             if (a.isActive()
                     && m != null
                     && !m.isArchived()
+                    && !checkoutManifestAssets.existsByOrganizationIdAndAssetIdAndAuditReleasedAtIsNull(org, a.getId())
                     && !inventory.pins().containsKey(a.getId()))
                 pool.merge(a.getAssetModelId(), BigDecimal.ONE, BigDecimal::add);
         }
@@ -365,6 +375,18 @@ public class BookingReservationService {
                         BigDecimal.ZERO));
             if (stock != null && stock.getContainerAssetId() != null) {
                 UUID source = stock.getContainerAssetId();
+                if (hasActiveCustodyAtOrAbove(org, inventory, source))
+                    conflicts.add(conflict(
+                            "SOURCE_CONTAINER_UNAVAILABLE",
+                            "The stock source container is checked out or awaiting audit.",
+                            null,
+                            source,
+                            stock.getId(),
+                            stock.getAssetModelId(),
+                            source,
+                            null,
+                            request.getValue(),
+                            BigDecimal.ZERO));
                 if (containerIds.contains(source))
                     conflicts.add(conflict(
                             "CONSUMABLE_ALREADY_CARRIED",
@@ -518,6 +540,20 @@ public class BookingReservationService {
             if (next.equals(parent)) return true;
             Asset a = i.assets().get(next);
             next = a == null ? null : a.getParentContainerAssetId();
+        }
+        return false;
+    }
+
+    private boolean hasActiveCustodyAtOrAbove(UUID organizationId, Inventory inventory, UUID containerAssetId) {
+        Set<UUID> seen = new HashSet<>();
+        UUID current = containerAssetId;
+        while (current != null && seen.add(current)) {
+            if (checkoutManifestAssets.existsByOrganizationIdAndAssetIdAndAuditReleasedAtIsNull(
+                    organizationId, current)) {
+                return true;
+            }
+            Asset asset = inventory.assets().get(current);
+            current = asset == null ? null : asset.getParentContainerAssetId();
         }
         return false;
     }

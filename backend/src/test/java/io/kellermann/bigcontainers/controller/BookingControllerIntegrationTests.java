@@ -744,6 +744,280 @@ class BookingControllerIntegrationTests extends AbstractIntegrationTest {
                 .isEqualTo(1);
     }
 
+    @Test
+    void phase8ParentReturnUsesFrozenSubtreeAndCreatesOnlyContainerDependencies() {
+        Fixture f = fixture();
+        UUID cases = createSerializedModel(f, "Case", true);
+        UUID parent = createAsset(f, cases, "Parent"),
+                child = createAsset(f, cases, "Child"),
+                cable = createAsset(f, "Cable");
+        place(f, child, parent);
+        place(f, cable, child);
+        UUID b = createBooking(f, "Nested return", LocalDate.of(2027, 2, 1), LocalDate.of(2027, 2, 2));
+        addContainerLine(f.owner(), b, bookingVersion(f.owner(), b), parent);
+        reserve(f.owner(), b, bookingVersion(f.owner(), b));
+        assertThat(checkout(f, b, List.of()).getStatusCode()).isEqualTo(HttpStatus.OK);
+        Map<String, Object> command = Map.of("mutationId", UUID.randomUUID());
+        ResponseEntity<String> returned =
+                exchange(f.owner(), HttpMethod.POST, "/api/v1/bookings/" + b + "/check-in/assets/" + parent, command);
+        assertThat(returned.getStatusCode()).isEqualTo(HttpStatus.OK);
+        JsonNode body = json(returned.getBody());
+        assertThat(body.path("bookingStatus").asText()).isEqualTo("RETURNED_AUDITS_PENDING");
+        assertThat(body.path("assets"))
+                .hasSize(3)
+                .allSatisfy(a -> assertThat(a.path("returnedAt").isNull()).isFalse());
+        assertThat(body.path("auditTasks")).hasSize(2).anySatisfy(t -> {
+            assertThat(t.path("containerAssetId").asText()).isEqualTo(child.toString());
+            assertThat(t.path("state").asText()).isEqualTo("READY");
+            assertThat(t.path("dependsOnTaskIds")).isEmpty();
+        });
+        assertThat(exchange(f.owner(), HttpMethod.POST, "/api/v1/bookings/" + b + "/check-in/assets/" + parent, command)
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertThat(jdbc.sql("UPDATE checkout_manifest_asset SET audit_released_at=now() WHERE physical_asset_id=:asset")
+                        .param("asset", cable)
+                        .update())
+                .isEqualTo(1);
+        assertThatThrownBy(() -> jdbc.sql(
+                                "UPDATE checkout_manifest_asset SET returned_at=NULL WHERE physical_asset_id=:asset")
+                        .param("asset", cable)
+                        .update())
+                .isInstanceOf(DataAccessException.class);
+    }
+
+    @Test
+    void phase8StandaloneConcurrentReturnsCompleteAndReleaseCustody() throws Exception {
+        Fixture f = fixture();
+        UUID first = createAsset(f, "First"), second = createAsset(f, "Second");
+        UUID b = bookingWithAsset(f, "Individual return", first);
+        addAssetLine(f.owner(), b, bookingVersion(f.owner(), b), second);
+        reserve(f.owner(), b, bookingVersion(f.owner(), b));
+        assertThat(checkout(f, b, List.of()).getStatusCode()).isEqualTo(HttpStatus.OK);
+        ResponseEntity<String>[] responses = runTogether(
+                () -> exchange(
+                        f.owner(),
+                        HttpMethod.POST,
+                        "/api/v1/bookings/" + b + "/check-in/assets/" + first,
+                        Map.of("mutationId", UUID.randomUUID())),
+                () -> exchange(
+                        f.deputy(),
+                        HttpMethod.POST,
+                        "/api/v1/bookings/" + b + "/check-in/assets/" + second,
+                        Map.of("mutationId", UUID.randomUUID())));
+        assertThat(responses).allSatisfy(r -> assertThat(r.getStatusCode()).isEqualTo(HttpStatus.OK));
+        assertThat(json(exchange(f.owner(), HttpMethod.GET, "/api/v1/bookings/" + b + "/checkout-manifest", null)
+                                .getBody())
+                        .path("bookingStatus")
+                        .asText())
+                .isEqualTo("COMPLETED");
+        assertThat(jdbc.sql(
+                                "SELECT count(*) FROM checkout_manifest_asset WHERE physical_asset_id IN (:first,:second) AND audit_released_at IS NULL")
+                        .param("first", first)
+                        .param("second", second)
+                        .query(Long.class)
+                        .single())
+                .isZero();
+    }
+
+    @Test
+    void phase8ConsumableReturnsAreIdempotentBoundedAndExplicitlyAccounted() throws Exception {
+        Fixture f = fixture();
+        UUID cases = createSerializedModel(f, "Case", true),
+                source = createAsset(f, cases, "Source"),
+                destination = createAsset(f, cases, "Return bin");
+        UUID stock = receive(f, createQuantityModel(f, "Tape"), source, "5");
+        UUID b = createBooking(f, "Tape issue", LocalDate.of(2027, 3, 1), LocalDate.of(2027, 3, 2));
+        addConsumableLine(f.owner(), b, bookingVersion(f.owner(), b), stock, "3");
+        reserve(f.owner(), b, bookingVersion(f.owner(), b));
+        ResponseEntity<String> checked = checkout(f, b, List.of());
+        assertThat(checked.getStatusCode()).isEqualTo(HttpStatus.OK);
+        String line =
+                json(checked.getBody()).path("consumables").get(0).path("id").asText();
+        Map<String, Object> returnCommand =
+                Map.of("mutationId", UUID.randomUUID(), "quantity", 2, "destinationContainerAssetId", destination);
+        String path = "/api/v1/bookings/" + b + "/check-in/consumables/" + line;
+        ResponseEntity<String>[] retries = runTogether(
+                () -> exchange(f.owner(), HttpMethod.POST, path, returnCommand),
+                () -> exchange(f.deputy(), HttpMethod.POST, path, returnCommand));
+        assertThat(retries).allSatisfy(r -> assertThat(r.getStatusCode()).isEqualTo(HttpStatus.OK));
+        assertThat(json(retries[0].getBody())
+                        .path("consumables")
+                        .get(0)
+                        .path("returnedQuantity")
+                        .decimalValue())
+                .isEqualByComparingTo("2");
+        assertThat(exchange(
+                                f.owner(),
+                                HttpMethod.POST,
+                                path,
+                                Map.of(
+                                        "mutationId",
+                                        UUID.randomUUID(),
+                                        "quantity",
+                                        2,
+                                        "destinationContainerAssetId",
+                                        destination))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+        ResponseEntity<String> complete = exchange(
+                f.owner(),
+                HttpMethod.POST,
+                "/api/v1/bookings/" + b + "/check-in/complete",
+                Map.of("mutationId", UUID.randomUUID()));
+        assertThat(complete.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(json(complete.getBody()).path("bookingStatus").asText()).isEqualTo("COMPLETED");
+        assertThat(json(complete.getBody())
+                        .path("consumables")
+                        .get(0)
+                        .path("consumedQuantity")
+                        .decimalValue())
+                .isEqualByComparingTo("1");
+        assertThat(jdbc.sql("SELECT sum(quantity_delta) FROM stock_movement WHERE event_reference_id=:booking")
+                        .param("booking", b)
+                        .query(BigDecimal.class)
+                        .single())
+                .isEqualByComparingTo("-1");
+    }
+
+    @Test
+    void phase8SelectedCapacityAssetsBecomeFrozenPhysicalContents() {
+        Fixture f = fixture();
+        UUID model = createSerializedModel(f, "Cable", false),
+                cable = createAsset(f, model, "Replacement"),
+                cases = createSerializedModel(f, "Case", true);
+        UUID b = capacityBooking(f, cases, model, LocalDate.of(2027, 4, 1), LocalDate.of(2027, 4, 2));
+        reserve(f.owner(), b, bookingVersion(f.owner(), b));
+        ResponseEntity<String> checked = checkout(f, b, List.of(cable));
+        assertThat(checked.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(json(checked.getBody()).path("assets")).anySatisfy(a -> {
+            assertThat(a.path("assetId").asText()).isEqualTo(cable.toString());
+            assertThat(a.path("actualParentContainerAssetId").isNull()).isFalse();
+        });
+    }
+
+    @Test
+    void phase8CheckoutAndReturnEnforceRolesTenancyAndCommandFingerprints() {
+        Fixture f = fixture(), other = fixture();
+        UUID asset = createAsset(f, "Private asset"), b = bookingWithAsset(f, "Private event", asset);
+        reserve(f.owner(), b, bookingVersion(f.owner(), b));
+        UUID mutation = UUID.randomUUID();
+        long version = bookingVersion(f.owner(), b);
+        Map<String, Object> command = Map.of("mutationId", mutation, "expectedVersion", version);
+        String checkoutPath = "/api/v1/bookings/" + b + "/checkout";
+        assertThat(exchange(f.session(OrganizationRole.VIEWER), HttpMethod.POST, checkoutPath, command)
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(exchange(other.owner(), HttpMethod.POST, checkoutPath, command)
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(exchange(
+                                f.session(OrganizationRole.OPERATOR_AUDITOR),
+                                HttpMethod.POST,
+                                checkoutPath,
+                                Map.of(
+                                        "mutationId",
+                                        mutation,
+                                        "expectedVersion",
+                                        version,
+                                        "overrideReason",
+                                        "Unauthorized override"))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(exchange(f.session(OrganizationRole.OPERATOR_AUDITOR), HttpMethod.POST, checkoutPath, command)
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertThat(exchange(f.owner(), HttpMethod.POST, checkoutPath, command).getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertThat(exchange(
+                                f.owner(),
+                                HttpMethod.POST,
+                                checkoutPath,
+                                Map.of(
+                                        "mutationId",
+                                        mutation,
+                                        "expectedVersion",
+                                        version,
+                                        "overrideReason",
+                                        "Changed command"))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+        String returnPath = "/api/v1/bookings/" + b + "/check-in/assets/" + asset;
+        assertThat(exchange(f.owner(), HttpMethod.POST, returnPath, Map.of()).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(exchange(other.owner(), HttpMethod.POST, returnPath, Map.of("mutationId", UUID.randomUUID()))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void phase8CheckedOutContainerStockCannotBeSeparatelyReserved() {
+        Fixture f = fixture();
+        UUID cases = createSerializedModel(f, "Case", true),
+                box = createAsset(f, cases, "Away case"),
+                stock = receive(f, createQuantityModel(f, "Tape"), box, "5");
+        UUID b = createBooking(f, "Carried tape", LocalDate.of(2027, 5, 1), LocalDate.of(2027, 5, 2));
+        addContainerLine(f.owner(), b, bookingVersion(f.owner(), b), box);
+        reserve(f.owner(), b, bookingVersion(f.owner(), b));
+        assertThat(checkout(f, b, List.of()).getStatusCode()).isEqualTo(HttpStatus.OK);
+        UUID issue = createBooking(f, "Issue away tape", LocalDate.of(2027, 6, 1), LocalDate.of(2027, 6, 2));
+        addConsumableLine(f.owner(), issue, bookingVersion(f.owner(), issue), stock, "1");
+        assertConflict(preview(f.owner(), issue), "SOURCE_CONTAINER_UNAVAILABLE");
+        assertThat(exchange(
+                                f.owner(),
+                                HttpMethod.POST,
+                                "/api/v1/assets/" + box + "/packing-requirements",
+                                Map.of(
+                                        "type",
+                                        "CONSUMABLE_QUANTITY",
+                                        "assetModelId",
+                                        createQuantityModel(f, "Other tape"),
+                                        "requiredQuantity",
+                                        1))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void phase8FlexibleCheckoutMustReplaceAnIndividuallyHeldIdentity() {
+        Fixture f = fixture();
+        UUID model = createSerializedModel(f, "Cable", false),
+                original = createAsset(f, model, "Original"),
+                replacement = createAsset(f, model, "Replacement"),
+                box = createAsset(f, createSerializedModel(f, "Case", true), "Case");
+        place(f, original, box);
+        requirement(f, box, model, "MODEL_QUANTITY", "1");
+        UUID individual = createBooking(f, "Individual hold", LocalDate.of(2027, 7, 1), LocalDate.of(2027, 7, 2));
+        addAssetLine(f.owner(), individual, bookingVersion(f.owner(), individual), original);
+        reserve(f.owner(), individual, bookingVersion(f.owner(), individual));
+        UUID b = createBooking(f, "Whole case", LocalDate.of(2027, 7, 1), LocalDate.of(2027, 7, 2));
+        addContainerLine(f.owner(), b, bookingVersion(f.owner(), b), box);
+        reserve(f.owner(), b, bookingVersion(f.owner(), b));
+        assertThat(checkout(f, b, List.of()).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        ResponseEntity<String> checked = checkout(f, b, List.of(replacement));
+        assertThat(checked.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(json(checked.getBody()).path("assets"))
+                .noneSatisfy(a -> assertThat(a.path("assetId").asText()).isEqualTo(original.toString()));
+        assertThat(jdbc.sql("SELECT parent_container_asset_id IS NULL FROM physical_asset WHERE id=:asset")
+                        .param("asset", original)
+                        .query(Boolean.class)
+                        .single())
+                .isTrue();
+    }
+
+    private ResponseEntity<String> checkout(Fixture f, UUID booking, List<UUID> selected) {
+        return exchange(
+                f.owner(),
+                HttpMethod.POST,
+                "/api/v1/bookings/" + booking + "/checkout",
+                Map.of(
+                        "mutationId",
+                        UUID.randomUUID(),
+                        "expectedVersion",
+                        bookingVersion(f.owner(), booking),
+                        "selectedAssetIds",
+                        selected));
+    }
+
     private void assertReservationStatus(Fixture f, UUID b, String status) {
         assertThat(json(exchange(f.owner(), HttpMethod.GET, "/api/v1/bookings/" + b, null)
                                 .getBody())

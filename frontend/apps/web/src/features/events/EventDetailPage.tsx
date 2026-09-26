@@ -34,6 +34,7 @@ import {
   eventErrorMessage,
   getBooking,
   getBookingHistory,
+  getCheckoutManifest,
   previewBooking,
   removeBookingLine,
   reserveBooking,
@@ -42,7 +43,9 @@ import {
   type BookingHistory,
   type BookingRecord,
   type BookingPreview,
+  type CheckoutManifest,
 } from "./eventsApi";
+import { EventCheckoutPanel } from "./EventCheckoutPanel";
 
 const MUTATING_ROLES = new Set(["OWNER", "DEPUTY"]);
 type LineKind = "CONTAINER" | "ASSET" | "CONSUMABLE";
@@ -370,6 +373,7 @@ export function EventDetailPage() {
   const [booking, setBooking] = useState<BookingRecord>();
   const [history, setHistory] = useState<BookingHistory[]>([]);
   const [preview, setPreview] = useState<BookingPreview>();
+  const [manifest, setManifest] = useState<CheckoutManifest>();
   const [error, setError] = useState<string>();
   const [editing, setEditing] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -387,6 +391,17 @@ export function EventDetailPage() {
     }
     setBooking(detail.data);
     if (historyResult.kind === "ok") setHistory(historyResult.data);
+    if (
+      ["CHECKED_OUT", "RETURNED_AUDITS_PENDING", "REVIEW_REQUIRED", "COMPLETED"].includes(
+        detail.data.status,
+      )
+    ) {
+      const manifestResult = await getCheckoutManifest(bookingId);
+      if (manifestResult.kind === "ok") setManifest(manifestResult.data);
+      else setError(eventErrorMessage(manifestResult.error));
+    } else {
+      setManifest(undefined);
+    }
   }, [bookingId]);
   useEffect(() => {
     const timer = window.setTimeout(() => void load());
@@ -511,6 +526,15 @@ export function EventDetailPage() {
           ) : null}
         </Stack>
       </Paper>
+      <EventCheckoutPanel
+        booking={booking}
+        role={role}
+        manifest={manifest}
+        onManifest={(next) => {
+          setManifest(next);
+          void load();
+        }}
+      />
       <Paper sx={{ p: 2 }}>
         <Stack spacing={1.5}>
           <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center" }}>

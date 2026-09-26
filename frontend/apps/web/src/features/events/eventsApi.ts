@@ -15,6 +15,22 @@ export type BookingPreview = Required<
 export type BookingHistory = Required<components["schemas"]["BookingHistoryResponse"]>;
 export type BookingLineInput = components["schemas"]["CreateBookingLineRequest"];
 export type BookingInput = components["schemas"]["CreateBookingRequest"];
+export type CheckoutInput = components["schemas"]["CheckoutBookingRequest"];
+export type CheckoutManifestAsset = Required<
+  components["schemas"]["CheckoutManifestAssetResponse"]
+>;
+export type CheckoutManifestConsumable = Required<
+  components["schemas"]["CheckoutManifestConsumableResponse"]
+>;
+export type AuditTask = Required<components["schemas"]["AuditTaskResponse"]>;
+export type CheckoutManifest = Omit<
+  Required<components["schemas"]["CheckoutManifestResponse"]>,
+  "assets" | "consumables" | "auditTasks"
+> & {
+  assets: CheckoutManifestAsset[];
+  consumables: CheckoutManifestConsumable[];
+  auditTasks: AuditTask[];
+};
 
 export type ApiResult<T> = { kind: "ok"; data: T } | { kind: "error"; error: AppError };
 interface Outcome {
@@ -120,6 +136,64 @@ export function cancelBooking(
     apiClient.POST("/api/v1/bookings/{bookingId}/cancel", {
       params: { path: { bookingId } },
       body: { expectedVersion },
+    }),
+  );
+}
+
+export function getCheckoutManifest(bookingId: string): Promise<ApiResult<CheckoutManifest>> {
+  return read(() =>
+    apiClient.GET("/api/v1/bookings/{bookingId}/checkout-manifest", {
+      params: { path: { bookingId } },
+    }),
+  );
+}
+
+export function checkoutBooking(
+  bookingId: string,
+  input: CheckoutInput,
+): Promise<ApiResult<CheckoutManifest>> {
+  return read(() =>
+    apiClient.POST("/api/v1/bookings/{bookingId}/checkout", {
+      params: { path: { bookingId } },
+      body: input,
+    }),
+  );
+}
+
+export function checkInBookingAsset(
+  bookingId: string,
+  assetId: string,
+  mutationId: string,
+): Promise<ApiResult<CheckoutManifest>> {
+  return read(() =>
+    apiClient.POST("/api/v1/bookings/{bookingId}/check-in/assets/{assetId}", {
+      params: { path: { bookingId, assetId } },
+      body: { mutationId },
+    }),
+  );
+}
+
+export function returnBookingConsumable(
+  bookingId: string,
+  manifestConsumableId: string,
+  input: components["schemas"]["ReturnBookingConsumableRequest"],
+): Promise<ApiResult<CheckoutManifest>> {
+  return read(() =>
+    apiClient.POST("/api/v1/bookings/{bookingId}/check-in/consumables/{manifestConsumableId}", {
+      params: { path: { bookingId, manifestConsumableId } },
+      body: input,
+    }),
+  );
+}
+
+export function completeBookingReturn(
+  bookingId: string,
+  mutationId: string,
+): Promise<ApiResult<CheckoutManifest>> {
+  return read(() =>
+    apiClient.POST("/api/v1/bookings/{bookingId}/check-in/complete", {
+      params: { path: { bookingId } },
+      body: { mutationId },
     }),
   );
 }

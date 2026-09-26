@@ -2027,6 +2027,180 @@
         }
       }
     },
+    "/api/v1/bookings/{bookingId}/checkout-manifest": {
+      "get": {
+        "tags": ["booking-controller"],
+        "operationId": "checkoutManifest",
+        "parameters": [
+          {
+            "name": "bookingId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": { "schema": { "$ref": "#/components/schemas/CheckoutManifestResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/{bookingId}/checkout": {
+      "post": {
+        "tags": ["booking-controller"],
+        "operationId": "checkout",
+        "parameters": [
+          {
+            "name": "bookingId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CheckoutBookingRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": { "schema": { "$ref": "#/components/schemas/CheckoutManifestResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/{bookingId}/checkout-manifest.pdf": {
+      "get": {
+        "tags": ["booking-controller"],
+        "operationId": "checkoutPdf",
+        "parameters": [
+          {
+            "name": "bookingId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": { "application/pdf": { "schema": { "type": "string", "format": "binary" } } }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/{bookingId}/check-in/assets/{assetId}": {
+      "post": {
+        "tags": ["booking-controller"],
+        "operationId": "checkInAsset",
+        "parameters": [
+          {
+            "name": "bookingId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CheckInBookingAssetRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": { "schema": { "$ref": "#/components/schemas/CheckoutManifestResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/{bookingId}/check-in/consumables/{manifestConsumableId}": {
+      "post": {
+        "tags": ["booking-controller"],
+        "operationId": "returnConsumable",
+        "parameters": [
+          {
+            "name": "bookingId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "manifestConsumableId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ReturnBookingConsumableRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": { "schema": { "$ref": "#/components/schemas/CheckoutManifestResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/{bookingId}/check-in/complete": {
+      "post": {
+        "tags": ["booking-controller"],
+        "operationId": "completeReturn",
+        "parameters": [
+          {
+            "name": "bookingId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CompleteBookingReturnRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": { "schema": { "$ref": "#/components/schemas/CheckoutManifestResponse" } }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/assets/{containerAssetId}/packing-templates/{templateId}/apply": {
       "post": {
         "tags": ["packing-requirement-controller"],
@@ -5005,6 +5179,105 @@
           }
         },
         "required": ["expectedVersion"]
+      },
+      "CheckoutBookingRequest": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": { "type": "integer", "format": "int64", "minimum": 0 },
+          "mutationId": { "type": "string", "format": "uuid" },
+          "overrideReason": { "type": "string" },
+          "selectedAssetIds": { "type": "array", "items": { "type": "string", "format": "uuid" } }
+        },
+        "required": ["expectedVersion", "mutationId"]
+      },
+      "CheckInBookingAssetRequest": {
+        "type": "object",
+        "properties": { "mutationId": { "type": "string", "format": "uuid" } },
+        "required": ["mutationId"]
+      },
+      "ReturnBookingConsumableRequest": {
+        "type": "object",
+        "properties": {
+          "mutationId": { "type": "string", "format": "uuid" },
+          "quantity": { "type": "number" },
+          "destinationContainerAssetId": { "type": "string", "format": "uuid" },
+          "destinationLocationId": { "type": "string", "format": "uuid" }
+        },
+        "required": ["mutationId", "quantity"]
+      },
+      "CompleteBookingReturnRequest": {
+        "type": "object",
+        "properties": { "mutationId": { "type": "string", "format": "uuid" } },
+        "required": ["mutationId"]
+      },
+      "CheckoutManifestAssetResponse": {
+        "type": "object",
+        "properties": {
+          "assetId": { "type": "string", "format": "uuid" },
+          "containerAssetId": { "type": "string", "format": "uuid" },
+          "actualParentContainerAssetId": { "type": "string", "format": "uuid" },
+          "isContainer": { "type": "boolean" },
+          "snapshot": { "type": "object", "additionalProperties": {} },
+          "containerSnapshot": { "type": "object", "additionalProperties": {} },
+          "returnedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CheckoutManifestConsumableResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "quantity": { "type": "number" },
+          "returnedQuantity": { "type": "number" },
+          "consumedQuantity": { "type": "number" },
+          "accountedAt": { "type": "string", "format": "date-time" },
+          "semantics": { "type": "string", "enum": ["SEPARATELY_ISSUED", "CARRIED_IN_CONTAINER"] },
+          "snapshot": { "type": "object", "additionalProperties": {} }
+        }
+      },
+      "AuditTaskResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "containerAssetId": { "type": "string", "format": "uuid" },
+          "dependsOnTaskIds": { "type": "array", "items": { "type": "string", "format": "uuid" } },
+          "state": { "type": "string", "enum": ["READY", "BLOCKED", "COMPLETED"] }
+        }
+      },
+      "CheckoutManifestResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "bookingId": { "type": "string", "format": "uuid" },
+          "bookingStatus": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "RESERVED",
+              "CHECKED_OUT",
+              "RETURNED_AUDITS_PENDING",
+              "REVIEW_REQUIRED",
+              "COMPLETED",
+              "CANCELLED"
+            ]
+          },
+          "checkedOutAt": { "type": "string", "format": "date-time" },
+          "checkedOutByUserId": { "type": "string", "format": "uuid" },
+          "auditBatchId": { "type": "string", "format": "uuid" },
+          "bookingSnapshot": { "type": "object", "additionalProperties": {} },
+          "assets": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/CheckoutManifestAssetResponse" }
+          },
+          "consumables": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/CheckoutManifestConsumableResponse" }
+          },
+          "overrides": { "type": "array", "items": { "type": "string" } },
+          "auditTasks": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AuditTaskResponse" }
+          }
+        }
       },
       "PackingPreviewRequest": {
         "type": "object",

@@ -20,6 +20,7 @@ import io.kellermann.bigcontainers.repository.AssetCustomFieldValueRepository;
 import io.kellermann.bigcontainers.repository.AssetRepository;
 import io.kellermann.bigcontainers.repository.AssetStateChangeRepository;
 import io.kellermann.bigcontainers.repository.AssetUnitNumberSequenceRepository;
+import io.kellermann.bigcontainers.repository.CheckoutManifestAssetRepository;
 import io.kellermann.bigcontainers.repository.ConsumableStockRepository;
 import io.kellermann.bigcontainers.repository.ModelCustomFieldOptionRepository;
 import io.kellermann.bigcontainers.repository.ModelCustomFieldRepository;
@@ -87,6 +88,7 @@ public class AssetService {
     private final AssetCodeGenerationService assetCodeGenerationService;
     private final ActivityLogService activityLogService;
     private final BookingImpactService bookingImpact;
+    private final CheckoutManifestAssetRepository checkoutManifestAssets;
     private final Clock clock;
 
     public AssetService(
@@ -102,6 +104,7 @@ public class AssetService {
             AssetCodeGenerationService assetCodeGenerationService,
             ActivityLogService activityLogService,
             BookingImpactService bookingImpact,
+            CheckoutManifestAssetRepository checkoutManifestAssets,
             Clock clock) {
         this.assetRepository = assetRepository;
         this.assetCustomFieldValueRepository = assetCustomFieldValueRepository;
@@ -115,6 +118,7 @@ public class AssetService {
         this.assetCodeGenerationService = assetCodeGenerationService;
         this.activityLogService = activityLogService;
         this.bookingImpact = bookingImpact;
+        this.checkoutManifestAssets = checkoutManifestAssets;
         this.clock = clock;
     }
 
@@ -274,6 +278,7 @@ public class AssetService {
             BigContainersPrincipal principal, UUID assetId, List<AssetCustomFieldValueInput> values) {
         requireOwnerOrDeputy(principal);
         Asset asset = requireAsset(principal.organizationId(), assetId);
+        rejectCheckedOutMutation(principal.organizationId(), assetId);
         List<ModelCustomField> activeFields = activeFields(principal.organizationId(), asset.getAssetModelId());
         var now = clock.instant();
         for (AssetCustomFieldValueInput input : values == null ? List.<AssetCustomFieldValueInput>of() : values) {
@@ -365,6 +370,7 @@ public class AssetService {
         requireOwnerOrDeputy(principal);
         lockOrganization(principal.organizationId());
         Asset asset = requireAsset(principal.organizationId(), assetId);
+        rejectCheckedOutMutation(principal.organizationId(), assetId);
         var now = clock.instant();
         LifecycleState previous;
         try {
@@ -411,6 +417,7 @@ public class AssetService {
         requireOwnerOrDeputy(principal);
         lockOrganization(principal.organizationId());
         Asset asset = requireAsset(principal.organizationId(), assetId);
+        rejectCheckedOutMutation(principal.organizationId(), assetId);
         if (assetRepository.existsByOrganizationIdAndParentContainerAssetId(principal.organizationId(), assetId)
                 || consumableStockRepository.existsByOrganizationIdAndContainerAssetIdAndQuantityGreaterThan(
                         principal.organizationId(), assetId, java.math.BigDecimal.ZERO)) {
@@ -433,6 +440,12 @@ public class AssetService {
                 principal.organizationId(), principal.userId(), "ASSET_RESTORED", "ASSET", asset.getId(), null);
         assetRepository.flush();
         bookingImpact.changed(principal);
+    }
+
+    private void rejectCheckedOutMutation(UUID organizationId, UUID assetId) {
+        if (checkoutManifestAssets.existsByOrganizationIdAndAssetIdAndAuditReleasedAtIsNull(organizationId, assetId)) {
+            throw new ValidationFailedException("A checked-out asset cannot change lifecycle or archive state.");
+        }
     }
 
     private String generatePublicCode(UUID organizationId) {

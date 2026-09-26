@@ -24,12 +24,13 @@ Read it together with [`DEVELOPMENT_POLICIES.md`](DEVELOPMENT_POLICIES.md) and t
 | 5     | Packing requirements and templates                                                      | Complete, verified                                                                                                 |
 | 6     | QR scanning and initial asset-label output                                              | Implemented; automated verification complete, physical print/device acceptance pending                             |
 | 7     | Events, reservations, recursive expansion and conflict calculation                      | Complete, verified                                                                                                 |
-| 8-14  | Checkout, audits, findings, sheets, temporary access, search, hardening                  | Not started                                                                                                        |
+| 8     | Checkout manifests, custody, consumable issue/return, PDF, return task creation          | Complete, verified                                                                                                 |
+| 9-14  | Audits, findings, sheets, temporary access, search, hardening                            | Not started                                                                                                        |
 
-Verified at the Phase 6-7 checkpoint:
+Verified at the Phase 8 checkpoint:
 
-- Backend: **378 tests, 0 failures**, against real PostgreSQL through Testcontainers.
-- Frontend: **141 tests, 0 failures** (123 web, 11 api-client, 7 shared-ui), plus `format:check`,
+- Backend: **390 tests, 0 failures**, against real PostgreSQL through Testcontainers.
+- Frontend: **144 tests, 0 failures** (126 web, 11 api-client, 7 shared-ui), plus `format:check`,
   `lint`, `typecheck` and `build` clean. The focused desktop and mobile Playwright scanner journey
   has **2 passing tests**. `jibBuildTar` also succeeds with the matching frontend embedded.
 
@@ -90,6 +91,7 @@ Migrations (Flyway owns all schema; applied migrations are immutable):
 | `V9`      | Organization locations, physical containment and generalized stock places                           |
 | `V10`     | Packing templates, copy-on-apply requirements and immutable packing history                         |
 | `V11`     | Events, booking lines, immutable reservation revisions/claims and event history                     |
+| `V12`     | Immutable checkout manifests, custody/return operations and audit-task dependency foundation        |
 
 API surface is under `/api/v1`. The OpenAPI document at `/v3/api-docs` (enabled only under the `dev`
 profile) is the machine-readable contract; treat it as authoritative over any list here. Broadly:
@@ -105,9 +107,9 @@ direct active contents, reserves exact assets before interchangeable pools, expo
 pinned items, and can evaluate consumable amounts from a direct balance or an ephemeral observation.
 Actual and template requirement changes retain immutable before/after JSON snapshots, including
 referenced names and codes. Tracking-mode changes are blocked by current or archived actual/template
-requirements and their history. Checkout, seal assertion and audit state do not exist yet: their
-future guards and invalidation must be integrated into the packing mutation transaction when those
-lifecycles are implemented; Phase 5 does not claim to enforce nonexistent state.
+requirements and their history. Phase 8 locks packing mutations while a container or ancestor is in
+checkout custody. Seal-state invalidation remains part of Phase 10 because seal state does not exist
+yet.
 
 Phase 6 adds generated PDF asset labels for both specified A4 stocks, calibration sheets, UTF-8
 P-touch CSV, and raw-code QR round-trip verification. Phase 7 adds timestamped Draft/Reserved/
@@ -116,6 +118,14 @@ capacity, carried and separately issued consumable snapshots, explainable confli
 reservation revisions/history, retry-safe creation, and recalculation after relevant packing,
 placement, lifecycle, model and stock changes. Reserved events that become conflicted are retained
 and marked `ATTENTION_REQUIRED`; completed snapshots are never rewritten.
+
+Phase 8 adds immutable checkout manifests with frozen event, asset, physical-containment and
+consumable display data; exact interchangeable replacement selection; retry-safe checkout and return
+operations; separately issued versus container-carried stock semantics; and deterministic PDF
+regeneration. Partial returns preserve progress, parent-container returns expand through frozen
+containment, unused separately issued stock can return to a selected stock place, and explicit
+accounting completion retains the issued-minus-returned consumption result. Returned containers
+create real ready/blocked audit tasks with direct-child dependencies for Phase 9.
 
 Authorization is enforced in the **service** layer, not by URL matchers. Owner administers users and
 identities; Owner or Deputy administers the catalog, assets, media, locations, containment, stock and
@@ -151,6 +161,11 @@ lines, availability preview, reservation, structured conflicts/warnings, attenti
 cancellation and immutable activity history. Only Owners and Deputies mutate events; every permanent
 role may read them.
 
+Phase 8 adds a responsive event-handoff workflow for checkout selection, immutable manifest/PDF
+access, partial asset and consumable returns, manual-code lookup alongside the camera scanner, final
+return accounting and ready/blocked audit-task visibility. Operator access is limited to the
+server-authorized checkout/check-in actions; reservation administration remains Owner/Deputy only.
+
 API types are **generated** from the backend's OpenAPI document into
 `packages/api-client/src/generated/`. Hand-written duplicates of generated request/response shapes
 are forbidden by policy. Regenerate with the package's `generate` script against a running backend.
@@ -174,7 +189,7 @@ exist yet, and each is documented at its call site in code.
 
 | Deferred                                                          | Where it plugs in                                                                                                                                                                                                                                                                                            |
 | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Packing checkout guard and seal invalidation                       | Integrate at the organization-locked packing service mutation boundary when checkout and seal state exist. No substitute Phase 7/9 tables or flags are present. |
+| Seal invalidation                                                  | Integrate at the organization-locked packing service mutation boundary when Phase 10 adds seal state. Checkout custody guards are already enforced. |
 | Stock movement audit references                                   | The Phase 7 event reference now has a tenant-scoped foreign key; the nullable audit reference receives its target in Phase 9.                                                                                                                                                                                |
 | Automatic email linking toggle                                    | A static environment variable, not a runtime Owner-toggled setting, because no settings store exists yet.                                                                                                                                                                                                    |
 | Cross-model "metadata incomplete" dashboard view                  | Per-asset and per-model visibility exists; the organization-wide operational view belongs to Phase 13.                                                                                                                                                                                                       |
@@ -239,6 +254,11 @@ exercised against a running application and a real database.
   external exact requirements, half-open time ranges, interval-peak model capacity, interchangeable
   replacement, global consumable ATP, carried/source stock, concurrency, cancellation, immutable
   revisions/history, tenant/role boundaries, retries and recalculation after inventory changes.
+- **Phase 8 checkout and return acceptance.** PostgreSQL tests cover immutable frozen manifests,
+  selected interchangeable replacements, nested physical-return expansion, direct audit-task
+  dependencies, tenant/role/idempotency boundaries, concurrent final returns, consumable issue and
+  return accounting, custody release and checked-out source-container exclusion. PDF tests cover
+  frozen content and multi-page overflow.
 
 ## 8. Commit history caveat
 
@@ -251,6 +271,16 @@ what was verified. Treat the history as a readable grouping, not a bisectable ti
 ## 9. Suggested next steps
 
 1. Review Phases 6 and 7, including physical label-stock/mobile/P-touch acceptance.
-2. **Phase 8** - checkout, frozen manifests, consumable issue movements and return/check-in.
+2. **Phase 9** - audits, offline scan queue, reconciliation, findings, and review workflows.
+
+Phase 8 is implemented end to end: checkout freezes an immutable exact manifest, supports selected
+interchangeable replacements and deputy overrides, offers the immutable PDF, records partial asset
+and consumable returns with idempotency keys, and makes remaining consumable accounting explicit.
+The event handoff UI puts return progress and the next action first, retains the frozen manifest as a
+separate record, supports manual-code returns alongside the existing camera scanner, and shows ready
+and blocked audit tasks with their dependencies. The checked-in OpenAPI snapshot and generated
+TypeScript client were regenerated from a controller-derived OpenAPI snapshot because a running dev
+backend was not available during generation; the normal live `/v3/api-docs` capture script remains
+the preferred workflow.
 
 Before starting, run the verification commands in section 2 to confirm the tree is still green.

@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createBooking, listBookings } from "./eventsApi";
+import {
+  checkInBookingAsset,
+  checkoutBooking,
+  completeBookingReturn,
+  createBooking,
+  listBookings,
+  returnBookingConsumable,
+} from "./eventsApi";
 
 describe("event API", () => {
   afterEach(() => {
@@ -50,5 +57,36 @@ describe("event API", () => {
     expect(second).toBeDefined();
     await expect(first!.json()).resolves.toMatchObject({ mutationId: "mutation-1" });
     await expect(second!.json()).resolves.toMatchObject({ mutationId: "mutation-1" });
+  });
+
+  it("uses a distinct idempotency mutation for every phase 8 command", async () => {
+    const requests: Request[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL) => {
+        requests.push(input instanceof Request ? input : new Request(input));
+        return Promise.resolve(
+          new Response(JSON.stringify({ assets: [], consumables: [], auditTasks: [] }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          }),
+        );
+      }),
+    );
+    const bookingId = "11111111-1111-1111-1111-111111111111";
+    await checkoutBooking(bookingId, { expectedVersion: 2, mutationId: "checkout-mutation" });
+    await checkInBookingAsset(bookingId, "22222222-2222-2222-2222-222222222222", "asset-mutation");
+    await returnBookingConsumable(bookingId, "33333333-3333-3333-3333-333333333333", {
+      mutationId: "stock-mutation",
+      quantity: 1,
+      destinationLocationId: "44444444-4444-4444-4444-444444444444",
+    });
+    await completeBookingReturn(bookingId, "complete-mutation");
+
+    expect(requests).toHaveLength(4);
+    await expect(requests[0]!.json()).resolves.toMatchObject({ mutationId: "checkout-mutation" });
+    await expect(requests[1]!.json()).resolves.toMatchObject({ mutationId: "asset-mutation" });
+    await expect(requests[2]!.json()).resolves.toMatchObject({ mutationId: "stock-mutation" });
+    await expect(requests[3]!.json()).resolves.toMatchObject({ mutationId: "complete-mutation" });
   });
 });
