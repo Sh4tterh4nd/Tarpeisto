@@ -7,6 +7,7 @@ import io.kellermann.bigcontainers.exception.ValidationFailedException;
 import io.kellermann.bigcontainers.model.Asset;
 import io.kellermann.bigcontainers.model.AssetModel;
 import io.kellermann.bigcontainers.model.AuditBatch;
+import io.kellermann.bigcontainers.model.AuditCompletionOutcome;
 import io.kellermann.bigcontainers.model.AuditTask;
 import io.kellermann.bigcontainers.model.AuditTaskDependency;
 import io.kellermann.bigcontainers.model.AuditTaskState;
@@ -35,6 +36,7 @@ import io.kellermann.bigcontainers.repository.CheckoutManifestOverrideRepository
 import io.kellermann.bigcontainers.repository.CheckoutManifestRepository;
 import io.kellermann.bigcontainers.repository.CheckoutReturnOperationRepository;
 import io.kellermann.bigcontainers.repository.ConsumableStockRepository;
+import io.kellermann.bigcontainers.repository.ContainerAuditRepository;
 import io.kellermann.bigcontainers.repository.LocationRepository;
 import io.kellermann.bigcontainers.repository.OrganizationRepository;
 import io.kellermann.bigcontainers.repository.PackingRequirementRepository;
@@ -83,6 +85,7 @@ public class CheckoutService {
     private final BookingLineRepository bookingLines;
     private final ConsumableStockRepository stockBalances;
     private final LocationRepository locations;
+    private final ContainerAuditRepository audits;
 
     public CheckoutService(
             BookingRepository bookings,
@@ -106,7 +109,8 @@ public class CheckoutService {
             PackingRequirementRepository packingRequirements,
             BookingLineRepository bookingLines,
             ConsumableStockRepository stockBalances,
-            LocationRepository locations) {
+            LocationRepository locations,
+            ContainerAuditRepository audits) {
         this.bookings = bookings;
         this.claims = claims;
         this.manifests = manifests;
@@ -129,6 +133,7 @@ public class CheckoutService {
         this.bookingLines = bookingLines;
         this.stockBalances = stockBalances;
         this.locations = locations;
+        this.audits = audits;
     }
 
     @Transactional(readOnly = true)
@@ -528,8 +533,23 @@ public class CheckoutService {
                     .filter(c -> c.getSemantics() == CheckoutConsumableSemantics.SEPARATELY_ISSUED)
                     .allMatch(c -> c.getAccountedAt() != null);
             if (booking.getStatus() == BookingStatus.COMPLETED) return;
-            if (hasAudits) booking.markReturnedAuditsPending(clock.instant());
-            else if (accountingComplete) booking.completeReturn(clock.instant());
+            if (hasAudits) {
+                AuditBatch batch = batches.findByOrganizationIdAndBookingId(principal.organizationId(), bookingId)
+                        .orElseThrow();
+                List<io.kellermann.bigcontainers.model.ContainerAudit> rows =
+                        audits.findAllByOrganizationIdAndAuditBatchIdOrderById(
+                                principal.organizationId(), batch.getId());
+                if (rows.stream().anyMatch(a -> a.getCompletionOutcome() == AuditCompletionOutcome.FINDINGS))
+                    booking.markReviewRequired(clock.instant());
+                else if (accountingComplete
+                        && tasks
+                                .findAllByOrganizationIdAndAuditBatchIdOrderById(
+                                        principal.organizationId(), batch.getId())
+                                .stream()
+                                .allMatch(t -> t.getState() == AuditTaskState.COMPLETED))
+                    booking.completeReturn(clock.instant());
+                else booking.markReturnedAuditsPending(clock.instant());
+            } else if (accountingComplete) booking.completeReturn(clock.instant());
             bookings.flush();
         }
     }

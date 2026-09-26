@@ -516,9 +516,12 @@ export function EventCheckoutPanel({
         ) : (
           <Stack component="ul" sx={{ pl: 2.5, mb: 0 }}>
             {manifest.auditTasks.map((task) => (
-              <Typography
+              <Stack
                 component="li"
                 key={task.id}
+                direction={{ xs: "column", sm: "row" }}
+                spacing={1}
+                sx={{ alignItems: { sm: "center" } }}
                 color={
                   task.state === "READY"
                     ? "success.main"
@@ -527,13 +530,25 @@ export function EventCheckoutPanel({
                       : "text.secondary"
                 }
               >
-                {task.state === "READY"
-                  ? "Ready to audit"
-                  : task.state === "BLOCKED"
-                    ? `Blocked — complete ${task.dependsOnTaskIds.length} contained-case audit${task.dependsOnTaskIds.length === 1 ? "" : "s"} first`
-                    : "Completed"}
-                : {task.containerAssetId}
-              </Typography>
+                <Typography>
+                  {task.state === "READY"
+                    ? "Ready to audit"
+                    : task.state === "BLOCKED"
+                      ? `Blocked — complete ${task.dependsOnTaskIds.length} contained-case audit${task.dependsOnTaskIds.length === 1 ? "" : "s"} first`
+                      : "Completed"}
+                  : {task.containerAssetId}
+                </Typography>
+                {task.state === "READY" ? (
+                  <Button
+                    component={RouterLink}
+                    to={`/audits/tasks/${task.id}`}
+                    size="small"
+                    variant="outlined"
+                  >
+                    Open audit
+                  </Button>
+                ) : null}
+              </Stack>
             ))}
           </Stack>
         )}

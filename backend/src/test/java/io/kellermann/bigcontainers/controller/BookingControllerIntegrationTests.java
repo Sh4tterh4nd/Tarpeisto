@@ -1004,6 +1004,480 @@ class BookingControllerIntegrationTests extends AbstractIntegrationTest {
                 .isTrue();
     }
 
+    @Test
+    void phase91ScannerRetriesRejectChangedPayloadUndoPersistsAndCompletedObservationsAreFrozen() {
+        Fixture f = fixture();
+        UUID box = createAsset(f, createSerializedModel(f, "Audit box", true), "Box");
+        UUID cable = createAsset(f, "Audit cable");
+        addExactRequirement(f, box, cable);
+        place(f, cable, box);
+        UUID booking = returnedContainers(f, List.of(box));
+        UUID audit = startAudit(f, box);
+        JsonNode expectedBefore = json(exchange(
+                                f.owner(), HttpMethod.GET, "/api/v1/audits/tasks/" + auditTask(box), null)
+                        .getBody())
+                .path("expectedRequirements")
+                .get(0);
+        String frozenSnapshot = expectedBefore.path("snapshot").asText();
+        assertThat(json(frozenSnapshot).path("assetCode").asText()).isEqualTo(publicCode(cable));
+        assertThat(json(frozenSnapshot).path("assetName").asText()).isNotBlank();
+        assertThat(json(frozenSnapshot).path("modelName").asText()).isNotBlank();
+        jdbc.sql("UPDATE physical_asset SET individual_name='Renamed after audit start' WHERE id=:id")
+                .param("id", cable)
+                .update();
+        assertThat(json(exchange(f.owner(), HttpMethod.GET, "/api/v1/audits/tasks/" + auditTask(box), null)
+                                .getBody())
+                        .path("expectedRequirements")
+                        .get(0)
+                        .path("snapshot")
+                        .asText())
+                .isEqualTo(frozenSnapshot);
+        UUID operation = UUID.randomUUID();
+        Map<String, Object> scan = Map.of("operationId", operation, "code", publicCode(cable));
+        String scansPath = "/api/v1/audits/" + audit + "/scans";
+        ResponseEntity<String> response = exchange(f.owner(), HttpMethod.POST, scansPath, scan);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(json(response.getBody()).path("scans")).hasSize(1);
+        assertThat(exchange(f.owner(), HttpMethod.POST, scansPath, scan).getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertThat(exchange(
+                                f.owner(),
+                                HttpMethod.POST,
+                                scansPath,
+                                Map.of("operationId", operation, "code", publicCode(box)))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+        String scanId = json(response.getBody()).path("scans").get(0).path("id").asText();
+        assertThat(exchange(
+                                f.owner(),
+                                HttpMethod.POST,
+                                scansPath + "/" + scanId + "/undo",
+                                Map.of("operationId", UUID.randomUUID()))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertThat(jdbc.sql("SELECT undone_at IS NOT NULL FROM audit_scan WHERE id=:id")
+                        .param("id", UUID.fromString(scanId))
+                        .query(Boolean.class)
+                        .single())
+                .isTrue();
+        assertThat(exchange(
+                                f.owner(),
+                                HttpMethod.POST,
+                                scansPath,
+                                Map.of("operationId", UUID.randomUUID(), "code", publicCode(cable)))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        UUID completeOperation = UUID.randomUUID();
+        Map<String, Object> complete =
+                Map.of("operationId", completeOperation, "containerCode", publicCode(box), "confirmMissing", false);
+        String completionPath = "/api/v1/audits/" + audit + "/complete";
+        ResponseEntity<String> completed = exchange(f.owner(), HttpMethod.POST, completionPath, complete);
+        assertThat(completed.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(json(completed.getBody()).path("completionOutcome").asText()).isEqualTo("CLEAN");
+        assertThat(exchange(f.owner(), HttpMethod.POST, completionPath, complete)
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertThat(exchange(
+                                f.owner(),
+                                HttpMethod.POST,
+                                completionPath,
+                                Map.of(
+                                        "operationId",
+                                        completeOperation,
+                                        "containerCode",
+                                        publicCode(box),
+                                        "confirmMissing",
+                                        true))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+        assertThat(json(exchange(f.owner(), HttpMethod.GET, "/api/v1/bookings/" + booking, null)
+                                .getBody())
+                        .path("status")
+                        .asText())
+                .isEqualTo("COMPLETED");
+        assertThatThrownBy(() -> jdbc.sql(
+                                "UPDATE audit_scan SET undone_at=now(), undone_by_user_id=scanned_by_user_id WHERE id=:id")
+                        .param("id", UUID.fromString(scanId))
+                        .update())
+                .isInstanceOf(DataAccessException.class);
+        assertThatThrownBy(() -> jdbc.sql(
+                                "INSERT INTO audit_operation(id,organization_id,container_audit_id,client_operation_id,action,fingerprint,recorded_at) SELECT :id,organization_id,id,:op,'SCAN','new',now() FROM container_audit WHERE id=:audit")
+                        .param("id", UUID.randomUUID())
+                        .param("op", UUID.randomUUID())
+                        .param("audit", audit)
+                        .update())
+                .isInstanceOf(DataAccessException.class);
+    }
+
+    @Test
+    void phase91WarehouseReplacementCannotHideManifestLossAndFindingChildKeepsParentBlocked() {
+        Fixture f = fixture();
+        UUID caseModel = createSerializedModel(f, "Audit cases", true);
+        UUID root = createAsset(f, caseModel, "Root"), child = createAsset(f, caseModel, "Child");
+        UUID cableModel = createSerializedModel(f, "Cables", false);
+        UUID issued = createAsset(f, cableModel, "Issued"), replacement = createAsset(f, cableModel, "Replacement");
+        requirement(f, child, cableModel, "MODEL_QUANTITY", "1");
+        place(f, issued, child);
+        place(f, child, root);
+        returnedContainers(f, List.of(root));
+        UUID audit = startAudit(f, child);
+        assertThat(exchange(
+                                f.owner(),
+                                HttpMethod.POST,
+                                "/api/v1/audits/" + audit + "/scans",
+                                Map.of("operationId", UUID.randomUUID(), "code", publicCode(replacement)))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        ResponseEntity<String> completed = exchange(
+                f.owner(),
+                HttpMethod.POST,
+                "/api/v1/audits/" + audit + "/complete",
+                Map.of("operationId", UUID.randomUUID(), "containerCode", publicCode(child), "confirmMissing", false));
+        assertThat(completed.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(json(completed.getBody()).path("completionOutcome").asText()).isEqualTo("FINDINGS");
+        UUID parentTask = auditTask(root);
+        assertThat(exchange(
+                                f.owner(),
+                                HttpMethod.POST,
+                                "/api/v1/audits/tasks/" + parentTask + "/start",
+                                Map.of("containerCode", publicCode(root)))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void phase91CableSwapsCompleteButWarehouseCableLeavesExactManifestMissing() {
+        Fixture f = fixture();
+        UUID model = createSerializedModel(f, "Swap cable", false),
+                caseModel = createSerializedModel(f, "Swap case", true);
+        UUID first = createAsset(f, caseModel, "First"), second = createAsset(f, caseModel, "Second");
+        UUID a = createAsset(f, model, "A"),
+                b = createAsset(f, model, "B"),
+                warehouse = createAsset(f, model, "Warehouse");
+        requirement(f, first, model, "MODEL_QUANTITY", "1");
+        requirement(f, second, model, "MODEL_QUANTITY", "1");
+        place(f, a, first);
+        place(f, b, second);
+        returnedContainers(f, List.of(first, second));
+        UUID firstAudit = startAudit(f, first), secondAudit = startAudit(f, second);
+        assertThat(exchange(
+                                f.owner(),
+                                HttpMethod.POST,
+                                "/api/v1/audits/" + firstAudit + "/scans",
+                                Map.of("operationId", UUID.randomUUID(), "code", publicCode(b)))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertThat(exchange(
+                                f.owner(),
+                                HttpMethod.POST,
+                                "/api/v1/audits/" + secondAudit + "/scans",
+                                Map.of("operationId", UUID.randomUUID(), "code", publicCode(b)))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(exchange(
+                                f.owner(),
+                                HttpMethod.POST,
+                                "/api/v1/audits/" + secondAudit + "/move-code-here",
+                                Map.of("operationId", UUID.randomUUID(), "code", publicCode(b)))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertThat(exchange(
+                                f.owner(),
+                                HttpMethod.POST,
+                                "/api/v1/audits/" + firstAudit + "/scans",
+                                Map.of("operationId", UUID.randomUUID(), "code", publicCode(warehouse)))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertThat(exchange(
+                                f.owner(),
+                                HttpMethod.POST,
+                                "/api/v1/audits/" + firstAudit + "/complete",
+                                Map.of(
+                                        "operationId",
+                                        UUID.randomUUID(),
+                                        "containerCode",
+                                        publicCode(first),
+                                        "confirmMissing",
+                                        false))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        ResponseEntity<String> completed = exchange(
+                f.owner(),
+                HttpMethod.POST,
+                "/api/v1/audits/" + secondAudit + "/complete",
+                Map.of("operationId", UUID.randomUUID(), "containerCode", publicCode(second), "confirmMissing", false));
+        assertThat(completed.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(json(completed.getBody()).path("findings")).anySatisfy(finding -> {
+            assertThat(finding.path("assetId").asText()).isEqualTo(a.toString());
+            assertThat(finding.path("type").asText()).isEqualTo("MISSING");
+        });
+    }
+
+    @Test
+    void phase91ExactPinnedElsewhereCannotFillModelSlotAndRolesAndTenantsAreEnforced() {
+        Fixture f = fixture(), other = fixture();
+        UUID cases = createSerializedModel(f, "Pinned cases", true),
+                model = createSerializedModel(f, "Pinned model", false);
+        UUID box = createAsset(f, cases, "Audited box"), destination = createAsset(f, cases, "Exact destination");
+        UUID exact = createAsset(f, model, "Pinned"), eligible = createAsset(f, model, "Eligible");
+        addExactRequirement(f, destination, exact);
+        requirement(f, box, model, "MODEL_QUANTITY", "1");
+        place(f, eligible, box);
+        returnedContainers(f, List.of(box));
+        UUID task = auditTask(box);
+        assertThat(exchange(f.session(OrganizationRole.VIEWER), HttpMethod.GET, "/api/v1/audits/tasks/" + task, null)
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertThat(exchange(other.owner(), HttpMethod.GET, "/api/v1/audits/tasks/" + task, null)
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(exchange(
+                                f.session(OrganizationRole.VIEWER),
+                                HttpMethod.POST,
+                                "/api/v1/audits/tasks/" + task + "/start",
+                                Map.of("containerCode", publicCode(box)))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.FORBIDDEN);
+        UUID audit = startAudit(f, box);
+        ResponseEntity<String> response = exchange(
+                f.owner(),
+                HttpMethod.POST,
+                "/api/v1/audits/" + audit + "/scans",
+                Map.of("operationId", UUID.randomUUID(), "code", publicCode(exact)));
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(json(response.getBody()).path("scans").get(0).path("outcome").asText())
+                .isEqualTo("MISPLACED");
+        JsonNode context = json(json(response.getBody())
+                .path("scans")
+                .get(0)
+                .path("contextSnapshot")
+                .asText());
+        assertThat(context.path("destinationContainerId").asText()).isEqualTo(destination.toString());
+        assertThat(context.path("destinationContainerCode").asText()).isEqualTo(publicCode(destination));
+        assertThat(context.path("destinationContainerName").asText()).isNotBlank();
+        assertThat(json(response.getBody())
+                        .path("expectedRequirements")
+                        .get(0)
+                        .path("satisfied")
+                        .asBoolean())
+                .isFalse();
+    }
+
+    @Test
+    void phase91AuditorCanConfirmConsumablesButOnlyDeputyCanAdjustReturnedContainerBalance() {
+        Fixture f = fixture();
+        UUID box = createAsset(f, createSerializedModel(f, "Consumable audit case", true), "Box"),
+                model = createQuantityModel(f, "Audit tape");
+        receive(f, model, box, "3");
+        requirement(f, box, model, "CONSUMABLE_QUANTITY", "2");
+        returnedContainers(f, List.of(box));
+        UUID audit = startAudit(f, box);
+        UUID expectedId = jdbc.sql("SELECT id FROM audit_expected_requirement WHERE container_audit_id=:audit")
+                .param("audit", audit)
+                .query(UUID.class)
+                .single();
+        String path = "/api/v1/audits/" + audit + "/consumables/" + expectedId;
+        assertThat(exchange(
+                                f.session(OrganizationRole.OPERATOR_AUDITOR),
+                                HttpMethod.POST,
+                                path,
+                                Map.of(
+                                        "operationId",
+                                        UUID.randomUUID(),
+                                        "status",
+                                        "OBSERVED",
+                                        "observedQuantity",
+                                        2,
+                                        "reason",
+                                        "Returned count"))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.FORBIDDEN);
+        UUID operation = UUID.randomUUID();
+        Map<String, Object> observed = Map.of(
+                "operationId", operation, "status", "OBSERVED", "observedQuantity", 1, "reason", "Returned count");
+        ResponseEntity<String> response = exchange(f.deputy(), HttpMethod.POST, path, observed);
+        assertThat(response.getStatusCode()).withFailMessage(response.getBody()).isEqualTo(HttpStatus.OK);
+        assertThat(json(response.getBody())
+                        .path("expectedRequirements")
+                        .get(0)
+                        .path("satisfied")
+                        .asBoolean())
+                .isFalse();
+        assertThat(exchange(f.deputy(), HttpMethod.POST, path, observed).getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertThat(exchange(
+                                f.deputy(),
+                                HttpMethod.POST,
+                                path,
+                                Map.of(
+                                        "operationId",
+                                        operation,
+                                        "status",
+                                        "OBSERVED",
+                                        "observedQuantity",
+                                        2,
+                                        "reason",
+                                        "Changed count"))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+        assertThat(jdbc.sql(
+                                "SELECT quantity FROM consumable_stock_balance WHERE container_asset_id=:container AND asset_model_id=:model")
+                        .param("container", box)
+                        .param("model", model)
+                        .query(BigDecimal.class)
+                        .single())
+                .isEqualByComparingTo("1");
+    }
+
+    @Test
+    void phase91InterchangeableCableSwapCompletesCleanlyWithoutManualPlacement() {
+        Fixture f = fixture();
+        UUID cases = createSerializedModel(f, "Clean swap cases", true),
+                cables = createSerializedModel(f, "Clean swap cables", false);
+        UUID first = createAsset(f, cases, "First"), second = createAsset(f, cases, "Second");
+        UUID a = createAsset(f, cables, "A"), b = createAsset(f, cables, "B");
+        requirement(f, first, cables, "MODEL_QUANTITY", "1");
+        requirement(f, second, cables, "MODEL_QUANTITY", "1");
+        place(f, a, first);
+        place(f, b, second);
+        UUID booking = returnedContainers(f, List.of(first, second));
+        UUID firstAudit = startAudit(f, first), secondAudit = startAudit(f, second);
+        for (Map.Entry<UUID, UUID> pair : Map.of(firstAudit, b, secondAudit, a).entrySet())
+            assertThat(exchange(
+                                    f.owner(),
+                                    HttpMethod.POST,
+                                    "/api/v1/audits/" + pair.getKey() + "/scans",
+                                    Map.of("operationId", UUID.randomUUID(), "code", publicCode(pair.getValue())))
+                            .getStatusCode())
+                    .isEqualTo(HttpStatus.OK);
+        for (Map.Entry<UUID, UUID> pair :
+                Map.of(firstAudit, first, secondAudit, second).entrySet()) {
+            ResponseEntity<String> response = exchange(
+                    f.owner(),
+                    HttpMethod.POST,
+                    "/api/v1/audits/" + pair.getKey() + "/complete",
+                    Map.of(
+                            "operationId",
+                            UUID.randomUUID(),
+                            "containerCode",
+                            publicCode(pair.getValue()),
+                            "confirmMissing",
+                            false));
+            assertThat(response.getStatusCode())
+                    .withFailMessage(response.getBody())
+                    .isEqualTo(HttpStatus.OK);
+            assertThat(json(response.getBody()).path("completionOutcome").asText())
+                    .isEqualTo("CLEAN");
+        }
+        assertThat(jdbc.sql("SELECT parent_container_asset_id FROM physical_asset WHERE id=:asset")
+                        .param("asset", a)
+                        .query(UUID.class)
+                        .single())
+                .isEqualTo(second);
+        assertThat(jdbc.sql("SELECT parent_container_asset_id FROM physical_asset WHERE id=:asset")
+                        .param("asset", b)
+                        .query(UUID.class)
+                        .single())
+                .isEqualTo(first);
+        assertThat(json(exchange(f.owner(), HttpMethod.GET, "/api/v1/bookings/" + booking, null)
+                                .getBody())
+                        .path("status")
+                        .asText())
+                .isEqualTo("COMPLETED");
+    }
+
+    @Test
+    void phase91ExtraScanSuggestsCompatibleContainerAndConsumableSnapshotIncludesUnit() {
+        Fixture f = fixture();
+        UUID cases = createSerializedModel(f, "Suggestion cases", true),
+                cables = createSerializedModel(f, "Suggestion cables", false);
+        UUID first = createAsset(f, cases, "First"), second = createAsset(f, cases, "Second");
+        UUID a = createAsset(f, cables, "A"), b = createAsset(f, cables, "B"), extra = createAsset(f, cables, "Extra");
+        UUID tape = createQuantityModel(f, "Suggested tape");
+        receive(f, tape, first, "2");
+        requirement(f, first, tape, "CONSUMABLE_QUANTITY", "2");
+        requirement(f, first, cables, "MODEL_QUANTITY", "1");
+        requirement(f, second, cables, "MODEL_QUANTITY", "1");
+        place(f, a, first);
+        place(f, b, second);
+        returnedContainers(f, List.of(first, second));
+        UUID audit = startAudit(f, first);
+        JsonNode auditView = json(exchange(f.owner(), HttpMethod.GET, "/api/v1/audits/tasks/" + auditTask(first), null)
+                .getBody());
+        assertThat(auditView.path("expectedRequirements")).anySatisfy(row -> {
+            assertThat(row.path("type").asText()).isEqualTo("CONSUMABLE_QUANTITY");
+            JsonNode snapshot = json(row.path("snapshot").asText());
+            assertThat(snapshot.path("modelName").asText()).isNotBlank();
+            assertThat(snapshot.path("stockUnitLabel").asText()).isNotBlank();
+        });
+        assertThat(exchange(
+                                f.owner(),
+                                HttpMethod.POST,
+                                "/api/v1/audits/" + audit + "/scans",
+                                Map.of("operationId", UUID.randomUUID(), "code", publicCode(a)))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        ResponseEntity<String> response = exchange(
+                f.owner(),
+                HttpMethod.POST,
+                "/api/v1/audits/" + audit + "/scans",
+                Map.of("operationId", UUID.randomUUID(), "code", publicCode(extra)));
+        assertThat(response.getStatusCode()).withFailMessage(response.getBody()).isEqualTo(HttpStatus.OK);
+        JsonNode extraScan = json(response.getBody()).path("scans").get(1);
+        assertThat(extraScan.path("outcome").asText()).isEqualTo("EXTRA");
+        assertThat(json(extraScan.path("contextSnapshot").asText()).path("suggestions"))
+                .anySatisfy(suggestion -> {
+                    assertThat(suggestion.path("containerId").asText()).isEqualTo(second.toString());
+                    assertThat(suggestion.path("code").asText()).isEqualTo(publicCode(second));
+                    assertThat(suggestion.path("name").asText()).isNotBlank();
+                });
+    }
+
+    private UUID returnedContainers(Fixture f, List<UUID> containers) {
+        UUID booking = createBooking(f, "Audit return", LocalDate.of(2027, 5, 1), LocalDate.of(2027, 5, 2));
+        for (UUID container : containers)
+            assertThat(addContainerLine(f.owner(), booking, bookingVersion(f.owner(), booking), container)
+                            .getStatusCode())
+                    .isEqualTo(HttpStatus.OK);
+        assertThat(reserve(f.owner(), booking, bookingVersion(f.owner(), booking))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertThat(checkout(f, booking, List.of()).getStatusCode()).isEqualTo(HttpStatus.OK);
+        for (UUID container : containers)
+            assertThat(exchange(
+                                    f.owner(),
+                                    HttpMethod.POST,
+                                    "/api/v1/bookings/" + booking + "/check-in/assets/" + container,
+                                    Map.of("mutationId", UUID.randomUUID()))
+                            .getStatusCode())
+                    .isEqualTo(HttpStatus.OK);
+        return booking;
+    }
+
+    private String publicCode(UUID asset) {
+        return jdbc.sql("SELECT public_code FROM physical_asset WHERE id=:id")
+                .param("id", asset)
+                .query(String.class)
+                .single();
+    }
+
+    private UUID auditTask(UUID container) {
+        return jdbc.sql("SELECT id FROM audit_task WHERE container_asset_id=:id")
+                .param("id", container)
+                .query(UUID.class)
+                .single();
+    }
+
+    private UUID startAudit(Fixture f, UUID container) {
+        ResponseEntity<String> response = exchange(
+                f.owner(),
+                HttpMethod.POST,
+                "/api/v1/audits/tasks/" + auditTask(container) + "/start",
+                Map.of("containerCode", publicCode(container)));
+        assertThat(response.getStatusCode()).withFailMessage(response.getBody()).isEqualTo(HttpStatus.OK);
+        return UUID.fromString(json(response.getBody()).path("id").asText());
+    }
+
     private ResponseEntity<String> checkout(Fixture f, UUID booking, List<UUID> selected) {
         return exchange(
                 f.owner(),

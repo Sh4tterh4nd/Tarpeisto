@@ -7,4 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface AuditTaskRepository extends JpaRepository<AuditTask, UUID> {
     List<AuditTask> findAllByOrganizationIdAndAuditBatchIdOrderById(UUID org, UUID batchId);
+
+    java.util.Optional<AuditTask> findByOrganizationIdAndId(UUID org, UUID id);
 }

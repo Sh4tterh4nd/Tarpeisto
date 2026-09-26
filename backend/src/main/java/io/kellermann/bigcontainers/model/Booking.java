@@ -172,8 +172,19 @@ public class Booking {
         updatedAt = Objects.requireNonNull(now);
     }
 
+    public void markReviewRequired(Instant now) {
+        if (status != BookingStatus.CHECKED_OUT
+                && status != BookingStatus.RETURNED_AUDITS_PENDING
+                && status != BookingStatus.REVIEW_REQUIRED)
+            throw new IllegalStateException("Booking is not awaiting return review.");
+        status = BookingStatus.REVIEW_REQUIRED;
+        updatedAt = Objects.requireNonNull(now);
+    }
+
     public void completeReturn(Instant now) {
-        if (status != BookingStatus.CHECKED_OUT && status != BookingStatus.RETURNED_AUDITS_PENDING)
+        if (status != BookingStatus.CHECKED_OUT
+                && status != BookingStatus.RETURNED_AUDITS_PENDING
+                && status != BookingStatus.REVIEW_REQUIRED)
             throw new IllegalStateException("Booking is not awaiting return.");
         status = BookingStatus.COMPLETED;
         reservationStatus = BookingReservationStatus.NONE;

@@ -724,38 +724,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/bookings/{bookingId}/cancel": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["cancel"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/bookings/{bookingId}/checkout-manifest": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["checkoutManifest"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/bookings/{bookingId}/checkout": {
         parameters: {
             query?: never;
@@ -766,38 +734,6 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["checkout"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/bookings/{bookingId}/checkout-manifest.pdf": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["checkoutPdf"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/bookings/{bookingId}/check-in/assets/{assetId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["checkInAsset"];
         delete?: never;
         options?: never;
         head?: never;
@@ -830,6 +766,166 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["completeReturn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bookings/{bookingId}/check-in/assets/{assetId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["checkInAsset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bookings/{bookingId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audits/{auditId}/scans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["scan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audits/{auditId}/scans/{scanId}/undo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["undo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audits/{auditId}/move-scan-here": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["move_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audits/{auditId}/move-code-here": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["moveCode"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audits/{auditId}/findings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["finding"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audits/{auditId}/consumables/{expectedId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["consumable"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audits/{auditId}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["complete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audits/tasks/{taskId}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["start"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1412,7 +1508,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/assets/{assetId}": {
+    "/api/v1/bookings/{bookingId}/checkout-manifest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["checkoutManifest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bookings/{bookingId}/checkout-manifest.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["checkoutPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audits/tasks/{taskId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1420,6 +1548,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["get_4"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assets/{assetId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_5"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1531,7 +1675,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get_5"];
+        get: operations["get_6"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2018,10 +2162,6 @@ export interface components {
             consumableStockId?: string;
             quantity: number;
         };
-        CancelBookingRequest: {
-            /** Format: int64 */
-            expectedVersion: number;
-        };
         CheckoutBookingRequest: {
             /** Format: int64 */
             expectedVersion: number;
@@ -2030,22 +2170,13 @@ export interface components {
             overrideReason?: string;
             selectedAssetIds?: string[];
         };
-        CheckInBookingAssetRequest: {
+        AuditTaskResponse: {
             /** Format: uuid */
-            mutationId: string;
-        };
-        ReturnBookingConsumableRequest: {
+            id?: string;
             /** Format: uuid */
-            mutationId: string;
-            quantity: number;
-            /** Format: uuid */
-            destinationContainerAssetId?: string;
-            /** Format: uuid */
-            destinationLocationId?: string;
-        };
-        CompleteBookingReturnRequest: {
-            /** Format: uuid */
-            mutationId: string;
+            containerAssetId?: string;
+            state?: string;
+            dependsOnTaskIds?: string[];
         };
         CheckoutManifestAssetResponse: {
             /** Format: uuid */
@@ -2078,15 +2209,6 @@ export interface components {
                 [key: string]: unknown;
             };
         };
-        AuditTaskResponse: {
-            /** Format: uuid */
-            id?: string;
-            /** Format: uuid */
-            containerAssetId?: string;
-            dependsOnTaskIds?: string[];
-            /** @enum {string} */
-            state?: "READY" | "BLOCKED" | "COMPLETED";
-        };
         CheckoutManifestResponse: {
             /** Format: uuid */
             id?: string;
@@ -2098,8 +2220,6 @@ export interface components {
             checkedOutAt?: string;
             /** Format: uuid */
             checkedOutByUserId?: string;
-            /** Format: uuid */
-            auditBatchId?: string;
             bookingSnapshot?: {
                 [key: string]: unknown;
             };
@@ -2107,6 +2227,122 @@ export interface components {
             consumables?: components["schemas"]["CheckoutManifestConsumableResponse"][];
             overrides?: string[];
             auditTasks?: components["schemas"]["AuditTaskResponse"][];
+            /** Format: uuid */
+            auditBatchId?: string;
+        };
+        ReturnBookingConsumableRequest: {
+            /** Format: uuid */
+            mutationId: string;
+            quantity: number;
+            /** Format: uuid */
+            destinationContainerAssetId?: string;
+            /** Format: uuid */
+            destinationLocationId?: string;
+        };
+        CompleteBookingReturnRequest: {
+            /** Format: uuid */
+            mutationId: string;
+        };
+        CheckInBookingAssetRequest: {
+            /** Format: uuid */
+            mutationId: string;
+        };
+        CancelBookingRequest: {
+            /** Format: int64 */
+            expectedVersion: number;
+        };
+        ScanAuditRequest: {
+            /** Format: uuid */
+            operationId: string;
+            code: string;
+        };
+        AuditExpectedRequirementResponse: {
+            /** Format: uuid */
+            id?: string;
+            type?: string;
+            /** Format: uuid */
+            assetModelId?: string;
+            /** Format: uuid */
+            specificAssetId?: string;
+            requiredQuantity?: number;
+            /** Format: int32 */
+            displayOrder?: number;
+            snapshot?: string;
+            satisfied?: boolean;
+        };
+        AuditFindingResponse: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            assetId?: string;
+            type?: string;
+            note?: string;
+            detail?: string;
+        };
+        AuditScanResponse: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            assetId?: string;
+            assetCode?: string;
+            outcome?: string;
+            /** Format: date-time */
+            scannedAt?: string;
+            undone?: boolean;
+            contextSnapshot?: string;
+        };
+        ContainerAuditResponse: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            taskId?: string;
+            /** Format: uuid */
+            batchId?: string;
+            /** Format: uuid */
+            containerAssetId?: string;
+            state?: string;
+            completionOutcome?: string;
+            expectedRequirements?: components["schemas"]["AuditExpectedRequirementResponse"][];
+            scans?: components["schemas"]["AuditScanResponse"][];
+            findings?: components["schemas"]["AuditFindingResponse"][];
+            blockingReasons?: string[];
+        };
+        UndoAuditScanRequest: {
+            /** Format: uuid */
+            operationId: string;
+        };
+        MoveAuditScanRequest: {
+            /** Format: uuid */
+            sourceScanId: string;
+            /** Format: uuid */
+            operationId: string;
+        };
+        RecordAuditFindingRequest: {
+            /** Format: uuid */
+            operationId: string;
+            /** @enum {string} */
+            type: "MISSING" | "DAMAGED" | "UNEXPECTED" | "MISPLACED" | "UNREADABLE_LABEL" | "UNKNOWN_CODE";
+            /** Format: uuid */
+            assetId?: string;
+            note?: string;
+        };
+        ObserveAuditConsumableRequest: {
+            /** Format: uuid */
+            operationId: string;
+            /** @enum {string} */
+            status: "CONFIRMED" | "OBSERVED" | "MISSING_LOW";
+            observedQuantity?: number;
+            reason?: string;
+        };
+        CompleteAuditRequest: {
+            /** Format: uuid */
+            operationId: string;
+            containerCode: string;
+            confirmMissing?: boolean;
+            sealConfirmed?: boolean;
+        };
+        StartAuditRequest: {
+            containerCode: string;
         };
         PackingPreviewRequest: {
             observedConsumableQuantities?: {
@@ -3739,54 +3975,6 @@ export interface operations {
             };
         };
     };
-    cancel: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                bookingId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CancelBookingRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["BookingResponse"];
-                };
-            };
-        };
-    };
-    checkoutManifest: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                bookingId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["CheckoutManifestResponse"];
-                };
-            };
-        };
-    };
     checkout: {
         parameters: {
             query?: never;
@@ -3799,55 +3987,6 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["CheckoutBookingRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["CheckoutManifestResponse"];
-                };
-            };
-        };
-    };
-    checkoutPdf: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                bookingId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/pdf": string;
-                };
-            };
-        };
-    };
-    checkInAsset: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                bookingId: string;
-                assetId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CheckInBookingAssetRequest"];
             };
         };
         responses: {
@@ -3911,6 +4050,269 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["CheckoutManifestResponse"];
+                };
+            };
+        };
+    };
+    checkInAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookingId: string;
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckInBookingAssetRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CheckoutManifestResponse"];
+                };
+            };
+        };
+    };
+    cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelBookingRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BookingResponse"];
+                };
+            };
+        };
+    };
+    scan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                auditId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScanAuditRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ContainerAuditResponse"];
+                };
+            };
+        };
+    };
+    undo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                auditId: string;
+                scanId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UndoAuditScanRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ContainerAuditResponse"];
+                };
+            };
+        };
+    };
+    move_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                auditId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MoveAuditScanRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ContainerAuditResponse"];
+                };
+            };
+        };
+    };
+    moveCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                auditId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScanAuditRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ContainerAuditResponse"];
+                };
+            };
+        };
+    };
+    finding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                auditId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordAuditFindingRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ContainerAuditResponse"];
+                };
+            };
+        };
+    };
+    consumable: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                auditId: string;
+                expectedId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ObserveAuditConsumableRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ContainerAuditResponse"];
+                };
+            };
+        };
+    };
+    complete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                auditId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompleteAuditRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ContainerAuditResponse"];
+                };
+            };
+        };
+    };
+    start: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                taskId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartAuditRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ContainerAuditResponse"];
                 };
             };
         };
@@ -4976,7 +5378,73 @@ export interface operations {
             };
         };
     };
+    checkoutManifest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CheckoutManifestResponse"];
+                };
+            };
+        };
+    };
+    checkoutPdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+        };
+    };
     get_4: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                taskId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ContainerAuditResponse"];
+                };
+            };
+        };
+    };
+    get_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -5130,7 +5598,7 @@ export interface operations {
             };
         };
     };
-    get_5: {
+    get_6: {
         parameters: {
             query?: never;
             header?: never;

@@ -1,0 +1,122 @@
+import { AppError, apiClient, toAppError } from "@bigcontainers/api-client";
+import type { components, ProblemDetails } from "@bigcontainers/api-client";
+
+type GeneratedExpected = components["schemas"]["AuditExpectedRequirementResponse"];
+type GeneratedScan = components["schemas"]["AuditScanResponse"];
+type GeneratedFinding = components["schemas"]["AuditFindingResponse"];
+type GeneratedAudit = components["schemas"]["ContainerAuditResponse"];
+
+export type AuditExpectedRequirement = Omit<
+  Required<GeneratedExpected>,
+  "assetModelId" | "specificAssetId" | "requiredQuantity"
+> &
+  Pick<GeneratedExpected, "assetModelId" | "specificAssetId" | "requiredQuantity">;
+export type AuditScan = Required<GeneratedScan>;
+export type AuditFinding = Omit<Required<GeneratedFinding>, "assetId" | "note"> &
+  Pick<GeneratedFinding, "assetId" | "note">;
+export type ContainerAudit = Omit<
+  Required<GeneratedAudit>,
+  "id" | "completionOutcome" | "expectedRequirements" | "scans" | "findings"
+> &
+  Pick<GeneratedAudit, "id" | "completionOutcome"> & {
+    expectedRequirements: AuditExpectedRequirement[];
+    scans: AuditScan[];
+    findings: AuditFinding[];
+  };
+export type AuditFindingType = components["schemas"]["RecordAuditFindingRequest"]["type"];
+export type AuditConsumableStatus =
+  components["schemas"]["ObserveAuditConsumableRequest"]["status"];
+export type AuditResult<T> = { kind: "ok"; data: T } | { kind: "error"; error: AppError };
+
+interface Outcome {
+  data?: unknown;
+  error?: ProblemDetails;
+  response: Response;
+}
+
+async function read<T>(operation: () => Promise<Outcome>): Promise<AuditResult<T>> {
+  try {
+    const { data, error, response } = await operation();
+    if (error || !response.ok || data === undefined) {
+      return { kind: "error", error: toAppError(error, response.status) };
+    }
+    return { kind: "ok", data: data as T };
+  } catch (cause) {
+    return { kind: "error", error: AppError.network(cause) };
+  }
+}
+export const getAuditTask = (taskId: string) =>
+  read<ContainerAudit>(() =>
+    apiClient.GET("/api/v1/audits/tasks/{taskId}", { params: { path: { taskId } } }),
+  );
+export const startAudit = (taskId: string, containerCode: string) =>
+  read<ContainerAudit>(() =>
+    apiClient.POST("/api/v1/audits/tasks/{taskId}/start", {
+      params: { path: { taskId } },
+      body: { containerCode },
+    }),
+  );
+export const scanAudit = (auditId: string, code: string, operationId = crypto.randomUUID()) =>
+  read<ContainerAudit>(() =>
+    apiClient.POST("/api/v1/audits/{auditId}/scans", {
+      params: { path: { auditId } },
+      body: { operationId, code },
+    }),
+  );
+export const moveAuditScanHere = (
+  auditId: string,
+  code: string,
+  operationId = crypto.randomUUID(),
+) =>
+  read<ContainerAudit>(() =>
+    apiClient.POST("/api/v1/audits/{auditId}/move-code-here", {
+      params: { path: { auditId } },
+      body: { operationId, code },
+    }),
+  );
+export const undoAuditScan = (auditId: string, scanId: string, operationId = crypto.randomUUID()) =>
+  read<ContainerAudit>(() =>
+    apiClient.POST("/api/v1/audits/{auditId}/scans/{scanId}/undo", {
+      params: { path: { auditId, scanId } },
+      body: { operationId },
+    }),
+  );
+export const recordAuditFinding = (
+  auditId: string,
+  type: AuditFindingType,
+  assetId?: string,
+  note?: string,
+  operationId = crypto.randomUUID(),
+) =>
+  read<ContainerAudit>(() =>
+    apiClient.POST("/api/v1/audits/{auditId}/findings", {
+      params: { path: { auditId } },
+      body: { operationId, type, assetId, note },
+    }),
+  );
+export const observeAuditConsumable = (
+  auditId: string,
+  expectedId: string,
+  status: AuditConsumableStatus,
+  observedQuantity?: number,
+  reason?: string,
+  operationId = crypto.randomUUID(),
+) =>
+  read<ContainerAudit>(() =>
+    apiClient.POST("/api/v1/audits/{auditId}/consumables/{expectedId}", {
+      params: { path: { auditId, expectedId } },
+      body: { operationId, status, observedQuantity, reason },
+    }),
+  );
+export const completeAudit = (
+  auditId: string,
+  containerCode: string,
+  confirmMissing: boolean,
+  operationId = crypto.randomUUID(),
+) =>
+  read<ContainerAudit>(() =>
+    apiClient.POST("/api/v1/audits/{auditId}/complete", {
+      params: { path: { auditId } },
+      body: { operationId, containerCode, confirmMissing },
+    }),
+  );

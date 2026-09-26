@@ -6,6 +6,8 @@ import io.kellermann.bigcontainers.exception.ValidationFailedException;
 import io.kellermann.bigcontainers.model.Asset;
 import io.kellermann.bigcontainers.model.AssetModel;
 import io.kellermann.bigcontainers.model.ConsumableStock;
+import io.kellermann.bigcontainers.model.ContainerAudit;
+import io.kellermann.bigcontainers.model.ContainerAuditState;
 import io.kellermann.bigcontainers.model.Location;
 import io.kellermann.bigcontainers.model.OrganizationRole;
 import io.kellermann.bigcontainers.model.StockMovement;
@@ -18,6 +20,7 @@ import io.kellermann.bigcontainers.repository.ConsumableStockLedgerRepository.Ba
 import io.kellermann.bigcontainers.repository.ConsumableStockLedgerRepository.StockPlace;
 import io.kellermann.bigcontainers.repository.ConsumableStockLedgerRepository.TransferLock;
 import io.kellermann.bigcontainers.repository.ConsumableStockRepository;
+import io.kellermann.bigcontainers.repository.ContainerAuditRepository;
 import io.kellermann.bigcontainers.repository.LocationRepository;
 import io.kellermann.bigcontainers.repository.OrganizationRepository;
 import io.kellermann.bigcontainers.repository.StockMovementRepository;
@@ -56,9 +59,8 @@ import org.springframework.transaction.annotation.Transactional;
  * example, the destination side of a transfer) rolls back everything already done in the same
  * method, including the source side - there is no way to observe a partially applied transfer.
  *
- * <p>Deliberately out of scope for this task (see the task's scope note): packing requirements
- * (Phase 5), and real events/bookings and audits (Phases 7/9) - {@code eventReferenceId}/{@code
- * auditReferenceId} are accepted as opaque, unvalidated {@link UUID}s today.
+ * <p>Audit adjustments reference an active container audit in the same organization. Its audited
+ * container may retain event custody while the authorized audit count is recorded.
  */
 @Service
 public class ConsumableStockService {
@@ -77,6 +79,7 @@ public class ConsumableStockService {
     private final BookingImpactService bookingImpact;
     private final Clock clock;
     private final CheckoutManifestAssetRepository checkoutAssets;
+    private final ContainerAuditRepository audits;
 
     public ConsumableStockService(
             ConsumableStockRepository consumableStockRepository,
@@ -90,7 +93,8 @@ public class ConsumableStockService {
             ActivityLogService activityLogService,
             BookingImpactService bookingImpact,
             Clock clock,
-            CheckoutManifestAssetRepository checkoutAssets) {
+            CheckoutManifestAssetRepository checkoutAssets,
+            ContainerAuditRepository audits) {
         this.consumableStockRepository = consumableStockRepository;
         this.stockMovementRepository = stockMovementRepository;
         this.ledgerRepository = ledgerRepository;
@@ -103,6 +107,7 @@ public class ConsumableStockService {
         this.bookingImpact = bookingImpact;
         this.clock = clock;
         this.checkoutAssets = checkoutAssets;
+        this.audits = audits;
     }
 
     @Transactional(readOnly = true)
@@ -411,6 +416,8 @@ public class ConsumableStockService {
                 assetModelService.requireQuantityStockAssetModel(principal.organizationId(), assetModelId);
         requireContainerAsset(principal.organizationId(), containerAssetId);
         BigDecimal validDelta = requireNonZeroValidScale(delta);
+        if (reason == StockMovementReason.AUDIT_ADJUSTMENT)
+            requireActiveAudit(principal.organizationId(), auditReferenceId, containerAssetId);
 
         return applySingleBalanceMovement(
                 principal,
@@ -439,6 +446,8 @@ public class ConsumableStockService {
         requireOwnerOrDeputy(principal);
         lockOrganization(principal.organizationId());
         AssetModel model = assetModelService.requireQuantityStockAssetModel(principal.organizationId(), assetModelId);
+        if (reason == StockMovementReason.AUDIT_ADJUSTMENT)
+            requireActiveAudit(principal.organizationId(), auditReferenceId, containerAssetId);
         StockPlace place = requirePlace(principal.organizationId(), containerAssetId, locationId);
         BigDecimal validDelta = requireNonZeroValidScale(delta);
         if ((reason == StockMovementReason.RECEIPT || reason == StockMovementReason.EVENT_RETURN)
@@ -840,6 +849,16 @@ public class ConsumableStockService {
                     .map(Asset::getParentContainerAssetId)
                     .orElse(null);
         }
+    }
+
+    private void requireActiveAudit(UUID organizationId, UUID auditId, UUID containerAssetId) {
+        if (auditId == null)
+            throw new ValidationFailedException("An audit adjustment requires an active audit reference.");
+        ContainerAudit audit = audits.findByOrganizationIdAndId(organizationId, auditId)
+                .orElseThrow(() -> new NotFoundException("Audit not found."));
+        if (audit.getState() != ContainerAuditState.IN_PROGRESS
+                || !audit.getContainerAssetId().equals(containerAssetId))
+            throw new ValidationFailedException("Audit adjustments must affect the active audit's container.");
     }
 
     private void recordMovement(

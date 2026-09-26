@@ -19,6 +19,10 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  */
 @RestControllerAdvice
 public class ApplicationExceptionHandler {
+    @ExceptionHandler(AuditMutationConflictException.class)
+    public ProblemDetail handleAuditMutationConflict(AuditMutationConflictException exception) {
+        return problemDetail(HttpStatus.CONFLICT, "Audit mutation conflict", exception);
+    }
 
     private static final String PROBLEM_TYPE_PREFIX = "urn:bigcontainers:problem:";
 

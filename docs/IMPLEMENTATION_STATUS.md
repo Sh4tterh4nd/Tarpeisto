@@ -13,19 +13,23 @@ Read it together with [`DEVELOPMENT_POLICIES.md`](DEVELOPMENT_POLICIES.md) and t
 
 ## 1. Summary
 
-| Phase | Scope                                                                                   | State                                                                                                              |
-| ----- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| 0     | Repository, build, CI, Compose, migrations, app skeleton                                | Complete, verified                                                                                                 |
-| 1     | Identity, roles, organization context, local login, OIDC                                | Complete, verified                                                                                                 |
-| 2a    | Public asset-code library, categories, asset models, custom-field definitions           | Complete end to end, verified                                                                                      |
-| 2b    | Physical assets, custom-field values, consumable stock, movement ledger                 | Complete end to end, verified                                                                                      |
-| 3     | Media storage (S3-compatible)                                                           | Complete, verified                                                                                                 |
-| 4     | Hierarchical locations and physical containment                                         | Complete, verified                                                                                                 |
-| 5     | Packing requirements and templates                                                      | Complete, verified                                                                                                 |
-| 6     | QR scanning and initial asset-label output                                              | Implemented; automated verification complete, physical print/device acceptance pending                             |
-| 7     | Events, reservations, recursive expansion and conflict calculation                      | Complete, verified                                                                                                 |
-| 8     | Checkout manifests, custody, consumable issue/return, PDF, return task creation          | Complete, verified                                                                                                 |
-| 9-14  | Audits, findings, sheets, temporary access, search, hardening                            | Not started                                                                                                        |
+| Phase   | Scope                                                                           | State                                                                                               |
+| ------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| 0       | Repository, build, CI, Compose, migrations, app skeleton                        | Complete, verified                                                                                  |
+| 1       | Identity, roles, organization context, local login, OIDC                        | Complete, verified                                                                                  |
+| 2a      | Public asset-code library, categories, asset models, custom-field definitions   | Complete end to end, verified                                                                       |
+| 2b      | Physical assets, custom-field values, consumable stock, movement ledger         | Complete end to end, verified                                                                       |
+| 3       | Media storage (S3-compatible)                                                   | Complete, verified                                                                                  |
+| 4       | Hierarchical locations and physical containment                                 | Complete, verified                                                                                  |
+| 5       | Packing requirements and templates                                              | Complete, verified                                                                                  |
+| 6       | QR scanning and initial asset-label output                                      | Implemented; automated verification complete, physical print/device acceptance pending              |
+| 7       | Events, reservations, recursive expansion and conflict calculation              | Complete, verified                                                                                  |
+| 8       | Checkout manifests, custody, consumable issue/return, PDF, return task creation | Complete, verified                                                                                  |
+| 9.1     | Online return-audit execution and baseline reconciliation                       | Complete, verified                                                                                   |
+| 10      | Finding review, lifecycle, repairs and seal administration                      | Not started                                                                                         |
+| 11      | Container packing sheets                                                        | Not started                                                                                         |
+| 9.2-9.3 | Persistent scan outbox and queued audit photographs                             | Explicitly deferred until after Phases 10 and 11                                                    |
+| 12-14   | Temporary access, search, hardening                                             | Not started                                                                                         |
 
 Verified at the Phase 8 checkpoint:
 
@@ -33,6 +37,16 @@ Verified at the Phase 8 checkpoint:
 - Frontend: **144 tests, 0 failures** (126 web, 11 api-client, 7 shared-ui), plus `format:check`,
   `lint`, `typecheck` and `build` clean. The focused desktop and mobile Playwright scanner journey
   has **2 passing tests**. `jibBuildTar` also succeeds with the matching frontend embedded.
+
+Verified at the Phase 9.1 checkpoint:
+
+- Backend: **397 tests, 0 failures**, including seven focused PostgreSQL audit regressions covering
+  idempotency, immutable completion, bottom-up dependencies, cable swaps, manifest loss, tenant
+  boundaries and consumable adjustments.
+- Frontend: **148 tests, 0 failures** (130 web, 11 api-client, 7 shared-ui), with `format:check`,
+  `lint`, `typecheck` and production `build` clean. Four Playwright checks pass across the asset
+  scanner and online audit journeys on desktop and mobile; `jibBuildTar` succeeds with the matching
+  frontend embedded.
 
 ## 2. How to verify this yourself
 
@@ -92,6 +106,7 @@ Migrations (Flyway owns all schema; applied migrations are immutable):
 | `V10`     | Packing templates, copy-on-apply requirements and immutable packing history                         |
 | `V11`     | Events, booking lines, immutable reservation revisions/claims and event history                     |
 | `V12`     | Immutable checkout manifests, custody/return operations and audit-task dependency foundation        |
+| `V13`     | Online container-audit facts, frozen expectations, scans, observations, findings and operation IDs  |
 
 API surface is under `/api/v1`. The OpenAPI document at `/v3/api-docs` (enabled only under the `dev`
 profile) is the machine-readable contract; treat it as authoritative over any list here. Broadly:
@@ -126,6 +141,16 @@ regeneration. Partial returns preserve progress, parent-container returns expand
 containment, unused separately issued stock can return to a selected stock place, and explicit
 accounting completion retains the issued-minus-returned consumption result. Returned containers
 create real ready/blocked audit tasks with direct-child dependencies for Phase 9.
+
+Phase 9.1 adds online-only audit execution. An operator starts a ready task by scanning its assigned
+container, then works through frozen direct-content expectations. Exact assets are matched before
+interchangeable model quantities; duplicate scans are idempotent, scans can be undone or moved within
+the batch, and unexpected/misplaced, missing, damaged, unreadable-label and unknown-code observations
+are recorded as findings. Consumable confirmations are separate from serialized scans; only Owners and
+Deputies can submit a balance-changing observed amount through the immutable stock-movement ledger.
+Completion requires a matching closing container scan, preserves completed observations, updates direct
+verified placement, and unlocks parents bottom-up. Persistent IndexedDB queueing, retry/backoff and
+photo recovery remain Phase 9.2/9.3 work, not implemented behavior.
 
 Authorization is enforced in the **service** layer, not by URL matchers. Owner administers users and
 identities; Owner or Deputy administers the catalog, assets, media, locations, containment, stock and
@@ -166,6 +191,15 @@ access, partial asset and consumable returns, manual-code lookup alongside the c
 return accounting and ready/blocked audit-task visibility. Operator access is limited to the
 server-authorized checkout/check-in actions; reservation administration remains Owner/Deputy only.
 
+Phase 9.1 adds a scanner-first audit task page, reached from each ready return task. It shows online
+submission status, last scans/corrections and an expected direct-content ledger on mobile and desktop.
+Frozen names, codes, consumable units, wrong-container destinations and compatible unmet-container
+suggestions keep the scanner useful even if catalog names later change. Failed online submissions
+retain their operation UUID for explicit retry, and cross-audit ownership conflicts offer an explicit
+`Move scan here` action. The OpenAPI snapshot and generated TypeScript client were captured from a
+live `dev` backend after V13 migrated a clean PostgreSQL database; the feature wrapper now uses the
+shared generated client and types.
+
 API types are **generated** from the backend's OpenAPI document into
 `packages/api-client/src/generated/`. Hand-written duplicates of generated request/response shapes
 are forbidden by policy. Regenerate with the package's `generate` script against a running backend.
@@ -187,12 +221,11 @@ environment; the reasoning is recorded in the workflow itself.
 These are **not** oversights. Each is deferred because the table or phase it depends on does not
 exist yet, and each is documented at its call site in code.
 
-| Deferred                                                          | Where it plugs in                                                                                                                                                                                                                                                                                            |
-| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Seal invalidation                                                  | Integrate at the organization-locked packing service mutation boundary when Phase 10 adds seal state. Checkout custody guards are already enforced. |
-| Stock movement audit references                                   | The Phase 7 event reference now has a tenant-scoped foreign key; the nullable audit reference receives its target in Phase 9.                                                                                                                                                                                |
-| Automatic email linking toggle                                    | A static environment variable, not a runtime Owner-toggled setting, because no settings store exists yet.                                                                                                                                                                                                    |
-| Cross-model "metadata incomplete" dashboard view                  | Per-asset and per-model visibility exists; the organization-wide operational view belongs to Phase 13.                                                                                                                                                                                                       |
+| Deferred                                         | Where it plugs in                                                                                                                                   |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Seal invalidation                                | Integrate at the organization-locked packing service mutation boundary when Phase 10 adds seal state. Checkout custody guards are already enforced. |
+| Automatic email linking toggle                   | A static environment variable, not a runtime Owner-toggled setting, because no settings store exists yet.                                           |
+| Cross-model "metadata incomplete" dashboard view | Per-asset and per-model visibility exists; the organization-wide operational view belongs to Phase 13.                                              |
 
 ## 6. Known characteristics worth knowing before changing things
 
@@ -271,16 +304,14 @@ what was verified. Treat the history as a readable grouping, not a bisectable ti
 ## 9. Suggested next steps
 
 1. Review Phases 6 and 7, including physical label-stock/mobile/P-touch acceptance.
-2. **Phase 9** - audits, offline scan queue, reconciliation, findings, and review workflows.
+2. **Phase 10** - finding review, lifecycle decisions, repairs and seal administration.
+3. **Phase 11** - printable container packing sheets.
+4. **Phases 9.2 and 9.3** - persistent scan outbox and queued audit photographs.
 
-Phase 8 is implemented end to end: checkout freezes an immutable exact manifest, supports selected
-interchangeable replacements and deputy overrides, offers the immutable PDF, records partial asset
-and consumable returns with idempotency keys, and makes remaining consumable accounting explicit.
-The event handoff UI puts return progress and the next action first, retains the frozen manifest as a
-separate record, supports manual-code returns alongside the existing camera scanner, and shows ready
-and blocked audit tasks with their dependencies. The checked-in OpenAPI snapshot and generated
-TypeScript client were regenerated from a controller-derived OpenAPI snapshot because a running dev
-backend was not available during generation; the normal live `/v3/api-docs` capture script remains
-the preferred workflow.
+Phase 9.1 is implemented end to end for online operation: audits freeze direct expectations at start,
+enforce bottom-up execution, match exact requirements before model quantities, retain corrections,
+reconcile exact event-manifest identities separately from container completeness, and transition clean
+or finding-bearing returns appropriately. Browser-persistent outbox retry and queued photographs remain
+the explicitly deferred Phase 9.2/9.3 work after Phase 11.
 
 Before starting, run the verification commands in section 2 to confirm the tree is still green.

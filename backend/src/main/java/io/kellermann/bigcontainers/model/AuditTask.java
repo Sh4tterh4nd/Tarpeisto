@@ -62,4 +62,13 @@ public class AuditTask {
     public AuditTaskState getState() {
         return state;
     }
+
+    public void markReady() {
+        if (state == AuditTaskState.BLOCKED) state = AuditTaskState.READY;
+    }
+
+    public void complete() {
+        if (state != AuditTaskState.READY) throw new IllegalStateException("Only a ready audit task can complete.");
+        state = AuditTaskState.COMPLETED;
+    }
 }

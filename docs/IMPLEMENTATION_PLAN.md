@@ -1,6 +1,6 @@
 # BigContainers Implementation Plan
 
-Status: Initial phased plan
+Status: Phase 9.1 online audit execution complete; persistent queue and photo recovery explicitly deferred.
 
 Depends on: [Functional specification](SPECIFICATION.md)
 
@@ -260,6 +260,7 @@ Tests must include:
 ### 5.1 Storage abstraction
 
 Define one application-owned interface supporting S3-compatible storage (AWS S3 and Garage):
+
 - Organization-prefixed object keys
 - Streaming upload/download
 - Content-length limits
@@ -526,9 +527,9 @@ Implement immutable tables for:
 - Partial return is visible and recoverable.
 - Check-in of an outer container creates the expected audit batch and dependency graph.
 
-## 11. Phase 9: audits, offline scan queue, and event reconciliation
+## 11. Phase 9.1: online return audits and event reconciliation
 
-This is the most operationally sensitive phase and should be built in incremental sub-slices.
+This is the most operationally sensitive phase. Implement the server-authoritative online workflow first. It uses stable client operation UUIDs and server idempotency, but does not claim offline persistence.
 
 ### 11.1 Audit data model
 
@@ -540,7 +541,7 @@ Implement:
 - Frozen expected-requirement rows
 - Frozen expected consumable rows and audit confirmations/observations
 - `audit_scans`
-- Audit evidence media
+- Audit evidence media (implemented with queued upload recovery in Phase 9.3)
 - Completion summaries
 - Client operation IDs/idempotency records
 
@@ -564,24 +565,19 @@ Implement in this order:
 5. Last-scanned card
 6. Undo scan
 7. Manual code and unreadable-label path
-8. Damage note/photo path
+8. Damage note path; photographs follow in Phase 9.3
 9. Missing confirmation
 10. Extra/misplaced destination information
 11. Cross-audit `Move scan here`
 12. Consumable requirement confirmation, observed-quantity entry, or missing/low report
 13. Final matching container rescan
-14. Seal confirmation
+14. Seal confirmation when Phase 10 introduces seal state
 
-### 11.4 Offline-resilient queue
+### 11.4 Deferred work
 
-- Stable operation UUID created before local persistence
-- IndexedDB or equivalent persistent browser queue
-- Ordered retries with exponential backoff
-- Idempotent server application
-- Visible synchronization status
-- Photo retry/progress
-- Completion blocked until synchronized
-- Recovery after browser refresh or PWA restart
+- Phase 9.2 owns the persistent IndexedDB scan/outbox queue, ordered retry/backoff, and restart recovery.
+- Phase 9.3 owns audit evidence photographs, queued upload retry/progress, and restart recovery.
+- The Phase 9.1 UI must say online-only, retain a retry affordance for a failed request, and never imply that an operation was persisted locally.
 
 ### 11.5 Event-wide reconciliation
 
@@ -598,7 +594,6 @@ Implement in this order:
 - The complete cable-swap scenario succeeds without manual reassignment.
 - A replacement warehouse cable cannot hide the loss of an exact checked-out cable.
 - A parent audit cannot start before child audits are cleared.
-- A short simulated connection outage does not lose or duplicate scans.
 - Clean and finding-bearing completion paths work on both phone and desktop browsers.
 - A volunteer can confirm consumables without counting each unit, while only an Owner/Deputy can approve a balance-changing audit adjustment.
 
@@ -683,9 +678,22 @@ Implement in this order:
 - Every requirement appears exactly once per duplicated half.
 - Multi-page sheets preserve the duplicate-half rule.
 
-## 14. Phase 12: temporary access
+## 14. Phase 9.2: persistent audit scan outbox (after Phase 11)
 
-### 14.1 Invitation model
+- Persist pre-generated operation UUIDs and scan/correction mutations in IndexedDB.
+- Retry in order with bounded exponential backoff and explicit failed/synchronizing status.
+- Block completion while local operations remain unsynchronized.
+- Recover queued work after refresh or PWA restart without double-applying server mutations.
+
+## 15. Phase 9.3: queued audit evidence photographs (after Phase 9.2)
+
+- Persist evidence-upload metadata and binary staging safely for short outages.
+- Show upload progress, retry failures, and prevent completion until required uploads synchronize.
+- Recover queued photo work after refresh or PWA restart.
+
+## 16. Phase 12: temporary access
+
+### 16.1 Invitation model
 
 - Random token stored hashed where practical
 - Organization, event/audit-batch scope, issuer, issued time, expiry, revocation
@@ -693,7 +701,7 @@ Implement in this order:
 - Volunteer display-name capture
 - Resulting temporary principal/session identity
 
-### 14.2 Permission boundaries
+### 16.2 Permission boundaries
 
 - Only assigned event/audit operations
 - No packing-requirement administration
@@ -701,22 +709,22 @@ Implement in this order:
 - No unrelated inventory browsing
 - Immediate server-side expiry/revocation checks
 
-### 14.3 Exit criteria
+### 16.3 Exit criteria
 
 - QR invitation grants only intended audit access.
 - Expired and revoked tokens fail immediately.
 - Audit entries identify the temporary volunteer name/session.
 
-## 15. Phase 13: archive, search, operational dashboard, and exports
+## 17. Phase 13: archive, search, operational dashboard, and exports
 
-### 15.1 Archive behavior
+### 17.1 Archive behavior
 
 - Archive/restore supported entities
 - Archive-safe pickers and references
 - Explicit archived filters
 - No loss of historical labels in event/audit displays
 
-### 15.2 Search
+### 17.2 Search
 
 - Public code exact lookup
 - Model/asset/container name search
@@ -725,7 +733,7 @@ Implement in this order:
 - Consumable-model and stock-place search
 - Condition, lifecycle, booking, repair, and audit-status filters
 
-### 15.3 Dashboard
+### 17.3 Dashboard
 
 - Upcoming events
 - Currently checked out
@@ -736,7 +744,7 @@ Implement in this order:
 - Containers incomplete/unavailable
 - Consumables below low-stock threshold
 
-### 15.4 Data exports
+### 17.4 Data exports
 
 - P-touch CSV as already implemented
 - Inventory CSV export for backup/reporting
@@ -745,15 +753,15 @@ Implement in this order:
 - Audit result download
 - Activity/history export if required
 
-### 15.5 Exit criteria
+### 17.5 Exit criteria
 
 - Normal search excludes archived/inactive records by default.
 - Operational work queues lead directly to the next required action.
 - Exported data accurately reflects organization scope.
 
-## 16. Phase 14: production hardening and first stable release
+## 18. Phase 14: production hardening and first stable release
 
-### 16.1 Security review
+### 18.1 Security review
 
 - Authorization matrix review for every endpoint
 - Cross-organization tests
@@ -765,7 +773,7 @@ Implement in this order:
 - Dependency and container scanning
 - Secret-handling review
 
-### 16.2 Reliability
+### 18.2 Reliability
 
 - Transaction-bound activity logging
 - Concurrency tests for reservations, scan movement, and audit completion
@@ -774,7 +782,7 @@ Implement in this order:
 - Migration upgrade rehearsal from the prior release candidate
 - Media orphan detection/cleanup tool
 
-### 16.3 Browser/device testing
+### 18.3 Browser/device testing
 
 - Current Safari on iPhone/iPad
 - Current Chrome on Android
@@ -784,7 +792,7 @@ Implement in this order:
 - Low-connectivity and reconnect tests
 - Multiple camera selection where devices expose it
 
-### 16.4 Deployment deliverables
+### 18.4 Deployment deliverables
 
 - Versioned OCI application image produced by Jib and published to GitHub Container Registry
 - Immutable semantic-version and commit tags, release-only `latest`, and recorded image digest
@@ -797,7 +805,7 @@ Implement in this order:
 - Restore verification guide
 - Initial administrator runbook
 
-### 16.5 Stable-release gate
+### 18.5 Stable-release gate
 
 - All specification acceptance scenarios pass.
 - No unresolved critical/high security findings.
@@ -805,9 +813,9 @@ Implement in this order:
 - Backup and restore have been tested on a clean host.
 - An event has been rehearsed end-to-end with volunteer-equivalent users.
 
-## 17. Cross-cutting test strategy
+## 19. Cross-cutting test strategy
 
-### 17.1 Unit tests
+### 19.1 Unit tests
 
 - Public-code generation/normalization/checksum
 - Requirement matching
@@ -818,7 +826,7 @@ Implement in this order:
 - Permission decisions
 - Layout fit calculations
 
-### 17.2 PostgreSQL integration tests
+### 19.2 PostgreSQL integration tests
 
 - Composite tenant constraints
 - Uniqueness rules
@@ -832,7 +840,7 @@ Implement in this order:
 
 Use a real PostgreSQL instance rather than substituting an in-memory database.
 
-### 17.3 End-to-end tests
+### 19.3 End-to-end tests
 
 - Model and bulk asset creation
 - Label generation and lookup
@@ -847,32 +855,32 @@ Use a real PostgreSQL instance rather than substituting an in-memory database.
 - Consumable receipt, transfer, booking, issue, return, audit, and consumption
 - OIDC login, account linking, disabled-user rejection, and local recovery during provider failure
 
-### 17.4 Visual and physical tests
+### 19.4 Visual and physical tests
 
 - Screenshot regression for mobile workflows
 - Rendered PDF image comparison
 - Physical label alignment calibration
 - QR readability from the actual printers and label stock
 
-## 18. Key technical risks and mitigations
+## 20. Key technical risks and mitigations
 
-| Risk | Mitigation |
-|---|---|
-| Mobile-browser camera behavior differs by platform | Use a proven decoding fallback, test early on physical iOS/Android devices, always provide manual entry. |
-| Scanner retries create duplicate state | Stable client operation IDs and database-enforced idempotency. |
-| Recursive containment or location cycles | Transactional ancestor checks plus database constraints for direct self-reference. |
-| Dynamic packing changes invalidate reservations | Central recalculation service, affected-event previews, immutable checkout manifests. |
-| Concurrent consumable issues overspend stock | Lock affected balances transactionally, reject negative results, and test concurrent issue paths against PostgreSQL. |
-| Flexible model quantities hide exact event loss | Separate container completeness from exact manifest reconciliation. |
-| PDF labels align differently across vendors/printers | Configurable margins/pitch, calibration pages, physical print tests. |
-| Offline queue conflicts with scans from another device | Server-authoritative scan ownership, explicit move operation, clear conflict UI. |
-| Temporary QR access leaks | Narrow scope, 24-hour expiry, revocation, server-side enforcement, rate limiting. |
-| OIDC misconfiguration or outage locks out administrators | Keep an enabled local Owner recovery account, validate issuer/redirect settings, and expose actionable health diagnostics. |
-| Email-based OIDC linking joins the wrong account | Disable it by default; require verified email and one unambiguous match when enabled; persist issuer and subject as identity. |
-| S3 deployment behavior diverges | One storage contract with shared conformance tests. |
-| Audit history is accidentally rewritten | Immutable completed records and append-only resolutions. |
+| Risk                                                     | Mitigation                                                                                                                    |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Mobile-browser camera behavior differs by platform       | Use a proven decoding fallback, test early on physical iOS/Android devices, always provide manual entry.                      |
+| Scanner retries create duplicate state                   | Stable client operation IDs and database-enforced idempotency.                                                                |
+| Recursive containment or location cycles                 | Transactional ancestor checks plus database constraints for direct self-reference.                                            |
+| Dynamic packing changes invalidate reservations          | Central recalculation service, affected-event previews, immutable checkout manifests.                                         |
+| Concurrent consumable issues overspend stock             | Lock affected balances transactionally, reject negative results, and test concurrent issue paths against PostgreSQL.          |
+| Flexible model quantities hide exact event loss          | Separate container completeness from exact manifest reconciliation.                                                           |
+| PDF labels align differently across vendors/printers     | Configurable margins/pitch, calibration pages, physical print tests.                                                          |
+| Offline queue conflicts with scans from another device   | Server-authoritative scan ownership, explicit move operation, clear conflict UI.                                              |
+| Temporary QR access leaks                                | Narrow scope, 24-hour expiry, revocation, server-side enforcement, rate limiting.                                             |
+| OIDC misconfiguration or outage locks out administrators | Keep an enabled local Owner recovery account, validate issuer/redirect settings, and expose actionable health diagnostics.    |
+| Email-based OIDC linking joins the wrong account         | Disable it by default; require verified email and one unambiguous match when enabled; persist issuer and subject as identity. |
+| S3 deployment behavior diverges                          | One storage contract with shared conformance tests.                                                                           |
+| Audit history is accidentally rewritten                  | Immutable completed records and append-only resolutions.                                                                      |
 
-## 19. Milestone summary
+## 21. Milestone summary
 
 ### Milestone A: Inventory foundation
 
@@ -888,13 +896,13 @@ Phases 7-8. Events can reserve equipment, prevent conflicts, check out exact man
 
 ### Milestone D: Audit and remediation
 
-Phases 9-12. Bottom-up audits, flexible cable matching, offline scan resilience, findings, repairs, seals, packing sheets, and volunteer access work end to end.
+Phase 9.1, then Phases 10 and 11, then deferred Phases 9.2 and 9.3, followed by Phase 12. Online bottom-up audits and flexible cable matching precede findings/repairs/seals and packing sheets; persistent scan and photo recovery follows those workflows.
 
 ### Milestone E: Stable self-hosted release
 
 Phases 13-14. Search, dashboards, exports, archiving, hardening, deployment, backup, restore, and production acceptance are complete.
 
-## 20. Immediate next actions
+## 22. Immediate next actions
 
 1. Review and approve this specification and mark any deliberately deferred behavior.
 2. Treat ADR-0001 as the accepted stack and structure baseline; update it only when a concrete implementation finding requires a change.
