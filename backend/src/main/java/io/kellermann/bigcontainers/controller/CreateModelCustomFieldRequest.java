@@ -1,0 +1,9 @@
+package io.kellermann.bigcontainers.controller;
+
+import io.kellermann.bigcontainers.model.CustomFieldDataType;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
+/** Request body for {@code POST /api/v1/asset-models/{assetModelId}/custom-fields}. */
+public record CreateModelCustomFieldRequest(
+        @NotBlank String name, @NotNull CustomFieldDataType dataType) {}
