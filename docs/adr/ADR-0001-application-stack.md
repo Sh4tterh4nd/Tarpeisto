@@ -47,12 +47,14 @@ The initial data-access recommendation is Spring Data JPA for routine aggregate 
 
 - All production media access uses the S3 API through a small application-owned `MediaStorage` interface.
 - AWS SDK for Java 2.x is the initial client.
-- AWS S3 and MinIO are the initial supported implementations.
-- The self-hosted Compose file includes MinIO; it can be disabled when an external endpoint is configured.
+- AWS S3 and Garage are the initial supported implementations.
+- The self-hosted Compose file includes Garage; it can be disabled when an external endpoint is configured.
 - Bucket names, endpoint, region, path-style addressing, credentials, and server-side encryption settings are configuration.
 - PostgreSQL stores media metadata and opaque object keys, not image bytes or user-supplied filenames.
 
-Maintaining a separate filesystem implementation would create different path, permission, backup, and consistency behavior. MinIO gives self-hosters the same storage contract used in hosted deployments.
+Maintaining a separate filesystem implementation would create different path, permission, backup, and consistency behavior. A self-hosted S3-compatible server gives self-hosters the same storage contract used in hosted deployments.
+
+MinIO was the originally accepted self-hosted server. It was replaced on 2026-09-25; see [the amendment below](#amendment-2026-09-25-self-hosted-object-store).
 
 ## Frontend decision
 
@@ -89,6 +91,8 @@ BigContainers uses one frontend application rather than copying Leirly's organiz
 
 Temporary volunteer invitation tokens are exchanged for narrowly scoped server-side sessions. The QR token is not reused as the session credential.
 
+Permanent-user authentication supports local credentials and an optional OpenID Connect provider while retaining the same application session and internal authorization model. The detailed identity linking, provider configuration, and local Owner recovery decision is recorded in [ADR-0003](ADR-0003-authentication-and-session.md).
+
 ### QR scanning and generation
 
 - Use the browser `BarcodeDetector` only as a feature-detected fast path because support is not universal.
@@ -124,8 +128,53 @@ The initial pinned baseline on 2026-09-25 is Spring Boot 4.1.1, Java 25 LTS, Gra
 
 ## Consequences
 
-- Operators run only the application, PostgreSQL, and either MinIO or an external S3-compatible service.
+- Operators run only the application, PostgreSQL, and either Garage or an external S3-compatible service.
 - The browser and API share an origin, simplifying sessions, CSRF, PWA scope, and deployment.
 - The frontend remains independently testable without becoming a separately deployed production service.
 - Media backup must cover the object store as well as PostgreSQL.
 - Offline behavior remains deliberately narrow: queued scanner mutations and uploads, not an offline replica of the database.
+
+## Amendment 2026-09-25: self-hosted object store
+
+The originally accepted self-hosted object store was MinIO. It is replaced by
+[Garage](https://garagehq.deuxfleurs.fr/) for the first-party Compose deployment.
+
+### Reason
+
+MinIO's container images are no longer available to anonymous pulls, so a clean checkout could not
+satisfy the specification's requirement that BigContainers be straightforward to self-host.
+Verified on 2026-09-25:
+
+- `docker.io/minio/minio` returns `denied: requested access to the resource is denied` for every
+  tag, for both the Docker client and a direct registry token exchange.
+- `quay.io/minio/minio` is also unavailable anonymously. Quay's public repository API returns `401`
+  for it while returning `200` with `is_public: true` for `prometheus/prometheus` and `coreos/etcd`
+  by the same unauthenticated method, and the Docker client reports `no such manifest` there for
+  both `latest` and a real `RELEASE.*` tag.
+- The last MinIO community release on GitHub is `RELEASE.2025-10-15`.
+
+An unmaintained mirror such as `bitnamilegacy/minio` was rejected: a frozen image that will never
+receive a security update is not an acceptable default for a self-hosted deployment that stores
+user media.
+
+### Scope of the change
+
+This amendment changes only which S3-compatible server the first-party Compose file starts, the
+Compose/operator documentation, and the object-store integration tests. It does not change any
+application code or architecture:
+
+- Media access still goes through the application-owned `MediaStorage` interface.
+- The AWS SDK for Java 2.x remains the client.
+- AWS S3 remains a supported production target, and any S3-compatible endpoint remains
+  configurable.
+
+Garage requires a mounted configuration file and a one-time cluster-layout, bucket, and access-key
+initialization that MinIO did not, so the self-hosting documentation carries an explicit first-run
+procedure.
+
+### Consequences
+
+- Self-hosted first start works from a clean checkout without registry credentials.
+- Operator documentation is longer, because Garage's initialization is not implicit.
+- Object-store conformance tests must run against Garage rather than MinIO, keeping the single
+  storage contract that this ADR requires.

@@ -19,7 +19,7 @@ Implementation should proceed in vertical slices. Each milestone must leave the 
 - Scanner operations are idempotent.
 - The PWA remains usable during short network interruptions.
 - PDF and label output is visually rendered and physically calibrated as part of testing.
-- Media access uses one S3-compatible contract in every production environment; self-hosting uses MinIO and may disable it when external object storage is configured.
+- Media access uses one S3-compatible contract in every production environment; self-hosting uses Garage and may disable it when external object storage is configured.
 
 ## 2. Phase 0: architecture and repository foundation
 
@@ -28,6 +28,8 @@ The repository is currently specification-only. Before product implementation, r
 ### 2.1 Technology decisions
 
 [ADR-0001](adr/ADR-0001-application-stack.md) records the accepted backend, storage, and frontend stack.
+[ADR-0002](adr/ADR-0002-public-asset-code-checksum.md) records the accepted public-asset-code alphabet, checksum construction, normalization rules, and test vectors.
+[ADR-0003](adr/ADR-0003-authentication-and-session.md) records the accepted local/OIDC authentication, account-linking, session, and recovery design.
 [ADR-0004](adr/ADR-0004-container-delivery.md) records the accepted Jib, GitHub Actions, GHCR, and single-application-image delivery design.
 
 Confirmed choices:
@@ -36,7 +38,7 @@ Confirmed choices:
 - Spring Boot 4.1.1 and Spring MVC
 - Gradle 9.8.0 through the checked-in wrapper, using Kotlin DSL
 - PostgreSQL 18 (initial image baseline 18.6)
-- S3-compatible media storage, with AWS S3 and self-hosted MinIO as the initial targets
+- S3-compatible media storage, with AWS S3 and self-hosted Garage as the initial targets
 - Google Jib Gradle plugin 3.5.4 for one Spring Boot plus compiled-frontend OCI image
 - GitHub Actions for CI and GitHub Container Registry for image publication
 
@@ -101,8 +103,8 @@ Backend production code starts under `io.kellermann.bigcontainers` with global `
 - Pull-request image assembly validation with `jibBuildTar`, without registry publication
 - Default-branch and version-tag GitHub Actions publication to `ghcr.io/<owner>/bigcontainers` using `GITHUB_TOKEN`
 - Local development configuration
-- Docker Compose with application, PostgreSQL, and MinIO
-- Configuration that replaces MinIO with an external S3-compatible endpoint
+- Docker Compose with application, PostgreSQL, and Garage
+- Configuration that replaces Garage with an external S3-compatible endpoint
 - Environment-variable schema with startup validation
 - Health/readiness endpoint
 - Structured logging with request/trace IDs
@@ -126,6 +128,7 @@ Implement:
 - `organizations`
 - `users`
 - `organization_memberships`
+- `external_identities`, uniquely keyed by issuer and subject
 - Session/authentication tables required by the selected stack
 - Initial activity-event infrastructure
 
@@ -135,6 +138,13 @@ Even though the initial UI exposes one organization, membership is still explici
 
 - First-run Owner creation
 - Login/logout and secure session rotation
+- Local login as the default and recovery method
+- Adaptive versioned local-password hashing, login rate limiting, and non-enumerating failures
+- Optional generic OIDC login using issuer discovery and Spring Security OAuth 2.0 Client
+- OIDC callback-to-session exchange with provider tokens handled only server-side and not retained beyond login unless later functionality requires them
+- Owner-managed external-identity linking; verified-email linking only when explicitly enabled and unambiguous
+- `LOCAL_ONLY` and `LOCAL_AND_OIDC` deployment modes
+- Protection against removing the last usable local Owner recovery method
 - Server-side active-organization context
 - Role checks for Owner, Deputy, Operator/Auditor, and Viewer
 - Shared permission test helpers
@@ -146,14 +156,20 @@ Even though the initial UI exposes one organization, membership is still explici
 - Client-provided organization IDs cannot override session organization.
 - Every mutating endpoint denies insufficient roles.
 - Activity entries identify the acting user.
+- `(issuer, subject)` cannot be linked to two users, and mutable email changes do not alter identity.
+- Unverified or ambiguous email claims cannot auto-link accounts.
+- Disabled local users remain denied after successful provider authentication.
+- Provider failure does not prevent an enabled local Owner from signing in.
+- Local and OIDC sessions receive identical CSRF and authorization enforcement.
 
 ### 3.4 Exit criteria
 
 - One Owner can sign in and create Deputy, Operator/Auditor, and Viewer users.
+- The same internal user can sign in through a configured OIDC identity without changing organization membership or role.
 - Role-protected placeholder actions behave correctly.
 - Cross-organization integration tests pass even though no organization switcher exists.
 
-## 4. Phase 2: catalog, models, custom unit fields, and asset identities
+## 4. Phase 2: catalog, serialized assets, and consumable stock
 
 ### 4.1 Data model
 
@@ -165,8 +181,10 @@ Implement migrations in dependency order:
 4. `model_custom_field_options`
 5. `physical_assets`
 6. `asset_custom_field_values`
-7. Asset lifecycle/condition history
-8. Generic activity records
+7. `consumable_stock_balances`
+8. `stock_movements`
+9. Asset lifecycle/condition history
+10. Generic activity records
 
 Add composite same-organization keys/foreign keys where supported.
 
@@ -197,6 +215,8 @@ Tests must include:
 - Category list/editor with color picker and contrast preview
 - Model list/detail/editor
 - Model description and replacement URL
+- Tracking mode: `SERIALIZED_ASSET` or `QUANTITY_STOCK`
+- Stock unit and optional low-stock threshold for quantity models
 - `Can contain assets` capability
 - Model custom-field editor for String, Dropdown, and Date
 - Model page that shows definitions but never unit values
@@ -214,13 +234,26 @@ Tests must include:
 - Asset detail with model information, code, condition, lifecycle, and activity
 - Manual public-code lookup
 
-### 4.5 Exit criteria
+### 4.5 Consumable stock UI and service
+
+- Create quantity-tracked models without per-unit asset rows or codes
+- Receive stock into a direct location or container
+- Transfer stock transactionally between stock places
+- Record event issue/return, consumption, and authorized adjustment movements
+- Show current balances and immutable movement history
+- Prevent normal negative balances and require an Owner/Deputy reason for corrections
+- Show quantity stock on container and location detail pages
+
+### 4.6 Exit criteria
 
 - Create `UniFi AP-HD`, define Serial Number and MAC Address, and bulk-create ten units.
 - Every unit receives a distinct checked code and model-local number.
 - Values appear only on physical asset pages.
 - Invalid or mistyped checksums are rejected before lookup.
 - Lost/destroyed/retired filters behave as specified.
+- Create `Gaffer tape 50 mm` measured in rolls, receive and transfer stock, and inspect its ledger without creating asset codes.
+- Quantity models cannot be container-capable or define per-unit custom fields.
+- Concurrent issues cannot spend the same available stock twice.
 
 ## 5. Phase 3: media storage and reference photographs
 
@@ -305,6 +338,7 @@ Requirement constraints:
 
 - `SPECIFIC_ASSET`: asset required, quantity one
 - `MODEL_QUANTITY`: model required, positive quantity
+- `CONSUMABLE_QUANTITY`: quantity-stock model required, positive decimal amount in the model's stock unit
 - One active exact requirement per physical asset across the organization
 - Container and referenced model/asset belong to the same organization
 
@@ -315,6 +349,7 @@ Requirement constraints:
 - Detect pinned assets
 - Calculate eligible model pools
 - Match a scan using exact-before-model rules
+- Evaluate consumable minimums separately through balance confirmation or observed quantity
 - Detect complete, missing, extra, and misplaced contents
 - Prevent requirement changes while checked out
 - Invalidate relevant verified/sealed assertions after packing changes
@@ -324,6 +359,7 @@ Requirement constraints:
 - Container individual name required
 - Add by model and quantity
 - Add a specific asset by search or scan
+- Add a consumable model and required amount
 - Clear distinction between exact and interchangeable requirements
 - Packing preview grouped like the eventual printed sheet
 - Create and apply optional templates
@@ -333,12 +369,14 @@ Requirement constraints:
 
 - AP 1 pinned to Network Box 1 cannot satisfy `Any AP x 5` in Mobile Net Large.
 - Five interchangeable cables can be fulfilled by any five eligible numbered units.
+- A consumable requirement can be confirmed or counted without any per-unit QR scan.
 - An asset cannot be exactly required by two containers.
 - A template edit does not silently alter containers previously created from it.
 
 ### 7.5 Exit criteria
 
 - Configure the complete cable-box and network-box examples from the specification.
+- Configure consumable tape and cable-tie requirements alongside serialized contents.
 - Packing completeness can be calculated without running an event.
 - Owners/Deputies can modify requirements; Operators cannot.
 
@@ -395,18 +433,22 @@ Implement:
 
 - `events`
 - `event_booking_lines`
+- Consumable reservation and source-stock records
 - Reservation-expansion/snapshot records as required by the chosen design
 - Event activity/history
 
 ### 9.2 Reservation engine
 
 - Draft does not hold inventory.
-- Reserved events hold containers, exact assets, descendants, and model capacity.
+- Reserved events hold containers, exact assets, descendants, serialized model capacity, and separately requested consumable quantity.
 - Recursive container expansion
 - Exact-asset conflict detection
 - Ancestor/descendant conflict detection
 - Date-range overlap detection
 - Model-capacity calculation excluding assets pinned elsewhere
+- Consumable available-to-promise calculation subtracting all active planned issues, regardless of date overlap, with row locking/concurrency protection
+- Source-container availability checks for separately booked consumables
+- No double reservation for consumables already carried inside a booked container
 - Individual booking effects on container completeness
 - Recalculation after relevant packing additions/removals
 
@@ -423,6 +465,7 @@ AP 1 is already reserved through Network Box 1 for an overlapping event.
 - Calendar/list views
 - Add whole container
 - Add individual asset
+- Add planned consumable quantity from a selected stock place
 - Reserve and display conflicts
 - Cancel pre-checkout event
 - Display packing additions/removal warnings affecting future reservations
@@ -430,6 +473,7 @@ AP 1 is already reserved through Network Box 1 for an overlapping event.
 ### 9.4 Exit criteria
 
 - All ancestor, descendant, exact, and model-capacity conflict scenarios have integration tests.
+- Aggregate active consumable reservations cannot exceed available stock, even when their event dates do not overlap.
 - A booked pallet blocks conflicting bookings for nested cases and assets.
 - An individually booked interchangeable cable can be replaced in its box by another eligible unit.
 
@@ -441,6 +485,7 @@ Implement immutable tables for:
 
 - Manifest header
 - Exact checked-out containers/assets
+- Consumable quantity lines with unit, source stock place, and issued or container-snapshot semantics
 - Source booking line and container context
 - Checkout actor/time
 - Explicit override reasons
@@ -455,11 +500,13 @@ Implement immutable tables for:
 - Require Deputy reason for permitted override
 - Freeze manifest transactionally
 - Mark physical custody checked out
+- Write `EVENT_ISSUE` movements only for separately issued consumables; do not decrement stock merely because its container is checked out
 
 ### 10.3 Checkout PDF
 
 - Event details
 - Exact asset list grouped by booked container
+- Consumable model, amount, unit, source, and whether it was separately issued or carried in a container
 - Public codes
 - Model and individual names
 - Checkout actor/time
@@ -473,10 +520,12 @@ Implement immutable tables for:
 - `Audit now` and `Mark for later`
 - Audit-task creation, not a passive Boolean
 - Parent return expands descendant container tasks
+- Unused separately issued consumables create `EVENT_RETURN` movements; issued minus returned remains event consumption history
 
 ### 10.5 Exit criteria
 
 - Packing changes after checkout cannot alter the manifest or PDF.
+- Consumable issued, returned, and consumed quantities remain reproducible from the movement ledger and immutable manifest.
 - Partial return is visible and recoverable.
 - Check-in of an outer container creates the expected audit batch and dependency graph.
 
@@ -492,6 +541,7 @@ Implement:
 - `audits`
 - Audit dependency records
 - Frozen expected-requirement rows
+- Frozen expected consumable rows and audit confirmations/observations
 - `audit_scans`
 - Audit evidence media
 - Completion summaries
@@ -521,8 +571,9 @@ Implement in this order:
 9. Missing confirmation
 10. Extra/misplaced destination information
 11. Cross-audit `Move scan here`
-12. Final matching container rescan
-13. Seal confirmation
+12. Consumable requirement confirmation, observed-quantity entry, or missing/low report
+13. Final matching container rescan
+14. Seal confirmation
 
 ### 11.4 Offline-resilient queue
 
@@ -543,6 +594,7 @@ Implement in this order:
 - Keep container-completeness and event-completeness results separate
 - Suggest containers with unmet compatible model requirements
 - Prevent one asset from counting in two audits
+- Reconcile consumable issue, return, and consumption independently of exact-asset reconciliation
 
 ### 11.6 Exit criteria
 
@@ -551,6 +603,7 @@ Implement in this order:
 - A parent audit cannot start before child audits are cleared.
 - A short simulated connection outage does not lose or duplicate scans.
 - Clean and finding-bearing completion paths work on both phone and desktop browsers.
+- A volunteer can confirm consumables without counting each unit, while only an Owner/Deputy can approve a balance-changing audit adjustment.
 
 ## 12. Phase 10: findings, review, lifecycle, repairs, and seals
 
@@ -672,6 +725,7 @@ Implement in this order:
 - Model/asset/container name search
 - Category and location filters
 - Serial/MAC/custom-string search
+- Consumable-model and stock-place search
 - Condition, lifecycle, booking, repair, and audit-status filters
 
 ### 15.3 Dashboard
@@ -683,11 +737,13 @@ Implement in this order:
 - In repair
 - Metadata incomplete
 - Containers incomplete/unavailable
+- Consumables below low-stock threshold
 
 ### 15.4 Data exports
 
 - P-touch CSV as already implemented
 - Inventory CSV export for backup/reporting
+- Consumable balance and movement-ledger CSV exports
 - Event manifest download
 - Audit result download
 - Activity/history export if required
@@ -706,6 +762,7 @@ Implement in this order:
 - Cross-organization tests
 - Upload hardening
 - Session/cookie configuration
+- OIDC issuer/redirect configuration, account-linking rules, local Owner recovery, and provider-outage behavior
 - CSRF strategy where applicable
 - Rate limiting for login, temporary invitations, and code lookup
 - Dependency and container scanning
@@ -734,8 +791,8 @@ Implement in this order:
 
 - Versioned OCI application image produced by Jib and published to GitHub Container Registry
 - Immutable semantic-version and commit tags, release-only `latest`, and recorded image digest
-- Maintained application + PostgreSQL + MinIO Compose file
-- Documented external S3-compatible storage configuration that disables the MinIO service
+- Maintained application + PostgreSQL + Garage Compose file
+- Documented external S3-compatible storage configuration that disables the Garage service
 - Reverse-proxy/TLS example
 - SMTP configuration guide
 - Upgrade and migration guide
@@ -758,6 +815,8 @@ Implement in this order:
 - Public-code generation/normalization/checksum
 - Requirement matching
 - Reservation expansion
+- Consumable balance and available-to-promise calculations
+- Stock-movement reason and authorization rules
 - Lifecycle transitions
 - Permission decisions
 - Layout fit calculations
@@ -771,6 +830,8 @@ Implement in this order:
 - Immutable completion records
 - Idempotent scanner writes
 - Archive behavior
+- Stock-ledger immutability and concurrent no-negative-balance enforcement
+- External-identity uniqueness and verified-email linking rules
 
 Use a real PostgreSQL instance rather than substituting an in-memory database.
 
@@ -786,6 +847,8 @@ Use a real PostgreSQL instance rather than substituting an in-memory database.
 - Damage and review
 - Lost-item restoration
 - Temporary volunteer access
+- Consumable receipt, transfer, booking, issue, return, audit, and consumption
+- OIDC login, account linking, disabled-user rejection, and local recovery during provider failure
 
 ### 17.4 Visual and physical tests
 
@@ -802,10 +865,13 @@ Use a real PostgreSQL instance rather than substituting an in-memory database.
 | Scanner retries create duplicate state | Stable client operation IDs and database-enforced idempotency. |
 | Recursive containment or location cycles | Transactional ancestor checks plus database constraints for direct self-reference. |
 | Dynamic packing changes invalidate reservations | Central recalculation service, affected-event previews, immutable checkout manifests. |
+| Concurrent consumable issues overspend stock | Lock affected balances transactionally, reject negative results, and test concurrent issue paths against PostgreSQL. |
 | Flexible model quantities hide exact event loss | Separate container completeness from exact manifest reconciliation. |
 | PDF labels align differently across vendors/printers | Configurable margins/pitch, calibration pages, physical print tests. |
 | Offline queue conflicts with scans from another device | Server-authoritative scan ownership, explicit move operation, clear conflict UI. |
 | Temporary QR access leaks | Narrow scope, 24-hour expiry, revocation, server-side enforcement, rate limiting. |
+| OIDC misconfiguration or outage locks out administrators | Keep an enabled local Owner recovery account, validate issuer/redirect settings, and expose actionable health diagnostics. |
+| Email-based OIDC linking joins the wrong account | Disable it by default; require verified email and one unambiguous match when enabled; persist issuer and subject as identity. |
 | S3/local media behavior diverges | One storage contract with shared conformance tests. |
 | Audit history is accidentally rewritten | Immutable completed records and append-only resolutions. |
 
@@ -813,7 +879,7 @@ Use a real PostgreSQL instance rather than substituting an in-memory database.
 
 ### Milestone A: Inventory foundation
 
-Phases 0-4. Users can authenticate, define catalog data, create coded assets, upload photos, and organize nested storage.
+Phases 0-4. Users can authenticate locally or through optional OIDC, define catalog data, create coded assets, track consumable balances, upload photos, and organize nested storage.
 
 ### Milestone B: Operational containers
 
@@ -835,8 +901,8 @@ Phases 13-14. Search, dashboards, exports, archiving, hardening, deployment, bac
 
 1. Review and approve this specification and mark any deliberately deferred behavior.
 2. Treat ADR-0001 as the accepted stack and structure baseline; update it only when a concrete implementation finding requires a change.
-3. Decide the exact Base32 checksum construction and record test vectors in ADR-0002.
-4. Choose the initial authentication/session design and record ADR-0003.
-5. Initialize the Spring Boot and PWA sources, Gradle/Jib integration, GitHub Actions validation and GHCR publication, PostgreSQL/MinIO Compose, and migration tooling.
+3. Treat ADR-0002 as the accepted public-code checksum construction; its test vectors are authoritative for the backend and frontend implementations.
+4. Implement the accepted authentication/session design in ADR-0003, including optional OIDC and local Owner recovery.
+5. Initialize the Spring Boot and PWA sources, Gradle/Jib integration, GitHub Actions validation and GHCR publication, PostgreSQL/Garage Compose, and migration tooling.
 6. Implement the organization/user/membership skeleton.
-7. Implement categories, models, custom-field definitions, physical assets, and public-code generation as the first demonstrable vertical slice.
+7. Implement categories, models, custom-field definitions, physical assets, consumable stock, and public-code generation as the first demonstrable vertical slice.

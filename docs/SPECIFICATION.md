@@ -6,7 +6,7 @@ Audience: Product owner, designers, implementers, and testers
 
 ## 1. Product summary
 
-BigContainers manages individually identified event-technology equipment, the physical containers in which equipment is stored, event reservations, check-out and return, packing verification, damage and loss review, repairs, labels, and inventory history.
+BigContainers manages individually identified event-technology equipment, quantity-tracked consumable supplies, the physical containers in which they are stored, event reservations, check-out and return, packing verification, damage and loss review, repairs, labels, and inventory history.
 
 The primary users are a small internal team and occasional volunteers. The product must therefore favor guided scanning workflows, photographs, plain language, and clear recovery from mistakes over dense warehouse-management interfaces.
 
@@ -16,6 +16,7 @@ BigContainers is a responsive web application and installable Progressive Web Ap
 
 - Replace spreadsheets and printed packing lists as the inventory source of truth.
 - Track every reusable physical item with its own immutable public asset code.
+- Track consumables as quantities without inventing one asset or QR code per unit.
 - Represent boxes, flightcases, pallets, and similar objects as ordinary assets that can contain other assets.
 - Allow containers to be nested to any practical depth.
 - Reserve and check out either complete containers or individual assets.
@@ -34,7 +35,8 @@ BigContainers is a responsive web application and installable Progressive Web Ap
 - Multi-organization switching or commercial tenant administration.
 - Merging two inventories into one organization.
 - Anonymous public access to inventory records.
-- Consumable stock accounting where individual units do not have asset codes.
+- Purchasing, supplier orders, valuation, or full warehouse-management accounting.
+- Consumable lot, batch, expiry-date, or per-unit cost tracking.
 
 ## 2. Terminology
 
@@ -42,13 +44,16 @@ BigContainers is a responsive web application and installable Progressive Web Ap
 |---|---|
 | Organization | Owner of all inventory data. The initial installation contains one invisible default organization. |
 | Category | Colored classification assigned to a model, such as Networking or Cables. |
-| Model | Shared definition for identical physical units, such as `UniFi AP-HD` or `RAKO 400 x 300`. |
+| Model | Shared catalog definition for either serialized equipment or quantity stock, such as `UniFi AP-HD`, `RAKO 400 x 300`, or `Gaffer tape 50 mm`. |
 | Physical asset | One individually tracked real-world unit with an internal UUID and public asset code. |
+| Quantity stock | An amount of one consumable model held at a location or in a container, without individual asset identities. |
+| Stock movement | Immutable receipt, issue, return, transfer, consumption, or adjustment that changes a quantity-stock balance. |
 | Container | A physical asset whose model allows it to contain assets. |
 | Location | Hierarchical physical storage place, such as `HQ / Room 13 / Shelf A`. |
 | Packing requirement | Definition of what a container must directly contain. |
 | Exact requirement | Requirement that can only be fulfilled by one specified physical asset. |
-| Model-quantity requirement | Requirement that can be fulfilled by any eligible physical units of a specified model. |
+| Model-quantity requirement | Requirement that can be fulfilled by any eligible serialized physical units of a specified model. |
+| Consumable-quantity requirement | Requirement for an amount of a quantity-tracked model; no individual QR scan is expected. |
 | Current contents | Exact assets most recently verified as physically present in a container. |
 | Packing template | Reusable starting set of packing requirements copied onto a container. |
 | Event | Time-bounded reservation and movement of containers and/or individual assets. |
@@ -119,6 +124,21 @@ BigContainers is a responsive web application and installable Progressive Web Ap
 - Expiry or revocation ends new API access immediately.
 - Temporary users cannot browse unrelated inventory or organization administration.
 
+### 4.3 Permanent-user authentication
+
+- Local username/password login is available by default and remains the recovery path for a self-hosted installation.
+- An installation may optionally enable one OpenID Connect (OIDC) provider through Spring Security's OAuth 2.0 client support. OIDC, rather than bare OAuth 2.0, supplies the authenticated user identity.
+- Supported initial modes are `LOCAL_ONLY` and `LOCAL_AND_OIDC`. An installation may require OIDC for ordinary permanent users only while at least one enabled local Owner recovery account remains usable.
+- Provider configuration includes a display name, issuer URI, client ID, client secret, and scopes. Discovery through the issuer URI is preferred; initial scopes are `openid profile email`.
+- The browser always receives the same BigContainers server-side session after either login method. Provider access/refresh tokens remain server-side and no bearer token is stored in browser storage.
+- An external identity is keyed by the immutable pair `(issuer, subject)` and linked to an internal user. Email addresses are profile and matching attributes, never the durable external identity key.
+- Automatic linking by email is disabled by default. If enabled by an Owner, it requires an OIDC `email_verified` claim and exactly one matching internal user. Otherwise an Owner must approve or create the link.
+- Just-in-time user creation and provider group/role mapping are not part of the initial release. Organization membership, role, disabled state, and authorization remain authoritative inside BigContainers.
+- A permanent user may have local credentials, an external identity, or both. The system prevents removal of the last usable Owner authentication method.
+- Local logout always invalidates the BigContainers session. Provider-wide single logout is best effort and not required for correctness.
+- Temporary volunteer QR access remains a separate authentication flow and is unaffected by OIDC configuration.
+- Provider secrets are supplied through environment variables or mounted secret files. Reverse-proxy deployments must preserve the public HTTPS scheme and host so redirect URIs are generated correctly.
+
 ## 5. Categories
 
 A category contains:
@@ -138,7 +158,7 @@ Rules:
 
 ## 6. Asset models
 
-An asset model contains shared information for all physical units of that model.
+An asset model contains shared catalog information. Its tracking mode determines whether it creates individually identified reusable assets or quantity-tracked consumable stock.
 
 ### 6.1 Standard model fields
 
@@ -149,15 +169,34 @@ An asset model contains shared information for all physical units of that model.
 - Category, required
 - Replacement URL, optional HTTP/HTTPS URL pointing to a manufacturer or preferred supplier
 - Primary reference photograph, optional
+- Tracking mode, required: `SERIALIZED_ASSET` by default or `QUANTITY_STOCK`
+- Stock unit label for quantity-tracked models, such as `roll`, `ream`, `pack`, `tube`, or `piece`
+- Optional low-stock threshold for quantity-tracked models
 - `can_contain_assets`, default `false`
 - Optional archive timestamp
 - Created and updated timestamps
 
-`Condition`, purchase date, serial number, MAC address, and other unit-specific values do not belong to the model.
+`Condition`, purchase date, serial number, MAC address, and other unit-specific values do not belong to the model. They apply only to serialized assets.
 
-### 6.2 Container-capable models
+### 6.2 Tracking modes
 
-When `can_contain_assets` is enabled, every physical asset of that model can act as a container. There is no separate container-model table.
+#### Serialized asset
+
+- Each real-world unit is a physical asset with its own UUID, public code, lifecycle, condition, and optional label.
+- Model-defined unit fields are available.
+- The model may be container-capable.
+
+#### Quantity stock
+
+- The system stores a decimal quantity, not a physical-asset row per roll, pack, sheet, or cable tie.
+- The user selects a practical stock unit. For example, cable ties may be counted as `bag` rather than attempting to count each tie.
+- Quantity precision supports up to three decimal places, although whole-number practical units are preferred.
+- Quantity-tracked models cannot be container-capable, cannot define per-unit custom fields, and do not receive public asset codes, individual labels, condition, or lifecycle state.
+- Changing tracking mode is prohibited after assets, stock balances, packing requirements, bookings, or history exist.
+
+### 6.3 Container-capable models
+
+When `can_contain_assets` is enabled on a serialized model, every physical asset of that model can act as a container. There is no separate container-model table.
 
 Examples:
 
@@ -172,9 +211,20 @@ Examples:
 
 Disabling containment is prohibited while any unit of the model currently contains assets or has active packing requirements.
 
+### 6.4 Consumable stock and movement ledger
+
+- A quantity-stock balance belongs to one organization, one quantity-tracked model, and exactly one stock place: either a direct location or a container asset.
+- There is at most one active balance for a model at a given stock place.
+- Every balance change creates an immutable stock movement containing the signed quantity delta, unit, reason, actor, timestamp, optional note, and optional event/audit reference.
+- Initial movement reasons are `RECEIPT`, `TRANSFER`, `EVENT_ISSUE`, `EVENT_RETURN`, `CONSUMPTION`, `AUDIT_ADJUSTMENT`, and `MANUAL_ADJUSTMENT`.
+- A transfer transactionally decrements the source and increments the destination while preserving one linked movement operation.
+- No operation may make a balance negative. Owner/Deputy adjustments require an explicit reason and activity entry.
+- Consumables inside a container appear when that container is opened or scanned; no QR label is required on the consumable itself. Optional bin/shelf labels may be added later without changing the stock identity model.
+- Low-stock status is calculated from the model threshold across the organization's active on-hand balances. A future extension may add per-location thresholds.
+
 ## 7. Model-defined unit fields
 
-Custom-field definitions are created on a model, but their values exist only on physical assets of that model.
+Custom-field definitions are created on a serialized model, but their values exist only on physical assets of that model. Quantity-tracked models cannot define these fields.
 
 The model page lists and manages definitions; it never displays a MAC address, serial number, or other unit value.
 
@@ -409,17 +459,27 @@ Use cases include configured routers, controllers, and access points whose ident
 
 Use cases include individually labeled but interchangeable cables.
 
+#### Consumable quantity
+
+- References one quantity-tracked model and a positive required amount in that model's stock unit.
+- Represents the minimum amount that should be directly available in the container.
+- Is verified by quantity confirmation or entry, not by scanning individual units.
+- Never creates placeholder assets or consumes public asset codes.
+
+Use cases include tape rolls, printer-paper reams, glue tubes, and packs of cable ties.
+
 ### 12.2 Eligibility and matching
 
 An asset explicitly required by another container cannot satisfy a model-quantity requirement elsewhere.
 
 Audit matching order:
 
-1. If the asset is an exact requirement of another container, report it as misplaced and do not count it here.
+1. If the scanned asset is an exact requirement of another container, report it as misplaced and do not count it here.
 2. If it is an exact requirement of the current container, satisfy that exact requirement.
 3. Otherwise, satisfy an open model-quantity requirement for its model.
 4. If no compatible requirement remains, report it as unexpected/extra.
-5. One scan can satisfy only one requirement.
+5. One asset scan can satisfy only one serialized requirement.
+6. Consumable-quantity requirements are evaluated separately from asset scans against the stock balance or an auditor-entered observed amount.
 
 Example:
 
@@ -473,6 +533,7 @@ An event can reserve:
 
 - A complete container
 - An individual physical asset
+- A planned quantity of a consumable model from a selected stock place
 
 Booking a container always means the whole container. A partial selection from a container is represented as individual-asset booking lines, not as a partial container booking.
 
@@ -481,6 +542,10 @@ Booking a container always means the whole container. A partial selection from a
 - Booking a container reserves the container and its descendants recursively.
 - Exact packing requirements reserve their exact assets.
 - Model-quantity requirements reserve sufficient eligible capacity of their model.
+- Consumable booking lines reserve sufficient available quantity at their selected source.
+- Consumable available-to-promise is on-hand stock minus all active planned issues, regardless of whether event dates overlap. The system does not assume consumed stock will return or be replenished.
+- Stock in a source container that is unavailable for the event period cannot satisfy a separate consumable booking line.
+- Consumable quantities already carried in a booked container are included through that container and are not reserved again as separately issued stock.
 - Nested containers recursively contribute their requirements.
 - An individual asset cannot be reserved for overlapping dates if an ancestor container is reserved.
 - A container cannot be reserved for overlapping dates if a descendant asset or container is independently reserved.
@@ -539,9 +604,11 @@ Booking a container always means the whole container. A partial selection from a
 
 - User opens the event in the PWA.
 - User scans or selects containers and individual assets.
+- User confirms any separately issued consumable quantities and their source stock places.
 - System validates reservation, availability, lifecycle, repair, descendant, and packing conflicts.
 - The exact physical contents recorded for model-quantity requirements are used for the manifest unless the user chooses to verify them.
-- The system freezes an immutable checkout manifest of exact physical assets.
+- The system freezes an immutable checkout manifest of exact physical assets and consumable quantity lines.
+- A separately issued consumable line creates an `EVENT_ISSUE` stock movement at checkout. Consumables remaining inside a booked container are snapshotted as expected container stock and are not decremented merely because the container changes custody.
 - A checkout PDF is generated from the frozen manifest.
 - Checked-out custody and timestamps are recorded.
 
@@ -560,6 +627,7 @@ If recorded contents cannot fulfill the packing requirements, the application wa
 ## 15. Check-in and return
 
 - Containers and individual assets can be checked in from the event.
+- Unused separately issued consumables can be returned to a selected stock place, creating an `EVENT_RETURN` movement. The difference remains recorded as consumed for the event.
 - Checking in a container offers `Audit now` or `Mark for later`.
 - `Mark for later` immediately creates a pending task; it is not a passive flag.
 - Checking in a parent container creates audit tasks for the parent and all descendant containers.
@@ -580,6 +648,7 @@ An event return batch provides:
 - Cross-container placement suggestions
 - Duplicate-scan prevention
 - Final unresolved-finding summary
+- Consumable quantity confirmation and adjustment history
 
 ### 16.2 Bottom-up ordering
 
@@ -624,6 +693,14 @@ If an audited child is reopened or its seal is broken before the parent is compl
 
 Each outcome uses distinct visual, audible, and vibration feedback where supported.
 
+Consumable rows are presented separately from scannable assets. For each consumable requirement the auditor can:
+
+- Choose `Required amount present` as a quick confirmation. This satisfies the packing requirement without claiming an exact count or changing the stored balance.
+- Choose `Enter observed quantity` to record a count. If it differs from the current balance, an authorized adjustment is written through the stock-movement ledger with the audit reference.
+- Choose `Missing or low` to create a finding and enter an observed quantity when known.
+
+Volunteers may confirm or report a discrepancy, but only an Owner or Deputy may approve a balance-changing adjustment.
+
 ### 17.3 Last-scanned card and corrections
 
 Below the camera, show the last scanned item's:
@@ -655,7 +732,7 @@ Duplicate scans are idempotent.
 
 ### 17.6 Missing and extra items
 
-- Remaining unsatisfied exact requirements and model quantities are shown before completion.
+- Remaining unsatisfied exact requirements, serialized model quantities, and consumable quantities are shown before completion.
 - Auditor must explicitly confirm that remaining items are missing.
 - Extra assets show their required or last verified destination when known.
 - Within an event batch, the system suggests another container that still needs that model.
@@ -675,7 +752,7 @@ Manual code entry is available if the container QR is damaged. Completion is not
 
 ### 17.8 Updating current contents
 
-On completion, successfully scanned assets become the container's last verified direct contents. Interchangeable units may therefore trade containers without manual reassignment.
+On completion, successfully scanned assets become the container's last verified direct contents. Interchangeable units may therefore trade containers without manual reassignment. Confirmed consumable requirements record their audit result; only an explicitly entered and authorized observed quantity changes the stock balance.
 
 Example:
 
@@ -707,6 +784,7 @@ Rules:
 - A manifest asset not scanned anywhere remains missing from the event.
 - A single physical asset cannot count in two completed container audits.
 - Event findings require Deputy/Owner review even if every container's model counts are complete.
+- Consumable event reconciliation compares quantity issued, quantity returned, and quantity consumed. It does not invent exact identities for the consumed units.
 
 ## 19. Findings and review
 
@@ -811,6 +889,8 @@ All generated documents use a bundled monospaced font family with regular and bo
 
 ### 23.1 Asset-label content
 
+Asset labels are generated only for serialized physical assets. Quantity-tracked consumables do not receive individual codes or labels.
+
 Left side:
 
 - Model name in bold monospace
@@ -863,6 +943,7 @@ qr_value
 - Container individual name is bold monospace and at least 22 pt.
 - Include container model, asset code, and QR.
 - Include packing requirements grouped by model and quantity.
+- Consumable requirements show their amount and stock unit, for example `2 rolls Gaffer tape 50 mm`.
 - Exact requirements include the required asset code.
 - Nested containers include their names/codes where applicable.
 
@@ -910,7 +991,7 @@ Full offline inventory operation is not required. During an active audit:
 
 ## 25. Archiving and history
 
-- Models, assets, categories, locations, templates, requirements, users, completed events, and audits are archived rather than destructively deleted once referenced by history.
+- Models, assets, quantity-stock balances, categories, locations, templates, requirements, users, completed events, and audits are archived rather than destructively deleted once referenced by history.
 - Archived records are excluded from normal pickers and searches unless the archive filter is enabled.
 - Historical records continue displaying archived names and relationships.
 - Activity history records actor, timestamp, action, target, and relevant before/after information.
@@ -919,6 +1000,7 @@ Full offline inventory operation is not required. During an active audit:
 History includes at least:
 
 - Asset creation and metadata changes
+- Consumable receipts, transfers, issues, returns, consumption, and adjustments
 - Container moves
 - Packing-requirement changes
 - Event reservation changes
@@ -941,6 +1023,7 @@ Initial search should locate records by:
 - Category
 - Location/container path
 - Active string custom-field values, including serial number and MAC address
+- Consumable model name and stock place
 
 Operational views should include:
 
@@ -952,6 +1035,7 @@ Operational views should include:
 - Lost/destroyed/retired archive filters
 - Containers with incomplete packing requirements
 - Assets with incomplete custom-field metadata
+- Consumables below their low-stock threshold
 
 ## 27. Deployment and storage
 
@@ -973,7 +1057,7 @@ Exact dependency versions are pinned in build files and lockfiles. "Latest stabl
 - PostgreSQL
 - An S3-compatible object store when media features are enabled
 
-The object store may be externally managed AWS S3 or a self-hosted S3-compatible service. The first-party self-hosting configuration uses MinIO. Application code talks only to the S3-compatible storage contract; it does not maintain a separate production filesystem-storage implementation.
+The object store may be externally managed AWS S3 or a self-hosted S3-compatible service. The first-party self-hosting configuration uses Garage. Application code talks only to the S3-compatible storage contract; it does not maintain a separate production filesystem-storage implementation.
 
 Optional supporting services are:
 
@@ -996,9 +1080,9 @@ GitHub Actions validates the frontend, backend, and complete image build. Accept
 ### 27.4 Self-hosting
 
 - Provide a maintained OCI application image in GitHub Container Registry.
-- Provide a first-party `docker-compose.yml` for application, PostgreSQL, and MinIO.
+- Provide a first-party `docker-compose.yml` for application, PostgreSQL, and Garage.
 - Allow the Compose application image to be pinned by semantic version or digest.
-- Allow MinIO to be disabled when an external S3-compatible endpoint is configured.
+- Allow Garage to be disabled when an external S3-compatible endpoint is configured.
 - Database migrations run through a documented, explicit deployment step.
 - Provide backup and restore documentation for PostgreSQL and media.
 - Secrets are injected through environment variables or mounted secret files and are not embedded in images.
@@ -1008,6 +1092,9 @@ No Redis, Elasticsearch, Supabase, or message queue is required for the initial 
 ## 28. Data integrity and security requirements
 
 - All authorization is enforced server-side.
+- Local and OIDC login both terminate in the same server-side session and authorization model.
+- External identities are unique by `(issuer, subject)`; verified email alone never becomes the persistent login key.
+- At least one enabled local Owner recovery method remains available when OIDC is configured.
 - Organization context comes from authenticated membership, never a client-supplied organization ID alone.
 - Temporary access is narrowly scoped and expires after 24 hours.
 - Public asset codes are identifiers, not authentication secrets.
@@ -1044,12 +1131,17 @@ The initial production release must demonstrate all of the following:
 18. Queue audit scans during a short connection outage and synchronize without duplicate counts.
 19. Grant a named volunteer scoped QR access that expires after 24 hours.
 20. Archive historical records without losing their event, audit, and activity history.
+21. Create a quantity-tracked tape model, receive and transfer stock, and prevent normal operations from producing a negative balance.
+22. Add consumables to a container and event, verify them without individual QR scans, and reconcile issued, returned, and consumed amounts.
+23. Complete an OIDC login into an existing linked user while preserving local roles and the same server-side session behavior.
+24. Reject an ambiguous or unverified email auto-link and retain usable local Owner recovery when the provider is unavailable.
 
 ## 30. Explicitly deferred capabilities
 
 - Commercial multi-organization administration and billing
 - Importing and merging organizations
-- Unserialized quantity/consumable inventory
+- Consumable purchasing, supplier orders, valuation, lot/batch tracking, expiry dates, and per-unit cost accounting
+- OIDC group/claim-to-role mapping and just-in-time user provisioning
 - Customer storefront and online rental requests
 - Contracts, pricing, invoicing, and payments
 - Native Android/iOS applications

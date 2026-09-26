@@ -125,11 +125,14 @@ Do this in response to actual size or coupling, not before implementation. Intro
 
 - Use `AssetModel`, never the ambiguous type name `Model`.
 - Use `Asset` for one physical unit. A container remains an asset whose model is container-capable.
+- Use `TrackingMode.SERIALIZED_ASSET` and `TrackingMode.QUANTITY_STOCK` to distinguish individually identified equipment from consumables.
+- Use `ConsumableStock` for the current amount of a quantity-tracked model at one location or container, and `StockMovement` for an immutable balance change.
 - Use `AssetCode` for the six-character checked public identifier. A UUID is named `id`/`assetId`, never `code`.
 - Use `Booking` or `EventBooking` for the equipment reservation/event record.
 - Reserve a `*Event` suffix for completed facts such as `BookingCheckedOut` if application events are later needed.
 - Use `ContainerAudit` or `AuditTask` for equipment audits. Use `ActivityLog` for operator/security history.
-- Use `PackingRequirement` with explicit variants such as `ExactAssetRequirement` and `ModelQuantityRequirement`.
+- Use `PackingRequirement` with explicit variants such as `ExactAssetRequirement`, `ModelQuantityRequirement`, and `ConsumableQuantityRequirement`.
+- Use `ExternalIdentity` for the `(issuer, subject)` mapping from an OIDC provider to a BigContainers `User`.
 - Use qualified identifiers such as `organizationId`, `assetId`, `modelId`, `containerId`, and `bookingId`.
 - Treat initialisms as words in Java names: `QrCode`, `Url`, `Id`, and `S3MediaStorage`.
 
@@ -290,7 +293,7 @@ backend/src/test/java/io/kellermann/bigcontainers/
 
 - Pure tests end in `Tests` and do not start Spring.
 - PostgreSQL, Spring MVC, security, JPA, S3, or transaction tests end in `IntegrationTests`.
-- Testcontainers supplies PostgreSQL and MinIO.
+- Testcontainers supplies PostgreSQL and the S3-compatible object store.
 - Time-sensitive tests use a fixed/controlled `Clock`.
 - Randomized tests use reproducible seeds where failure diagnosis requires them.
 - Playwright covers owner/deputy and temporary-volunteer journeys, manual scanner fallback, and short connectivity interruptions.
@@ -322,7 +325,7 @@ Create or update an ADR when changing the base package, overall package architec
 - The runtime image contains the Java runtime and packaged Spring Boot application, including frontend assets; it must not contain Node.js, pnpm, or frontend sources.
 - The application process runs as a non-root user.
 - The configured base image is pinned by digest for releases.
-- PostgreSQL and MinIO are separate services and must not be installed in the application image.
+- PostgreSQL and the object store are separate services and must not be installed in the application image.
 - GitHub Actions validates pull requests with `jibBuildTar` but never publishes from pull requests or forks.
 - Publishing uses `GITHUB_TOKEN`, `contents: read`, and `packages: write`; no long-lived registry password or personal access token is stored for ordinary GHCR publication.
 - Third-party actions are pinned by full commit SHA.

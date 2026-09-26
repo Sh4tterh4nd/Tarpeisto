@@ -1,0 +1,22 @@
+# The development policies require text files to use LF endings. This machine has
+# core.autocrlf=true, which would otherwise rewrite the working tree to CRLF on checkout and
+# break Spotless, Prettier and the policy itself. These rules override that per-clone setting,
+# so every contributor gets LF regardless of their local git configuration.
+* text=auto eol=lf
+
+# The Gradle wrapper script must keep LF to remain executable on Linux and in CI.
+gradlew text eol=lf
+gradlew.bat text eol=crlf
+
+# Binary files must never be line-ending converted.
+*.jar binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.pdf binary
