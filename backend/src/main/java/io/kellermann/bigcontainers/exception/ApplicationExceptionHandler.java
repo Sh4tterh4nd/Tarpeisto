@@ -54,6 +54,11 @@ public class ApplicationExceptionHandler {
         return problemDetail(HttpStatus.CONFLICT, "Insufficient Stock", exception);
     }
 
+    @ExceptionHandler(StaleMediaVersionException.class)
+    public ProblemDetail handleStaleMediaVersion(StaleMediaVersionException exception) {
+        return problemDetail(HttpStatus.CONFLICT, "Stale Media Version", exception);
+    }
+
     private ProblemDetail problemDetail(HttpStatus status, String title, ApplicationException exception) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, exception.getMessage());
         problem.setTitle(title);

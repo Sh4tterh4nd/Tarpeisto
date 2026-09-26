@@ -259,10 +259,7 @@ Tests must include:
 
 ### 5.1 Storage abstraction
 
-Define one interface supporting:
-
-- Local persistent filesystem storage
-- S3-compatible storage
+Define one application-owned interface supporting S3-compatible storage (AWS S3 and Garage):
 - Organization-prefixed object keys
 - Streaming upload/download
 - Content-length limits
@@ -283,7 +280,7 @@ Audit evidence uploads are implemented later on the same abstraction.
 
 ### 5.3 Exit criteria
 
-- The same application build works with local storage and S3-compatible storage.
+- The same application build works with Garage and external S3-compatible storage.
 - Invalid file types and oversized uploads are rejected.
 - Container images can be captioned `Bottom layer` and `Top tray` and reordered.
 
@@ -872,7 +869,7 @@ Use a real PostgreSQL instance rather than substituting an in-memory database.
 | Temporary QR access leaks | Narrow scope, 24-hour expiry, revocation, server-side enforcement, rate limiting. |
 | OIDC misconfiguration or outage locks out administrators | Keep an enabled local Owner recovery account, validate issuer/redirect settings, and expose actionable health diagnostics. |
 | Email-based OIDC linking joins the wrong account | Disable it by default; require verified email and one unambiguous match when enabled; persist issuer and subject as identity. |
-| S3/local media behavior diverges | One storage contract with shared conformance tests. |
+| S3 deployment behavior diverges | One storage contract with shared conformance tests. |
 | Audit history is accidentally rewritten | Immutable completed records and append-only resolutions. |
 
 ## 19. Milestone summary

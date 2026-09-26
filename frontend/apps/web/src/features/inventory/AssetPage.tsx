@@ -28,6 +28,7 @@ import {
   changeAssetLifecycle,
   errorMessage,
   getAsset,
+  getAssetModel,
   listAssetHistory,
   listCustomFieldOptions,
   listCustomFields,
@@ -41,6 +42,7 @@ import {
   type CustomFieldOptionRecord,
   type CustomFieldRecord,
 } from "./inventoryApi";
+import { MediaPanel } from "./MediaPanel";
 
 interface AssetDetailsDialogProps {
   asset: AssetRecord;
@@ -300,6 +302,7 @@ export function AssetPage() {
   const canManage = role === "OWNER" || role === "DEPUTY";
   const [asset, setAsset] = useState<AssetRecord>();
   const [history, setHistory] = useState<AssetHistoryRecord[]>([]);
+  const [containerCapable, setContainerCapable] = useState(false);
   const [error, setError] = useState<{ routeId: string; message: string }>();
   const [dialog, setDialog] = useState<{
     routeId: string;
@@ -327,8 +330,16 @@ export function AssetPage() {
       setError({ routeId: assetId, message: errorMessage(historyResult.error) });
       return;
     }
+    const modelResult = await getAssetModel(assetResult.data.assetModelId);
+    if (request !== loadRequest.current) return;
+    if (modelResult.kind === "error") {
+      setAsset(undefined);
+      setError({ routeId: assetId, message: errorMessage(modelResult.error) });
+      return;
+    }
     setAsset(assetResult.data);
     setHistory(historyResult.data);
+    setContainerCapable(modelResult.data.canContainAssets);
     setError(undefined);
   }, [assetId]);
 
@@ -419,6 +430,12 @@ export function AssetPage() {
       ) : null}
 
       <Stack spacing={3}>
+        <MediaPanel
+          assetId={asset.id}
+          fallbackAssetModelId={asset.assetModelId}
+          containerCapable={containerCapable}
+          canManage={canManage}
+        />
         <Paper variant="outlined" sx={{ overflow: "hidden" }}>
           <Box sx={{ p: 2, bgcolor: "primary.main", color: "primary.contrastText" }}>
             <Typography variant="body2">Public asset code</Typography>

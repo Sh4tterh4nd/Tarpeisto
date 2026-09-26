@@ -6,10 +6,14 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface AssetRepository extends JpaRepository<Asset, UUID> {
+
+    @Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    Optional<Asset> findWithLockByIdAndOrganizationId(UUID id, UUID organizationId);
 
     Optional<Asset> findByIdAndOrganizationId(UUID id, UUID organizationId);
 

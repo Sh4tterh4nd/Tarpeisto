@@ -865,7 +865,8 @@ Rules:
 
 ## 22. Photographs and media
 
-Media may be stored on local persistent storage or through an S3-compatible provider.
+Media is stored through an S3-compatible provider. The application has no production filesystem
+media backend; self-hosting uses Garage or an external S3-compatible provider.
 
 Supported associations:
 

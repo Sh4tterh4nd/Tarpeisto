@@ -3,6 +3,7 @@ package io.kellermann.bigcontainers;
 import io.kellermann.bigcontainers.config.ApplicationProperties;
 import io.kellermann.bigcontainers.config.AuthenticationProperties;
 import io.kellermann.bigcontainers.config.LoginRateLimitProperties;
+import io.kellermann.bigcontainers.config.S3Properties;
 import io.kellermann.bigcontainers.config.SeedProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -14,7 +15,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
     ApplicationProperties.class,
     SeedProperties.class,
     LoginRateLimitProperties.class,
-    AuthenticationProperties.class
+    AuthenticationProperties.class,
+    S3Properties.class
 })
 public class BigContainersApplication {
 

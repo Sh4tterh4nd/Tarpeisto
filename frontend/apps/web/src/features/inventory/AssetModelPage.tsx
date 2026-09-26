@@ -35,6 +35,7 @@ import {
   type CategoryRecord,
 } from "./inventoryApi";
 import { ModelFieldsPanel } from "./ModelFieldsPanel";
+import { MediaPanel } from "./MediaPanel";
 import { SerializedAssetsPanel } from "./SerializedAssetsPanel";
 
 interface ModelPageData {
@@ -372,6 +373,7 @@ export function AssetModelPage() {
       </Paper>
 
       <Stack spacing={3}>
+        <MediaPanel assetModelId={assetModelId} canManage={canManage} />
         {model.trackingMode === "SERIALIZED_ASSET" ? (
           <>
             <ModelFieldsPanel

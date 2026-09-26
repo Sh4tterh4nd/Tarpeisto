@@ -52,11 +52,11 @@ services:
       BIGCONTAINERS_APPLICATION_DISPLAY_NAME: ${BIGCONTAINERS_APPLICATION_DISPLAY_NAME:-BigContainers}
       BIGCONTAINERS_APPLICATION_PUBLIC_BASE_URL: ${BIGCONTAINERS_APPLICATION_PUBLIC_BASE_URL:-}
 
-      # S3-compatible object storage (Phase 3; not yet implemented by the
-      # backend - these are the contract Phase 3 will bind to). Points at the
+      # S3-compatible object storage. Points at the
       # bundled Garage service by default; override BIGCONTAINERS_S3_* in
       # .env to use an external S3-compatible endpoint instead (see
       # README.md).
+      BIGCONTAINERS_S3_ENABLED: ${BIGCONTAINERS_S3_ENABLED:-true}
       BIGCONTAINERS_S3_ENDPOINT: ${BIGCONTAINERS_S3_ENDPOINT:-http://garage:3900}
       BIGCONTAINERS_S3_REGION: ${BIGCONTAINERS_S3_REGION:-garage}
       BIGCONTAINERS_S3_BUCKET: ${BIGCONTAINERS_S3_BUCKET:-bigcontainers}

@@ -19,6 +19,10 @@ spring:
   mvc:
     problemdetails:
       enabled: true
+  servlet:
+    multipart:
+      max-file-size: 11MB
+      max-request-size: 11MB
   threads:
     virtual:
       enabled: true
@@ -93,3 +97,13 @@ bigcontainers:
       client-id: ${BIGCONTAINERS_OIDC_CLIENT_ID:}
       client-secret: ${BIGCONTAINERS_OIDC_CLIENT_SECRET:}
       scopes: ${BIGCONTAINERS_OIDC_SCOPES:openid,profile,email}
+  s3:
+    enabled: ${BIGCONTAINERS_S3_ENABLED:false}
+    endpoint: ${BIGCONTAINERS_S3_ENDPOINT:}
+    region: ${BIGCONTAINERS_S3_REGION:}
+    bucket: ${BIGCONTAINERS_S3_BUCKET:}
+    access-key: ${BIGCONTAINERS_S3_ACCESS_KEY:}
+    secret-key: ${BIGCONTAINERS_S3_SECRET_KEY:}
+    path-style-access: ${BIGCONTAINERS_S3_PATH_STYLE_ACCESS:true}
+    server-side-encryption: ${BIGCONTAINERS_S3_SERVER_SIDE_ENCRYPTION:}
+    max-upload-bytes: ${BIGCONTAINERS_S3_MAX_UPLOAD_BYTES:10485760}

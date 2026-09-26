@@ -128,6 +128,7 @@ dependencies {
     implementation("org.flywaydb:flyway-core")
     implementation("org.flywaydb:flyway-database-postgresql")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.1")
+    implementation("software.amazon.awssdk:s3:2.32.20")
 
     runtimeOnly("org.postgresql:postgresql")
 
