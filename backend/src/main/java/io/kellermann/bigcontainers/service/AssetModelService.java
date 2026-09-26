@@ -9,6 +9,7 @@ import io.kellermann.bigcontainers.repository.AssetModelRepository;
 import io.kellermann.bigcontainers.repository.AssetRepository;
 import io.kellermann.bigcontainers.repository.ConsumableStockRepository;
 import io.kellermann.bigcontainers.repository.ModelCustomFieldRepository;
+import io.kellermann.bigcontainers.repository.OrganizationRepository;
 import io.kellermann.bigcontainers.security.BigContainersPrincipal;
 import java.math.BigDecimal;
 import java.net.URI;
@@ -62,6 +63,7 @@ public class AssetModelService {
     private final AssetRepository assetRepository;
     private final ConsumableStockRepository consumableStockRepository;
     private final CategoryService categoryService;
+    private final OrganizationRepository organizationRepository;
     private final ActivityLogService activityLogService;
     private final Clock clock;
 
@@ -71,6 +73,7 @@ public class AssetModelService {
             AssetRepository assetRepository,
             ConsumableStockRepository consumableStockRepository,
             CategoryService categoryService,
+            OrganizationRepository organizationRepository,
             ActivityLogService activityLogService,
             Clock clock) {
         this.assetModelRepository = assetModelRepository;
@@ -78,6 +81,7 @@ public class AssetModelService {
         this.assetRepository = assetRepository;
         this.consumableStockRepository = consumableStockRepository;
         this.categoryService = categoryService;
+        this.organizationRepository = organizationRepository;
         this.activityLogService = activityLogService;
         this.clock = clock;
     }
@@ -228,7 +232,20 @@ public class AssetModelService {
     public AssetModelView setCanContainAssets(
             BigContainersPrincipal principal, UUID assetModelId, boolean canContainAssets) {
         requireOwnerOrDeputy(principal);
+        lockOrganization(principal.organizationId());
         AssetModel assetModel = requireAssetModel(principal.organizationId(), assetModelId);
+        if (assetModel.isCanContainAssets()
+                && !canContainAssets
+                && assetRepository.hasContainedAssetsForContainerModel(principal.organizationId(), assetModelId)) {
+            throw new ValidationFailedException(
+                    "Containment cannot be disabled while one of this model's assets contains inventory.");
+        }
+        if (assetModel.isCanContainAssets()
+                && !canContainAssets
+                && assetRepository.hasConsumableBalancesForContainerModel(principal.organizationId(), assetModelId)) {
+            throw new ValidationFailedException(
+                    "Containment cannot be disabled while one of this model's assets holds consumable stock.");
+        }
         // Specification section 6.3: disabling containment is prohibited while any unit of the
         // model currently contains assets or has active packing requirements. Neither
         // physical_asset nor packing_requirement exists yet (Phase 2b); once they do, the guard
@@ -323,6 +340,12 @@ public class AssetModelService {
         return assetModelRepository
                 .findByIdAndOrganizationId(assetModelId, organizationId)
                 .orElseThrow(AssetModelService::assetModelNotFound);
+    }
+
+    private void lockOrganization(UUID organizationId) {
+        organizationRepository
+                .findWithLockById(organizationId)
+                .orElseThrow(() -> new NotFoundException("Organization not found."));
     }
 
     private void requireNoTrackingModeDependencyBlocksChange(AssetModel assetModel) {

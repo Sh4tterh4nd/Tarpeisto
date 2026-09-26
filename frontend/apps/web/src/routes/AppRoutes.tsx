@@ -21,6 +21,11 @@ const AssetModelPage = lazy(() =>
 const AssetPage = lazy(() =>
   import("../features/inventory/AssetPage").then((module) => ({ default: module.AssetPage })),
 );
+const LocationsPage = lazy(() =>
+  import("../features/inventory/LocationsPage").then((module) => ({
+    default: module.LocationsPage,
+  })),
+);
 
 const INVENTORY_ROLES = ["OWNER", "DEPUTY", "OPERATOR_AUDITOR", "VIEWER"] as const;
 
@@ -71,6 +76,16 @@ export function AppRoutes() {
           <RequireRole allow={[...INVENTORY_ROLES]}>
             <Suspense fallback={<LoadingPage />}>
               <AssetPage />
+            </Suspense>
+          </RequireRole>
+        }
+      />
+      <Route
+        path="/inventory/locations"
+        element={
+          <RequireRole allow={[...INVENTORY_ROLES]}>
+            <Suspense fallback={<LoadingPage />}>
+              <LocationsPage />
             </Suspense>
           </RequireRole>
         }

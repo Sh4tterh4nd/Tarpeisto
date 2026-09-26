@@ -33,6 +33,9 @@ function PrimaryNav() {
           <Button component={RouterLink} to="/inventory" color="inherit">
             Inventory
           </Button>
+          <Button component={RouterLink} to="/inventory/locations" color="inherit">
+            Locations
+          </Button>
           <Button component={RouterLink} to="/asset-code" color="inherit">
             Find asset
           </Button>

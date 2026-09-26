@@ -24,6 +24,29 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
 
     boolean existsByOrganizationIdAndAssetModelId(UUID organizationId, UUID assetModelId);
 
+    boolean existsByOrganizationIdAndParentContainerAssetId(UUID organizationId, UUID parentContainerAssetId);
+
+    boolean existsByOrganizationIdAndDirectLocationId(UUID organizationId, UUID directLocationId);
+
+    List<Asset> findAllByOrganizationIdAndParentContainerAssetIdOrderByUnitNumberAsc(
+            UUID organizationId, UUID parentContainerAssetId);
+
+    @Query("""
+            SELECT CASE WHEN COUNT(child) > 0 THEN true ELSE false END
+            FROM Asset child JOIN Asset parent ON child.parentContainerAssetId = parent.id
+            WHERE parent.organizationId = :organizationId AND parent.assetModelId = :assetModelId
+            """)
+    boolean hasContainedAssetsForContainerModel(
+            @Param("organizationId") UUID organizationId, @Param("assetModelId") UUID assetModelId);
+
+    @Query("""
+            SELECT CASE WHEN COUNT(balance) > 0 THEN true ELSE false END
+            FROM ConsumableStock balance JOIN Asset container ON balance.containerAssetId = container.id
+            WHERE container.organizationId = :organizationId AND container.assetModelId = :assetModelId
+            """)
+    boolean hasConsumableBalancesForContainerModel(
+            @Param("organizationId") UUID organizationId, @Param("assetModelId") UUID assetModelId);
+
     List<Asset> findAllByOrganizationIdAndAssetModelIdOrderByUnitNumberAsc(UUID organizationId, UUID assetModelId);
 
     /** "Normal" results only (specification section 8.4): active lifecycle, not archived. */

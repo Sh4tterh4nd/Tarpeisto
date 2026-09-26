@@ -13,6 +13,8 @@ public record ConsumableStockResponse(
         String stockUnitLabel,
         UUID containerAssetId,
         String containerAssetDisplayName,
+        UUID locationId,
+        String locationDisplayName,
         BigDecimal quantity,
         Instant createdAt,
         Instant updatedAt) {
@@ -25,6 +27,8 @@ public record ConsumableStockResponse(
                 view.stockUnitLabel(),
                 view.containerAssetId(),
                 view.containerAssetDisplayName(),
+                view.locationId(),
+                view.locationDisplayName(),
                 view.quantity(),
                 view.createdAt(),
                 view.updatedAt());

@@ -65,6 +65,89 @@ public class ConsumableStockLedgerRepository {
     /** Both sides of a transfer, locked in the canonical order documented on the class Javadoc. */
     public record TransferLock(BalanceState source, BalanceState destination) {}
 
+    /** A closed, validated stock-place choice used by Phase 4's location-aware commands. */
+    public record StockPlace(UUID containerAssetId, UUID locationId) {
+        public StockPlace {
+            if ((containerAssetId == null) == (locationId == null)) {
+                throw new IllegalArgumentException("A stock place must be exactly one container or location.");
+            }
+        }
+
+        public static StockPlace container(UUID id) {
+            return new StockPlace(id, null);
+        }
+
+        public static StockPlace location(UUID id) {
+            return new StockPlace(null, id);
+        }
+
+        public UUID id() {
+            return containerAssetId != null ? containerAssetId : locationId;
+        }
+
+        public String kind() {
+            return containerAssetId != null ? "container" : "location";
+        }
+    }
+
+    public Optional<BalanceState> applyDeltaToPlace(
+            UUID organizationId, UUID assetModelId, StockPlace place, BigDecimal delta, Instant now) {
+        if (place.containerAssetId() != null) {
+            return applyDeltaToContainerBalance(organizationId, assetModelId, place.containerAssetId(), delta, now);
+        }
+        if (delta.signum() > 0) ensureLocationBalanceExists(organizationId, assetModelId, place.locationId(), now);
+        return jdbcClient
+                .sql("""
+                UPDATE consumable_stock_balance SET quantity=quantity + :delta, updated_at=:now, version=version+1
+                WHERE organization_id=:organizationId AND asset_model_id=:assetModelId AND location_id=:locationId
+                  AND quantity + :delta >= 0 RETURNING id, quantity, created_at, updated_at
+                """)
+                .param("delta", delta)
+                .param("now", toOffsetDateTime(now))
+                .param("organizationId", organizationId)
+                .param("assetModelId", assetModelId)
+                .param("locationId", place.locationId())
+                .query(ConsumableStockLedgerRepository::mapBalanceState)
+                .optional();
+    }
+
+    public TransferLock lockBalancesForTransfer(
+            UUID organizationId, UUID assetModelId, StockPlace source, StockPlace destination, Instant now) {
+        String sourceKey = source.kind() + ":" + source.id();
+        String destinationKey = destination.kind() + ":" + destination.id();
+        boolean sourceFirst = sourceKey.compareTo(destinationKey) <= 0;
+        BalanceState first = ensureAndLockPlace(organizationId, assetModelId, sourceFirst ? source : destination, now);
+        BalanceState second = ensureAndLockPlace(organizationId, assetModelId, sourceFirst ? destination : source, now);
+        return sourceFirst ? new TransferLock(first, second) : new TransferLock(second, first);
+    }
+
+    public void setBalanceQuantity(UUID balanceId, UUID organizationId, BigDecimal quantity, Instant now) {
+        jdbcClient
+                .sql(
+                        "UPDATE consumable_stock_balance SET quantity=:quantity,updated_at=:now,version=version+1 WHERE id=:id AND organization_id=:organizationId")
+                .param("quantity", quantity)
+                .param("now", toOffsetDateTime(now))
+                .param("id", balanceId)
+                .param("organizationId", organizationId)
+                .update();
+    }
+
+    private BalanceState ensureAndLockPlace(UUID org, UUID model, StockPlace place, Instant now) {
+        if (place.containerAssetId() != null)
+            return ensureAndLockContainerBalance(org, model, place.containerAssetId(), now);
+        ensureLocationBalanceExists(org, model, place.locationId(), now);
+        return jdbcClient
+                .sql("""
+                SELECT id,quantity,created_at,updated_at FROM consumable_stock_balance
+                WHERE organization_id=:organizationId AND asset_model_id=:assetModelId AND location_id=:locationId FOR UPDATE
+                """)
+                .param("organizationId", org)
+                .param("assetModelId", model)
+                .param("locationId", place.locationId())
+                .query(ConsumableStockLedgerRepository::mapBalanceState)
+                .single();
+    }
+
     /**
      * Atomically applies {@code delta} (positive or negative) to the balance for {@code
      * (assetModelId, containerAssetId)}, creating the balance first if this is its first movement.
@@ -191,6 +274,21 @@ public class ConsumableStockLedgerRepository {
                 .param("organizationId", organizationId)
                 .param("assetModelId", assetModelId)
                 .param("containerAssetId", containerAssetId)
+                .param("now", toOffsetDateTime(now))
+                .update();
+    }
+
+    private void ensureLocationBalanceExists(UUID organizationId, UUID assetModelId, UUID locationId, Instant now) {
+        jdbcClient
+                .sql("""
+                INSERT INTO consumable_stock_balance (id,organization_id,asset_model_id,location_id,quantity,created_at,updated_at,version)
+                VALUES (:id,:organizationId,:assetModelId,:locationId,0,:now,:now,0)
+                ON CONFLICT (asset_model_id,location_id) WHERE location_id IS NOT NULL DO NOTHING
+                """)
+                .param("id", UUID.randomUUID())
+                .param("organizationId", organizationId)
+                .param("assetModelId", assetModelId)
+                .param("locationId", locationId)
                 .param("now", toOffsetDateTime(now))
                 .update();
     }

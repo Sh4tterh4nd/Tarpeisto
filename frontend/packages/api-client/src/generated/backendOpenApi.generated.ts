@@ -52,6 +52,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/locations/{locationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get"];
+        put: operations["update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/categories/{categoryId}": {
         parameters: {
             query?: never;
@@ -93,6 +109,22 @@ export interface paths {
         };
         get?: never;
         put: operations["changePurchaseDate"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assets/{assetId}/placement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["placement"];
+        put: operations["move"];
         post?: never;
         delete?: never;
         options?: never;
@@ -155,7 +187,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get"];
+        get: operations["get_1"];
         put: operations["rename_2"];
         post?: never;
         delete?: never;
@@ -372,7 +404,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/categories": {
+    "/api/v1/locations": {
         parameters: {
             query?: never;
             header?: never;
@@ -388,7 +420,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/categories/{categoryId}/restore": {
+    "/api/v1/locations/{locationId}/restore": {
         parameters: {
             query?: never;
             header?: never;
@@ -404,7 +436,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/categories/{categoryId}/archive": {
+    "/api/v1/locations/{locationId}/archive": {
         parameters: {
             query?: never;
             header?: never;
@@ -420,7 +452,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/assets/{assetId}/restore": {
+    "/api/v1/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_3"];
+        put?: never;
+        post: operations["create_3"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/categories/{categoryId}/restore": {
         parameters: {
             query?: never;
             header?: never;
@@ -430,6 +478,38 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["restore_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/categories/{categoryId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["archive_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assets/{assetId}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["restore_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -477,7 +557,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["archive_1"];
+        post: operations["archive_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -491,9 +571,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_3"];
+        get: operations["list_4"];
         put?: never;
-        post: operations["create_3"];
+        post: operations["create_4"];
         delete?: never;
         options?: never;
         head?: never;
@@ -509,7 +589,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["restore_2"];
+        post: operations["restore_3"];
         delete?: never;
         options?: never;
         head?: never;
@@ -539,9 +619,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_4"];
+        get: operations["list_5"];
         put?: never;
-        post: operations["create_4"];
+        post: operations["create_5"];
         delete?: never;
         options?: never;
         head?: never;
@@ -557,7 +637,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["restore_3"];
+        post: operations["restore_4"];
         delete?: never;
         options?: never;
         head?: never;
@@ -571,9 +651,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_5"];
+        get: operations["list_6"];
         put?: never;
-        post: operations["create_5"];
+        post: operations["create_6"];
         delete?: never;
         options?: never;
         head?: never;
@@ -589,7 +669,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["restore_4"];
+        post: operations["restore_5"];
         delete?: never;
         options?: never;
         head?: never;
@@ -605,7 +685,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["archive_2"];
+        post: operations["archive_3"];
         delete?: never;
         options?: never;
         head?: never;
@@ -621,7 +701,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["archive_3"];
+        post: operations["archive_4"];
         delete?: never;
         options?: never;
         head?: never;
@@ -731,9 +811,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_6"];
+        get: operations["list_7"];
         put?: never;
-        post: operations["create_6"];
+        post: operations["create_7"];
         delete?: never;
         options?: never;
         head?: never;
@@ -765,7 +845,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["archive_4"];
+        post: operations["archive_5"];
         delete?: never;
         options?: never;
         head?: never;
@@ -804,6 +884,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/locations/{locationId}/consumable-stock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listAtLocation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/consumable-stock/{balanceId}": {
         parameters: {
             query?: never;
@@ -811,7 +907,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get_1"];
+        get: operations["get_2"];
         put?: never;
         post?: never;
         delete?: never;
@@ -859,7 +955,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get_2"];
+        get: operations["get_3"];
         put?: never;
         post?: never;
         delete?: never;
@@ -876,6 +972,38 @@ export interface paths {
             cookie?: never;
         };
         get: operations["history"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assets/{assetId}/contents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["contents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assets/{assetId}/consumable-stock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listAtContainer"];
         put?: never;
         post?: never;
         delete?: never;
@@ -939,7 +1067,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get_3"];
+        get: operations["get_4"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1001,6 +1129,31 @@ export interface components {
             createdAt?: string;
             /** Format: int64 */
             version?: number;
+        };
+        LocationRequest: {
+            name: string;
+            description?: string;
+            /** Format: uuid */
+            parentLocationId?: string;
+            /** Format: int64 */
+            expectedVersion?: number;
+        };
+        LocationResponse: {
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+            description?: string;
+            /** Format: uuid */
+            parentLocationId?: string;
+            archived?: boolean;
+            /** Format: int64 */
+            version?: number;
+            breadcrumbs?: string[];
+            effectivePath?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
         };
         RenameCategoryRequest: {
             name: string;
@@ -1069,6 +1222,26 @@ export interface components {
         SetAssetPurchaseDateRequest: {
             /** Format: date */
             purchaseDate?: string;
+        };
+        AssetPlacementRequest: {
+            /** Format: uuid */
+            locationId?: string;
+            /** Format: uuid */
+            parentContainerAssetId?: string;
+            /** Format: int64 */
+            expectedVersion?: number;
+        };
+        AssetPlacementResponse: {
+            /** Format: uuid */
+            assetId?: string;
+            /** Format: uuid */
+            directLocationId?: string;
+            /** Format: uuid */
+            parentContainerAssetId?: string;
+            /** Format: int64 */
+            version?: number;
+            effectivePath?: string[];
+            effectivePathText?: string;
         };
         RenameAssetRequest: {
             individualName?: string;
@@ -1210,6 +1383,10 @@ export interface components {
             /** @enum {string} */
             role?: "OWNER" | "DEPUTY" | "OPERATOR_AUDITOR" | "VIEWER";
         };
+        LocationVersionRequest: {
+            /** Format: int64 */
+            expectedVersion?: number;
+        };
         CreateCategoryRequest: {
             name: string;
             color: string;
@@ -1236,9 +1413,13 @@ export interface components {
         };
         TransferStockRequest: {
             /** Format: uuid */
-            sourceContainerAssetId: string;
+            sourceContainerAssetId?: string;
             /** Format: uuid */
-            destinationContainerAssetId: string;
+            sourceLocationId?: string;
+            /** Format: uuid */
+            destinationContainerAssetId?: string;
+            /** Format: uuid */
+            destinationLocationId?: string;
             quantity: number;
             note?: string;
         };
@@ -1252,6 +1433,9 @@ export interface components {
             /** Format: uuid */
             containerAssetId?: string;
             containerAssetDisplayName?: string;
+            /** Format: uuid */
+            locationId?: string;
+            locationDisplayName?: string;
             quantity?: number;
             /** Format: date-time */
             createdAt?: string;
@@ -1264,7 +1448,9 @@ export interface components {
         };
         ReturnStockRequest: {
             /** Format: uuid */
-            containerAssetId: string;
+            containerAssetId?: string;
+            /** Format: uuid */
+            locationId?: string;
             quantity: number;
             note?: string;
             /** Format: uuid */
@@ -1272,13 +1458,17 @@ export interface components {
         };
         ReceiveStockRequest: {
             /** Format: uuid */
-            containerAssetId: string;
+            containerAssetId?: string;
+            /** Format: uuid */
+            locationId?: string;
             quantity: number;
             note?: string;
         };
         IssueStockRequest: {
             /** Format: uuid */
-            containerAssetId: string;
+            containerAssetId?: string;
+            /** Format: uuid */
+            locationId?: string;
             quantity: number;
             note?: string;
             /** Format: uuid */
@@ -1286,13 +1476,17 @@ export interface components {
         };
         ConsumeStockRequest: {
             /** Format: uuid */
-            containerAssetId: string;
+            containerAssetId?: string;
+            /** Format: uuid */
+            locationId?: string;
             quantity: number;
             note?: string;
         };
         AdjustStockRequest: {
             /** Format: uuid */
-            containerAssetId: string;
+            containerAssetId?: string;
+            /** Format: uuid */
+            locationId?: string;
             delta: number;
             /** @enum {string} */
             type: "RECEIPT" | "TRANSFER" | "EVENT_ISSUE" | "EVENT_RETURN" | "CONSUMPTION" | "AUDIT_ADJUSTMENT" | "MANUAL_ADJUSTMENT";
@@ -1450,6 +1644,54 @@ export interface operations {
             };
         };
     };
+    get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                locationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["LocationResponse"];
+                };
+            };
+        };
+    };
+    update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                locationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LocationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["LocationResponse"];
+                };
+            };
+        };
+    };
     rename: {
         parameters: {
             query?: never;
@@ -1524,6 +1766,54 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["AssetResponse"];
+                };
+            };
+        };
+    };
+    placement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AssetPlacementResponse"];
+                };
+            };
+        };
+    };
+    move: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssetPlacementRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AssetPlacementResponse"];
                 };
             };
         };
@@ -1606,7 +1896,7 @@ export interface operations {
             };
         };
     };
-    get: {
+    get_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -2084,12 +2374,104 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["CategoryResponse"][];
+                    "*/*": components["schemas"]["LocationResponse"][];
                 };
             };
         };
     };
     create_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LocationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["LocationResponse"];
+                };
+            };
+        };
+    };
+    restore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                locationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LocationVersionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    archive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                locationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LocationVersionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_3: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CategoryResponse"][];
+                };
+            };
+        };
+    };
+    create_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -2113,47 +2495,47 @@ export interface operations {
             };
         };
     };
-    restore: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                categoryId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    archive: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                categoryId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
     restore_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                categoryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    archive_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                categoryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    restore_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -2277,7 +2659,7 @@ export interface operations {
             };
         };
     };
-    archive_1: {
+    archive_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -2297,7 +2679,7 @@ export interface operations {
             };
         };
     };
-    list_3: {
+    list_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -2317,7 +2699,7 @@ export interface operations {
             };
         };
     };
-    create_3: {
+    create_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -2341,7 +2723,7 @@ export interface operations {
             };
         };
     };
-    restore_2: {
+    restore_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -2412,7 +2794,7 @@ export interface operations {
             };
         };
     };
-    list_4: {
+    list_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -2434,7 +2816,7 @@ export interface operations {
             };
         };
     };
-    create_4: {
+    create_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -2460,7 +2842,7 @@ export interface operations {
             };
         };
     };
-    restore_3: {
+    restore_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -2481,7 +2863,7 @@ export interface operations {
             };
         };
     };
-    list_5: {
+    list_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -2504,7 +2886,7 @@ export interface operations {
             };
         };
     };
-    create_5: {
+    create_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -2531,29 +2913,7 @@ export interface operations {
             };
         };
     };
-    restore_4: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                assetModelId: string;
-                fieldId: string;
-                optionId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    archive_2: {
+    restore_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -2576,6 +2936,28 @@ export interface operations {
         };
     };
     archive_3: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assetModelId: string;
+                fieldId: string;
+                optionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    archive_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -2752,7 +3134,7 @@ export interface operations {
             };
         };
     };
-    list_6: {
+    list_7: {
         parameters: {
             query?: {
                 includeInactive?: boolean;
@@ -2776,7 +3158,7 @@ export interface operations {
             };
         };
     };
-    create_6: {
+    create_7: {
         parameters: {
             query?: never;
             header?: never;
@@ -2828,7 +3210,7 @@ export interface operations {
             };
         };
     };
-    archive_4: {
+    archive_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -2912,7 +3294,29 @@ export interface operations {
             };
         };
     };
-    get_1: {
+    listAtLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                locationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ConsumableStockResponse"][];
+                };
+            };
+        };
+    };
+    get_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -2976,7 +3380,7 @@ export interface operations {
             };
         };
     };
-    get_2: {
+    get_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -3016,6 +3420,50 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["AssetStateChangeResponse"][];
+                };
+            };
+        };
+    };
+    contents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AssetPlacementResponse"][];
+                };
+            };
+        };
+    };
+    listAtContainer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ConsumableStockResponse"][];
                 };
             };
         };
@@ -3086,7 +3534,7 @@ export interface operations {
             };
         };
     };
-    get_3: {
+    get_4: {
         parameters: {
             query?: never;
             header?: never;

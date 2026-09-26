@@ -19,6 +19,8 @@ export type AssetHistoryRecord = Required<components["schemas"]["AssetStateChang
 export type StockBalanceRecord = Required<components["schemas"]["ConsumableStockResponse"]>;
 export type StockSummaryRecord = Required<components["schemas"]["AssetModelStockSummaryResponse"]>;
 export type StockMovementRecord = Required<components["schemas"]["StockMovementResponse"]>;
+export type LocationRecord = Required<components["schemas"]["LocationResponse"]>;
+export type AssetPlacementRecord = Required<components["schemas"]["AssetPlacementResponse"]>;
 
 export type CreateCategoryInput = components["schemas"]["CreateCategoryRequest"];
 export type CreateAssetModelInput = components["schemas"]["CreateAssetModelRequest"];
@@ -394,6 +396,77 @@ export function listAssetHistory(assetId: string): Promise<ApiResult<AssetHistor
   );
 }
 
+export function listLocations(): Promise<ApiResult<LocationRecord[]>> {
+  return read(() => apiClient.GET("/api/v1/locations"));
+}
+
+export function createLocation(input: components["schemas"]["LocationRequest"]) {
+  return read<LocationRecord>(() => apiClient.POST("/api/v1/locations", { body: input }));
+}
+
+export function updateLocation(
+  locationId: string,
+  input: components["schemas"]["LocationRequest"],
+) {
+  return read<LocationRecord>(() =>
+    apiClient.PUT("/api/v1/locations/{locationId}", {
+      params: { path: { locationId } },
+      body: input,
+    }),
+  );
+}
+
+export function setLocationArchived(
+  locationId: string,
+  archived: boolean,
+  expectedVersion: number,
+) {
+  const path = archived
+    ? "/api/v1/locations/{locationId}/archive"
+    : "/api/v1/locations/{locationId}/restore";
+  return command(() =>
+    apiClient.POST(path, { params: { path: { locationId } }, body: { expectedVersion } }),
+  );
+}
+
+export function getAssetPlacement(assetId: string): Promise<ApiResult<AssetPlacementRecord>> {
+  return read(() =>
+    apiClient.GET("/api/v1/assets/{assetId}/placement", { params: { path: { assetId } } }),
+  );
+}
+
+export function moveAsset(
+  assetId: string,
+  input: components["schemas"]["AssetPlacementRequest"],
+): Promise<ApiResult<AssetPlacementRecord>> {
+  return read(() =>
+    apiClient.PUT("/api/v1/assets/{assetId}/placement", {
+      params: { path: { assetId } },
+      body: input,
+    }),
+  );
+}
+
+export function listContainerContents(assetId: string): Promise<ApiResult<AssetPlacementRecord[]>> {
+  return read(() =>
+    apiClient.GET("/api/v1/assets/{assetId}/contents", { params: { path: { assetId } } }),
+  );
+}
+
+export function listContainerStock(assetId: string): Promise<ApiResult<StockBalanceRecord[]>> {
+  return read(() =>
+    apiClient.GET("/api/v1/assets/{assetId}/consumable-stock", { params: { path: { assetId } } }),
+  );
+}
+
+export function listLocationStock(locationId: string): Promise<ApiResult<StockBalanceRecord[]>> {
+  return read(() =>
+    apiClient.GET("/api/v1/locations/{locationId}/consumable-stock", {
+      params: { path: { locationId } },
+    }),
+  );
+}
+
 export function getStockSummary(assetModelId: string): Promise<ApiResult<StockSummaryRecord>> {
   return read(() =>
     apiClient.GET("/api/v1/asset-models/{assetModelId}/consumable-stock/summary", {
@@ -419,15 +492,16 @@ export function listStockMovements(balanceId: string): Promise<ApiResult<StockMo
 }
 
 export type StockAction = "receive" | "issue" | "return" | "consume";
+export type StockPlaceInput = { containerAssetId?: string; locationId?: string };
 
 export function changeStock(
   assetModelId: string,
   action: StockAction,
-  containerAssetId: string,
+  place: StockPlaceInput,
   quantity: number,
   note?: string,
 ) {
-  const body = { containerAssetId, quantity, note };
+  const body = { ...place, quantity, note };
   if (action === "receive") {
     return read<StockBalanceRecord>(() =>
       apiClient.POST("/api/v1/asset-models/{assetModelId}/consumable-stock/receive", {
@@ -462,29 +536,36 @@ export function changeStock(
 
 export function adjustStock(
   assetModelId: string,
-  containerAssetId: string,
+  place: StockPlaceInput,
   delta: number,
   reason: string,
 ) {
   return read<StockBalanceRecord>(() =>
     apiClient.POST("/api/v1/asset-models/{assetModelId}/consumable-stock/adjust", {
       params: { path: { assetModelId } },
-      body: { containerAssetId, delta, type: "MANUAL_ADJUSTMENT", reason },
+      body: { ...place, delta, type: "MANUAL_ADJUSTMENT", reason },
     }),
   );
 }
 
 export function transferStock(
   assetModelId: string,
-  sourceContainerAssetId: string,
-  destinationContainerAssetId: string,
+  source: StockPlaceInput,
+  destination: StockPlaceInput,
   quantity: number,
   note?: string,
 ) {
   return read<Required<components["schemas"]["StockTransferResponse"]>>(() =>
     apiClient.POST("/api/v1/asset-models/{assetModelId}/consumable-stock/transfer", {
       params: { path: { assetModelId } },
-      body: { sourceContainerAssetId, destinationContainerAssetId, quantity, note },
+      body: {
+        sourceContainerAssetId: source.containerAssetId,
+        sourceLocationId: source.locationId,
+        destinationContainerAssetId: destination.containerAssetId,
+        destinationLocationId: destination.locationId,
+        quantity,
+        note,
+      },
     }),
   );
 }

@@ -6,6 +6,7 @@ import io.kellermann.bigcontainers.exception.ValidationFailedException;
 import io.kellermann.bigcontainers.model.Asset;
 import io.kellermann.bigcontainers.model.AssetModel;
 import io.kellermann.bigcontainers.model.ConsumableStock;
+import io.kellermann.bigcontainers.model.Location;
 import io.kellermann.bigcontainers.model.OrganizationRole;
 import io.kellermann.bigcontainers.model.StockMovement;
 import io.kellermann.bigcontainers.model.StockMovementReason;
@@ -13,8 +14,11 @@ import io.kellermann.bigcontainers.repository.AssetModelRepository;
 import io.kellermann.bigcontainers.repository.AssetRepository;
 import io.kellermann.bigcontainers.repository.ConsumableStockLedgerRepository;
 import io.kellermann.bigcontainers.repository.ConsumableStockLedgerRepository.BalanceState;
+import io.kellermann.bigcontainers.repository.ConsumableStockLedgerRepository.StockPlace;
 import io.kellermann.bigcontainers.repository.ConsumableStockLedgerRepository.TransferLock;
 import io.kellermann.bigcontainers.repository.ConsumableStockRepository;
+import io.kellermann.bigcontainers.repository.LocationRepository;
+import io.kellermann.bigcontainers.repository.OrganizationRepository;
 import io.kellermann.bigcontainers.repository.StockMovementRepository;
 import io.kellermann.bigcontainers.security.BigContainersPrincipal;
 import java.math.BigDecimal;
@@ -66,6 +70,8 @@ public class ConsumableStockService {
     private final AssetRepository assetRepository;
     private final AssetModelRepository assetModelRepository;
     private final AssetModelService assetModelService;
+    private final LocationRepository locationRepository;
+    private final OrganizationRepository organizationRepository;
     private final ActivityLogService activityLogService;
     private final Clock clock;
 
@@ -76,6 +82,8 @@ public class ConsumableStockService {
             AssetRepository assetRepository,
             AssetModelRepository assetModelRepository,
             AssetModelService assetModelService,
+            LocationRepository locationRepository,
+            OrganizationRepository organizationRepository,
             ActivityLogService activityLogService,
             Clock clock) {
         this.consumableStockRepository = consumableStockRepository;
@@ -84,6 +92,8 @@ public class ConsumableStockService {
         this.assetRepository = assetRepository;
         this.assetModelRepository = assetModelRepository;
         this.assetModelService = assetModelService;
+        this.locationRepository = locationRepository;
+        this.organizationRepository = organizationRepository;
         this.activityLogService = activityLogService;
         this.clock = clock;
     }
@@ -110,6 +120,37 @@ public class ConsumableStockService {
     }
 
     @Transactional(readOnly = true)
+    public List<ConsumableStockView> listAtContainer(BigContainersPrincipal principal, UUID containerAssetId) {
+        requireAuthenticated(principal);
+        requireContainerAssetForRead(principal.organizationId(), containerAssetId);
+        return consumableStockRepository
+                .findAllByOrganizationIdAndContainerAssetIdOrderByCreatedAtAsc(
+                        principal.organizationId(), containerAssetId)
+                .stream()
+                .map(balance -> toView(
+                        balance,
+                        assetModelService.requireQuantityStockAssetModel(
+                                principal.organizationId(), balance.getAssetModelId())))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ConsumableStockView> listAtLocation(BigContainersPrincipal principal, UUID locationId) {
+        requireAuthenticated(principal);
+        locationRepository
+                .findByIdAndOrganizationId(locationId, principal.organizationId())
+                .orElseThrow(() -> new NotFoundException("Location not found."));
+        return consumableStockRepository
+                .findAllByOrganizationIdAndLocationIdOrderByCreatedAtAsc(principal.organizationId(), locationId)
+                .stream()
+                .map(balance -> toView(
+                        balance,
+                        assetModelService.requireQuantityStockAssetModel(
+                                principal.organizationId(), balance.getAssetModelId())))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public List<StockMovementView> ledger(BigContainersPrincipal principal, UUID balanceId) {
         requireAuthenticated(principal);
         requireBalance(principal.organizationId(), balanceId);
@@ -130,6 +171,7 @@ public class ConsumableStockService {
             BigDecimal quantity,
             String note) {
         requireOwnerOrDeputy(principal);
+        lockOrganization(principal.organizationId());
         AssetModel assetModel =
                 assetModelService.requireQuantityStockAssetModel(principal.organizationId(), assetModelId);
         requireContainerAsset(principal.organizationId(), containerAssetId);
@@ -157,6 +199,7 @@ public class ConsumableStockService {
             String note,
             UUID eventReferenceId) {
         requireOwnerOrDeputy(principal);
+        lockOrganization(principal.organizationId());
         AssetModel assetModel =
                 assetModelService.requireQuantityStockAssetModel(principal.organizationId(), assetModelId);
         requireContainerAsset(principal.organizationId(), containerAssetId);
@@ -184,6 +227,7 @@ public class ConsumableStockService {
             String note,
             UUID eventReferenceId) {
         requireOwnerOrDeputy(principal);
+        lockOrganization(principal.organizationId());
         AssetModel assetModel =
                 assetModelService.requireQuantityStockAssetModel(principal.organizationId(), assetModelId);
         requireContainerAsset(principal.organizationId(), containerAssetId);
@@ -210,6 +254,7 @@ public class ConsumableStockService {
             BigDecimal quantity,
             String note) {
         requireOwnerOrDeputy(principal);
+        lockOrganization(principal.organizationId());
         AssetModel assetModel =
                 assetModelService.requireQuantityStockAssetModel(principal.organizationId(), assetModelId);
         requireContainerAsset(principal.organizationId(), containerAssetId);
@@ -242,6 +287,7 @@ public class ConsumableStockService {
             BigDecimal quantity,
             String note) {
         requireOwnerOrDeputy(principal);
+        lockOrganization(principal.organizationId());
         AssetModel assetModel =
                 assetModelService.requireQuantityStockAssetModel(principal.organizationId(), assetModelId);
         if (sourceContainerAssetId.equals(destinationContainerAssetId)) {
@@ -311,6 +357,8 @@ public class ConsumableStockService {
                 assetModel.getStockUnitLabel(),
                 sourceContainerAssetId,
                 containerDisplayName(sourceAsset),
+                null,
+                null,
                 newSourceQuantity,
                 lock.source().createdAt(),
                 now);
@@ -321,6 +369,8 @@ public class ConsumableStockService {
                 assetModel.getStockUnitLabel(),
                 destinationContainerAssetId,
                 containerDisplayName(destinationAsset),
+                null,
+                null,
                 newDestinationQuantity,
                 lock.destination().createdAt(),
                 now);
@@ -343,6 +393,7 @@ public class ConsumableStockService {
             String explicitReason,
             UUID auditReferenceId) {
         requireOwnerOrDeputy(principal);
+        lockOrganization(principal.organizationId());
         if (reason != StockMovementReason.MANUAL_ADJUSTMENT && reason != StockMovementReason.AUDIT_ADJUSTMENT) {
             throw new ValidationFailedException("An adjustment must use MANUAL_ADJUSTMENT or AUDIT_ADJUSTMENT.");
         }
@@ -364,6 +415,140 @@ public class ConsumableStockService {
                 null,
                 reason == StockMovementReason.AUDIT_ADJUSTMENT ? auditReferenceId : null,
                 "STOCK_ADJUSTED");
+    }
+
+    /** Location-aware form used by the Phase 4 API; one and only one place is required. */
+    @Transactional
+    public ConsumableStockView changeAtPlace(
+            BigContainersPrincipal principal,
+            UUID assetModelId,
+            UUID containerAssetId,
+            UUID locationId,
+            BigDecimal delta,
+            StockMovementReason reason,
+            String note,
+            UUID eventReferenceId,
+            UUID auditReferenceId) {
+        requireOwnerOrDeputy(principal);
+        lockOrganization(principal.organizationId());
+        AssetModel model = assetModelService.requireQuantityStockAssetModel(principal.organizationId(), assetModelId);
+        StockPlace place = requirePlace(principal.organizationId(), containerAssetId, locationId);
+        BigDecimal validDelta = requireNonZeroValidScale(delta);
+        if ((reason == StockMovementReason.RECEIPT || reason == StockMovementReason.EVENT_RETURN)
+                && validDelta.signum() < 0) {
+            throw new ValidationFailedException("quantity must be positive.");
+        }
+        if ((reason == StockMovementReason.EVENT_ISSUE || reason == StockMovementReason.CONSUMPTION)
+                && validDelta.signum() > 0) {
+            throw new ValidationFailedException("quantity must be positive.");
+        }
+        if (reason == StockMovementReason.MANUAL_ADJUSTMENT || reason == StockMovementReason.AUDIT_ADJUSTMENT) {
+            if (note == null || note.isBlank()) {
+                throw new ValidationFailedException("An adjustment requires an explicit reason.");
+            }
+        }
+        if (reason != StockMovementReason.AUDIT_ADJUSTMENT) auditReferenceId = null;
+        return applyPlaceMovement(
+                principal,
+                model,
+                place,
+                validDelta,
+                reason,
+                note,
+                eventReferenceId,
+                auditReferenceId,
+                "STOCK_" + reason.name());
+    }
+
+    @Transactional
+    public ConsumableStockView adjustAtPlace(
+            BigContainersPrincipal principal,
+            UUID assetModelId,
+            UUID containerAssetId,
+            UUID locationId,
+            BigDecimal delta,
+            StockMovementReason reason,
+            String explicitReason,
+            UUID auditReferenceId) {
+        if (reason != StockMovementReason.MANUAL_ADJUSTMENT && reason != StockMovementReason.AUDIT_ADJUSTMENT) {
+            throw new ValidationFailedException("An adjustment must use MANUAL_ADJUSTMENT or AUDIT_ADJUSTMENT.");
+        }
+        return changeAtPlace(
+                principal,
+                assetModelId,
+                containerAssetId,
+                locationId,
+                delta,
+                reason,
+                explicitReason,
+                null,
+                auditReferenceId);
+    }
+
+    @Transactional
+    public StockTransferView transferBetweenPlaces(
+            BigContainersPrincipal principal,
+            UUID assetModelId,
+            UUID sourceContainerAssetId,
+            UUID sourceLocationId,
+            UUID destinationContainerAssetId,
+            UUID destinationLocationId,
+            BigDecimal quantity,
+            String note) {
+        requireOwnerOrDeputy(principal);
+        lockOrganization(principal.organizationId());
+        AssetModel model = assetModelService.requireQuantityStockAssetModel(principal.organizationId(), assetModelId);
+        StockPlace source = requirePlace(principal.organizationId(), sourceContainerAssetId, sourceLocationId);
+        StockPlace destination =
+                requirePlace(principal.organizationId(), destinationContainerAssetId, destinationLocationId);
+        if (source.kind().equals(destination.kind()) && source.id().equals(destination.id()))
+            throw new ValidationFailedException("Cannot transfer stock to the same stock place.");
+        BigDecimal amount = requirePositiveQuantity(quantity);
+        var now = clock.instant();
+        TransferLock lock = ledgerRepository.lockBalancesForTransfer(
+                principal.organizationId(), assetModelId, source, destination, now);
+        BigDecimal sourceAfter = lock.source().quantity().subtract(amount);
+        if (sourceAfter.signum() < 0)
+            throw new InsufficientStockException(
+                    "Insufficient stock at the source stock place to transfer " + amount + ".");
+        BigDecimal destinationAfter = lock.destination().quantity().add(amount);
+        ledgerRepository.setBalanceQuantity(lock.source().balanceId(), principal.organizationId(), sourceAfter, now);
+        ledgerRepository.setBalanceQuantity(
+                lock.destination().balanceId(), principal.organizationId(), destinationAfter, now);
+        UUID group = UUID.randomUUID();
+        recordMovement(
+                principal,
+                lock.source().balanceId(),
+                amount.negate(),
+                sourceAfter,
+                model.getStockUnitLabel(),
+                StockMovementReason.TRANSFER,
+                note,
+                group,
+                null,
+                null,
+                now);
+        recordMovement(
+                principal,
+                lock.destination().balanceId(),
+                amount,
+                destinationAfter,
+                model.getStockUnitLabel(),
+                StockMovementReason.TRANSFER,
+                note,
+                group,
+                null,
+                null,
+                now);
+        activityLogService.record(
+                principal.organizationId(),
+                principal.userId(),
+                "STOCK_TRANSFERRED",
+                "ASSET_MODEL",
+                assetModelId,
+                Map.of("quantity", amount.toPlainString()));
+        return new StockTransferView(
+                placeView(lock.source(), model, source), placeView(lock.destination(), model, destination));
     }
 
     @Transactional(readOnly = true)
@@ -450,6 +635,97 @@ public class ConsumableStockService {
                 assetModel.getStockUnitLabel(),
                 containerAssetId,
                 containerDisplayName(containerAsset),
+                null,
+                null,
+                result.quantity(),
+                result.createdAt(),
+                result.updatedAt());
+    }
+
+    private ConsumableStockView applyPlaceMovement(
+            BigContainersPrincipal principal,
+            AssetModel model,
+            StockPlace place,
+            BigDecimal delta,
+            StockMovementReason reason,
+            String note,
+            UUID eventReferenceId,
+            UUID auditReferenceId,
+            String action) {
+        var now = clock.instant();
+        BalanceState result = ledgerRepository
+                .applyDeltaToPlace(principal.organizationId(), model.getId(), place, delta, now)
+                .orElseThrow(() -> new InsufficientStockException(
+                        "Insufficient stock: this operation would take the balance below zero."));
+        recordMovement(
+                principal,
+                result.balanceId(),
+                delta,
+                result.quantity(),
+                model.getStockUnitLabel(),
+                reason,
+                note,
+                null,
+                eventReferenceId,
+                auditReferenceId,
+                now);
+        activityLogService.record(
+                principal.organizationId(),
+                principal.userId(),
+                action,
+                "ASSET_MODEL",
+                model.getId(),
+                Map.of("stockPlace", place.kind() + ":" + place.id(), "delta", delta.toPlainString()));
+        return placeView(result, model, place);
+    }
+
+    private StockPlace requirePlace(UUID organizationId, UUID containerAssetId, UUID locationId) {
+        try {
+            StockPlace place = new StockPlace(containerAssetId, locationId);
+            if (containerAssetId != null) requireContainerAsset(organizationId, containerAssetId);
+            else {
+                Location location = locationRepository
+                        .findByIdAndOrganizationId(locationId, organizationId)
+                        .orElseThrow(() -> new NotFoundException("Location not found."));
+                if (location.isArchived())
+                    throw new ValidationFailedException("An archived location cannot hold inventory.");
+            }
+            return place;
+        } catch (IllegalArgumentException e) {
+            throw new ValidationFailedException(e.getMessage());
+        }
+    }
+
+    private ConsumableStockView placeView(BalanceState result, AssetModel model, StockPlace place) {
+        if (place.locationId() != null) {
+            Location l = locationRepository
+                    .findByIdAndOrganizationId(place.locationId(), model.getOrganizationId())
+                    .orElseThrow(() -> new IllegalStateException("Location disappeared mid-transaction."));
+            return new ConsumableStockView(
+                    result.balanceId(),
+                    model.getId(),
+                    model.getName(),
+                    model.getStockUnitLabel(),
+                    null,
+                    null,
+                    l.getId(),
+                    l.getName(),
+                    result.quantity(),
+                    result.createdAt(),
+                    result.updatedAt());
+        }
+        Asset a = assetRepository
+                .findByIdAndOrganizationId(place.containerAssetId(), model.getOrganizationId())
+                .orElseThrow(() -> new IllegalStateException("Container disappeared mid-transaction."));
+        return new ConsumableStockView(
+                result.balanceId(),
+                model.getId(),
+                model.getName(),
+                model.getStockUnitLabel(),
+                a.getId(),
+                containerDisplayName(a),
+                null,
+                null,
                 result.quantity(),
                 result.createdAt(),
                 result.updatedAt());
@@ -487,12 +763,28 @@ public class ConsumableStockService {
         Asset asset = assetRepository
                 .findByIdAndOrganizationId(containerAssetId, organizationId)
                 .orElseThrow(() -> new NotFoundException("Container asset not found."));
+        if (!asset.isActive()) {
+            throw new ValidationFailedException("An archived or inactive container cannot hold stock.");
+        }
         AssetModel containerModel = assetModelRepository
                 .findByIdAndOrganizationId(asset.getAssetModelId(), organizationId)
                 .orElseThrow(() -> new NotFoundException("Container asset not found."));
         if (!containerModel.isCanContainAssets()) {
             throw new ValidationFailedException(
                     "This asset's model is not container-capable and cannot hold consumable stock.");
+        }
+        return asset;
+    }
+
+    private Asset requireContainerAssetForRead(UUID organizationId, UUID containerAssetId) {
+        Asset asset = assetRepository
+                .findByIdAndOrganizationId(containerAssetId, organizationId)
+                .orElseThrow(() -> new NotFoundException("Container asset not found."));
+        AssetModel containerModel = assetModelRepository
+                .findByIdAndOrganizationId(asset.getAssetModelId(), organizationId)
+                .orElseThrow(() -> new NotFoundException("Container asset not found."));
+        if (!containerModel.isCanContainAssets()) {
+            throw new ValidationFailedException("This asset's model is not container-capable.");
         }
         return asset;
     }
@@ -508,6 +800,23 @@ public class ConsumableStockService {
     }
 
     private ConsumableStockView toView(ConsumableStock balance, AssetModel assetModel) {
+        if (balance.getLocationId() != null) {
+            Location location = locationRepository
+                    .findByIdAndOrganizationId(balance.getLocationId(), balance.getOrganizationId())
+                    .orElseThrow(() -> new IllegalStateException("Balance references a missing location."));
+            return new ConsumableStockView(
+                    balance.getId(),
+                    balance.getAssetModelId(),
+                    assetModel.getName(),
+                    assetModel.getStockUnitLabel(),
+                    null,
+                    null,
+                    location.getId(),
+                    location.getName(),
+                    balance.getQuantity(),
+                    balance.getCreatedAt(),
+                    balance.getUpdatedAt());
+        }
         Asset containerAsset = assetRepository
                 .findByIdAndOrganizationId(balance.getContainerAssetId(), balance.getOrganizationId())
                 .orElseThrow(() -> new IllegalStateException("Balance references a missing container asset."));
@@ -518,6 +827,8 @@ public class ConsumableStockService {
                 assetModel.getStockUnitLabel(),
                 balance.getContainerAssetId(),
                 containerDisplayName(containerAsset),
+                null,
+                null,
                 balance.getQuantity(),
                 balance.getCreatedAt(),
                 balance.getUpdatedAt());
@@ -555,6 +866,12 @@ public class ConsumableStockService {
                 || (principal.role() != OrganizationRole.OWNER && principal.role() != OrganizationRole.DEPUTY)) {
             throw new AccessDeniedException("Owner or Deputy role required.");
         }
+    }
+
+    private void lockOrganization(UUID organizationId) {
+        organizationRepository
+                .findWithLockById(organizationId)
+                .orElseThrow(() -> new NotFoundException("Organization not found."));
     }
 
     private void requireAuthenticated(BigContainersPrincipal principal) {

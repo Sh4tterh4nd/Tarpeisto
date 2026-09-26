@@ -6,4 +6,4 @@ import java.util.UUID;
 
 /** Request body for {@code POST /api/v1/asset-models/{assetModelId}/consumable-stock/consume}. */
 public record ConsumeStockRequest(
-        @NotNull UUID containerAssetId, @NotNull BigDecimal quantity, String note) {}
+        UUID containerAssetId, UUID locationId, @NotNull BigDecimal quantity, String note) {}

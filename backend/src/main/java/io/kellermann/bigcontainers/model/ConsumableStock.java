@@ -55,6 +55,9 @@ public class ConsumableStock {
     @Column(name = "container_asset_id", updatable = false)
     private UUID containerAssetId;
 
+    @Column(name = "location_id", updatable = false)
+    private UUID locationId;
+
     @Column(name = "quantity", nullable = false, precision = 14, scale = 3)
     private BigDecimal quantity;
 
@@ -117,6 +120,10 @@ public class ConsumableStock {
 
     public UUID getContainerAssetId() {
         return containerAssetId;
+    }
+
+    public UUID getLocationId() {
+        return locationId;
     }
 
     public BigDecimal getQuantity() {

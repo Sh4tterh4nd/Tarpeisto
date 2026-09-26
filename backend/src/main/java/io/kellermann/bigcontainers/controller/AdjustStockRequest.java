@@ -12,7 +12,8 @@ import java.util.UUID;
  * adjustment, distinct from {@code type}.
  */
 public record AdjustStockRequest(
-        @NotNull UUID containerAssetId,
+        UUID containerAssetId,
+        UUID locationId,
         @NotNull BigDecimal delta,
         @NotNull StockMovementReason type,
         String reason,

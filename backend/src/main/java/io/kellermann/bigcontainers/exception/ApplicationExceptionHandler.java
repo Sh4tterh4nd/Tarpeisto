@@ -59,6 +59,11 @@ public class ApplicationExceptionHandler {
         return problemDetail(HttpStatus.CONFLICT, "Stale Media Version", exception);
     }
 
+    @ExceptionHandler(StalePlacementVersionException.class)
+    public ProblemDetail handleStalePlacementVersion(StalePlacementVersionException exception) {
+        return problemDetail(HttpStatus.CONFLICT, "Stale Placement Version", exception);
+    }
+
     private ProblemDetail problemDetail(HttpStatus status, String title, ApplicationException exception) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, exception.getMessage());
         problem.setTitle(title);

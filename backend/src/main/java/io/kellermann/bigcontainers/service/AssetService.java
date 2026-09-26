@@ -20,8 +20,10 @@ import io.kellermann.bigcontainers.repository.AssetCustomFieldValueRepository;
 import io.kellermann.bigcontainers.repository.AssetRepository;
 import io.kellermann.bigcontainers.repository.AssetStateChangeRepository;
 import io.kellermann.bigcontainers.repository.AssetUnitNumberSequenceRepository;
+import io.kellermann.bigcontainers.repository.ConsumableStockRepository;
 import io.kellermann.bigcontainers.repository.ModelCustomFieldOptionRepository;
 import io.kellermann.bigcontainers.repository.ModelCustomFieldRepository;
+import io.kellermann.bigcontainers.repository.OrganizationRepository;
 import io.kellermann.bigcontainers.security.BigContainersPrincipal;
 import java.time.Clock;
 import java.time.Instant;
@@ -76,6 +78,8 @@ public class AssetService {
     private final AssetRepository assetRepository;
     private final AssetCustomFieldValueRepository assetCustomFieldValueRepository;
     private final AssetStateChangeRepository assetStateChangeRepository;
+    private final ConsumableStockRepository consumableStockRepository;
+    private final OrganizationRepository organizationRepository;
     private final AssetUnitNumberSequenceRepository unitNumberSequenceRepository;
     private final ModelCustomFieldRepository modelCustomFieldRepository;
     private final ModelCustomFieldOptionRepository modelCustomFieldOptionRepository;
@@ -88,6 +92,8 @@ public class AssetService {
             AssetRepository assetRepository,
             AssetCustomFieldValueRepository assetCustomFieldValueRepository,
             AssetStateChangeRepository assetStateChangeRepository,
+            ConsumableStockRepository consumableStockRepository,
+            OrganizationRepository organizationRepository,
             AssetUnitNumberSequenceRepository unitNumberSequenceRepository,
             ModelCustomFieldRepository modelCustomFieldRepository,
             ModelCustomFieldOptionRepository modelCustomFieldOptionRepository,
@@ -98,6 +104,8 @@ public class AssetService {
         this.assetRepository = assetRepository;
         this.assetCustomFieldValueRepository = assetCustomFieldValueRepository;
         this.assetStateChangeRepository = assetStateChangeRepository;
+        this.consumableStockRepository = consumableStockRepository;
+        this.organizationRepository = organizationRepository;
         this.unitNumberSequenceRepository = unitNumberSequenceRepository;
         this.modelCustomFieldRepository = modelCustomFieldRepository;
         this.modelCustomFieldOptionRepository = modelCustomFieldOptionRepository;
@@ -391,7 +399,13 @@ public class AssetService {
     @Transactional
     public void archive(BigContainersPrincipal principal, UUID assetId) {
         requireOwnerOrDeputy(principal);
+        lockOrganization(principal.organizationId());
         Asset asset = requireAsset(principal.organizationId(), assetId);
+        if (assetRepository.existsByOrganizationIdAndParentContainerAssetId(principal.organizationId(), assetId)
+                || consumableStockRepository.existsByOrganizationIdAndContainerAssetIdAndQuantityGreaterThan(
+                        principal.organizationId(), assetId, java.math.BigDecimal.ZERO)) {
+            throw new ValidationFailedException("A container with inventory cannot be archived.");
+        }
         asset.archive(clock.instant());
         activityLogService.record(
                 principal.organizationId(), principal.userId(), "ASSET_ARCHIVED", "ASSET", asset.getId(), null);
@@ -567,6 +581,12 @@ public class AssetService {
         return assetRepository
                 .findByIdAndOrganizationId(assetId, organizationId)
                 .orElseThrow(AssetService::assetNotFound);
+    }
+
+    private void lockOrganization(UUID organizationId) {
+        organizationRepository
+                .findWithLockById(organizationId)
+                .orElseThrow(() -> new NotFoundException("Organization not found."));
     }
 
     private static NotFoundException assetNotFound() {

@@ -117,6 +117,72 @@
         }
       }
     },
+    "/api/v1/locations/{locationId}": {
+      "get": {
+        "tags": ["location-controller"],
+        "operationId": "get",
+        "parameters": [
+          {
+            "name": "locationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocationResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["location-controller"],
+        "operationId": "update",
+        "parameters": [
+          {
+            "name": "locationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/categories/{categoryId}": {
       "put": {
         "tags": ["category-controller"],
@@ -230,6 +296,72 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/AssetResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{assetId}/placement": {
+      "get": {
+        "tags": ["asset-controller"],
+        "operationId": "placement",
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetPlacementResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["asset-controller"],
+        "operationId": "move",
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssetPlacementRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetPlacementResponse"
                 }
               }
             }
@@ -357,7 +489,7 @@
     "/api/v1/asset-models/{assetModelId}": {
       "get": {
         "tags": ["asset-model-controller"],
-        "operationId": "get",
+        "operationId": "get_1",
         "parameters": [
           {
             "name": "assetModelId",
@@ -1025,10 +1157,121 @@
         }
       }
     },
+    "/api/v1/locations": {
+      "get": {
+        "tags": ["location-controller"],
+        "operationId": "list_2",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LocationResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["location-controller"],
+        "operationId": "create_2",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/locations/{locationId}/restore": {
+      "post": {
+        "tags": ["location-controller"],
+        "operationId": "restore",
+        "parameters": [
+          {
+            "name": "locationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocationVersionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/locations/{locationId}/archive": {
+      "post": {
+        "tags": ["location-controller"],
+        "operationId": "archive",
+        "parameters": [
+          {
+            "name": "locationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocationVersionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/categories": {
       "get": {
         "tags": ["category-controller"],
-        "operationId": "list_2",
+        "operationId": "list_3",
         "responses": {
           "200": {
             "description": "OK",
@@ -1047,7 +1290,7 @@
       },
       "post": {
         "tags": ["category-controller"],
-        "operationId": "create_2",
+        "operationId": "create_3",
         "requestBody": {
           "content": {
             "application/json": {
@@ -1075,7 +1318,7 @@
     "/api/v1/categories/{categoryId}/restore": {
       "post": {
         "tags": ["category-controller"],
-        "operationId": "restore",
+        "operationId": "restore_1",
         "parameters": [
           {
             "name": "categoryId",
@@ -1097,7 +1340,7 @@
     "/api/v1/categories/{categoryId}/archive": {
       "post": {
         "tags": ["category-controller"],
-        "operationId": "archive",
+        "operationId": "archive_1",
         "parameters": [
           {
             "name": "categoryId",
@@ -1119,7 +1362,7 @@
     "/api/v1/assets/{assetId}/restore": {
       "post": {
         "tags": ["asset-controller"],
-        "operationId": "restore_1",
+        "operationId": "restore_2",
         "parameters": [
           {
             "name": "assetId",
@@ -1296,7 +1539,7 @@
     "/api/v1/assets/{assetId}/archive": {
       "post": {
         "tags": ["asset-controller"],
-        "operationId": "archive_1",
+        "operationId": "archive_2",
         "parameters": [
           {
             "name": "assetId",
@@ -1318,7 +1561,7 @@
     "/api/v1/asset-models": {
       "get": {
         "tags": ["asset-model-controller"],
-        "operationId": "list_3",
+        "operationId": "list_4",
         "responses": {
           "200": {
             "description": "OK",
@@ -1337,7 +1580,7 @@
       },
       "post": {
         "tags": ["asset-model-controller"],
-        "operationId": "create_3",
+        "operationId": "create_4",
         "requestBody": {
           "content": {
             "application/json": {
@@ -1365,7 +1608,7 @@
     "/api/v1/asset-models/{assetModelId}/restore": {
       "post": {
         "tags": ["asset-model-controller"],
-        "operationId": "restore_2",
+        "operationId": "restore_3",
         "parameters": [
           {
             "name": "assetModelId",
@@ -1459,7 +1702,7 @@
     "/api/v1/asset-models/{assetModelId}/custom-fields": {
       "get": {
         "tags": ["model-custom-field-controller"],
-        "operationId": "list_4",
+        "operationId": "list_5",
         "parameters": [
           {
             "name": "assetModelId",
@@ -1489,7 +1732,7 @@
       },
       "post": {
         "tags": ["model-custom-field-controller"],
-        "operationId": "create_4",
+        "operationId": "create_5",
         "parameters": [
           {
             "name": "assetModelId",
@@ -1528,7 +1771,7 @@
     "/api/v1/asset-models/{assetModelId}/custom-fields/{fieldId}/restore": {
       "post": {
         "tags": ["model-custom-field-controller"],
-        "operationId": "restore_3",
+        "operationId": "restore_4",
         "parameters": [
           {
             "name": "assetModelId",
@@ -1559,7 +1802,7 @@
     "/api/v1/asset-models/{assetModelId}/custom-fields/{fieldId}/options": {
       "get": {
         "tags": ["model-custom-field-option-controller"],
-        "operationId": "list_5",
+        "operationId": "list_6",
         "parameters": [
           {
             "name": "assetModelId",
@@ -1598,7 +1841,7 @@
       },
       "post": {
         "tags": ["model-custom-field-option-controller"],
-        "operationId": "create_5",
+        "operationId": "create_6",
         "parameters": [
           {
             "name": "assetModelId",
@@ -1646,7 +1889,7 @@
     "/api/v1/asset-models/{assetModelId}/custom-fields/{fieldId}/options/{optionId}/restore": {
       "post": {
         "tags": ["model-custom-field-option-controller"],
-        "operationId": "restore_4",
+        "operationId": "restore_5",
         "parameters": [
           {
             "name": "assetModelId",
@@ -1686,7 +1929,7 @@
     "/api/v1/asset-models/{assetModelId}/custom-fields/{fieldId}/options/{optionId}/archive": {
       "post": {
         "tags": ["model-custom-field-option-controller"],
-        "operationId": "archive_2",
+        "operationId": "archive_3",
         "parameters": [
           {
             "name": "assetModelId",
@@ -1726,7 +1969,7 @@
     "/api/v1/asset-models/{assetModelId}/custom-fields/{fieldId}/archive": {
       "post": {
         "tags": ["model-custom-field-controller"],
-        "operationId": "archive_3",
+        "operationId": "archive_4",
         "parameters": [
           {
             "name": "assetModelId",
@@ -1991,7 +2234,7 @@
     "/api/v1/asset-models/{assetModelId}/assets": {
       "get": {
         "tags": ["asset-controller"],
-        "operationId": "list_6",
+        "operationId": "list_7",
         "parameters": [
           {
             "name": "assetModelId",
@@ -2030,7 +2273,7 @@
       },
       "post": {
         "tags": ["asset-controller"],
-        "operationId": "create_6",
+        "operationId": "create_7",
         "parameters": [
           {
             "name": "assetModelId",
@@ -2111,7 +2354,7 @@
     "/api/v1/asset-models/{assetModelId}/archive": {
       "post": {
         "tags": ["asset-model-controller"],
-        "operationId": "archive_4",
+        "operationId": "archive_5",
         "parameters": [
           {
             "name": "assetModelId",
@@ -2208,10 +2451,42 @@
         }
       }
     },
+    "/api/v1/locations/{locationId}/consumable-stock": {
+      "get": {
+        "tags": ["consumable-stock-controller"],
+        "operationId": "listAtLocation",
+        "parameters": [
+          {
+            "name": "locationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConsumableStockResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/consumable-stock/{balanceId}": {
       "get": {
         "tags": ["consumable-stock-controller"],
-        "operationId": "get_1",
+        "operationId": "get_2",
         "parameters": [
           {
             "name": "balanceId",
@@ -2293,7 +2568,7 @@
     "/api/v1/assets/{assetId}": {
       "get": {
         "tags": ["asset-controller"],
-        "operationId": "get_2",
+        "operationId": "get_3",
         "parameters": [
           {
             "name": "assetId",
@@ -2343,6 +2618,70 @@
                   "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/AssetStateChangeResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{assetId}/contents": {
+      "get": {
+        "tags": ["asset-controller"],
+        "operationId": "contents",
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AssetPlacementResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{assetId}/consumable-stock": {
+      "get": {
+        "tags": ["consumable-stock-controller"],
+        "operationId": "listAtContainer",
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConsumableStockResponse"
                   }
                 }
               }
@@ -2443,7 +2782,7 @@
     "/api/v1/application": {
       "get": {
         "tags": ["application-info-controller"],
-        "operationId": "get_3",
+        "operationId": "get_4",
         "responses": {
           "200": {
             "description": "OK",
@@ -2573,6 +2912,70 @@
           "version": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "LocationRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string"
+          },
+          "parentLocationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": ["name"]
+      },
+      "LocationResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "parentLocationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "breadcrumbs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "effectivePath": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -2738,6 +3141,53 @@
           "purchaseDate": {
             "type": "string",
             "format": "date"
+          }
+        }
+      },
+      "AssetPlacementRequest": {
+        "type": "object",
+        "properties": {
+          "locationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "parentContainerAssetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "AssetPlacementResponse": {
+        "type": "object",
+        "properties": {
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "directLocationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "parentContainerAssetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "effectivePath": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "effectivePathText": {
+            "type": "string"
           }
         }
       },
@@ -3104,6 +3554,15 @@
           }
         }
       },
+      "LocationVersionRequest": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "CreateCategoryRequest": {
         "type": "object",
         "properties": {
@@ -3182,7 +3641,15 @@
             "type": "string",
             "format": "uuid"
           },
+          "sourceLocationId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "destinationContainerAssetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "destinationLocationId": {
             "type": "string",
             "format": "uuid"
           },
@@ -3193,7 +3660,7 @@
             "type": "string"
           }
         },
-        "required": ["destinationContainerAssetId", "quantity", "sourceContainerAssetId"]
+        "required": ["quantity"]
       },
       "ConsumableStockResponse": {
         "type": "object",
@@ -3217,6 +3684,13 @@
             "format": "uuid"
           },
           "containerAssetDisplayName": {
+            "type": "string"
+          },
+          "locationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "locationDisplayName": {
             "type": "string"
           },
           "quantity": {
@@ -3250,6 +3724,10 @@
             "type": "string",
             "format": "uuid"
           },
+          "locationId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "quantity": {
             "type": "number"
           },
@@ -3261,7 +3739,7 @@
             "format": "uuid"
           }
         },
-        "required": ["containerAssetId", "quantity"]
+        "required": ["quantity"]
       },
       "ReceiveStockRequest": {
         "type": "object",
@@ -3270,6 +3748,10 @@
             "type": "string",
             "format": "uuid"
           },
+          "locationId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "quantity": {
             "type": "number"
           },
@@ -3277,12 +3759,16 @@
             "type": "string"
           }
         },
-        "required": ["containerAssetId", "quantity"]
+        "required": ["quantity"]
       },
       "IssueStockRequest": {
         "type": "object",
         "properties": {
           "containerAssetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "locationId": {
             "type": "string",
             "format": "uuid"
           },
@@ -3297,12 +3783,16 @@
             "format": "uuid"
           }
         },
-        "required": ["containerAssetId", "quantity"]
+        "required": ["quantity"]
       },
       "ConsumeStockRequest": {
         "type": "object",
         "properties": {
           "containerAssetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "locationId": {
             "type": "string",
             "format": "uuid"
           },
@@ -3313,12 +3803,16 @@
             "type": "string"
           }
         },
-        "required": ["containerAssetId", "quantity"]
+        "required": ["quantity"]
       },
       "AdjustStockRequest": {
         "type": "object",
         "properties": {
           "containerAssetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "locationId": {
             "type": "string",
             "format": "uuid"
           },
@@ -3345,7 +3839,7 @@
             "format": "uuid"
           }
         },
-        "required": ["containerAssetId", "delta", "type"]
+        "required": ["delta", "type"]
       },
       "CreateAssetRequest": {
         "type": "object",

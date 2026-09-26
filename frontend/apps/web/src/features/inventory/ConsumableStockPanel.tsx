@@ -27,10 +27,13 @@ import {
   getStockSummary,
   listAssetModels,
   listAssets,
+  listLocations,
   listStockBalances,
   listStockMovements,
   transferStock,
   type AssetRecord,
+  type LocationRecord,
+  type StockPlaceInput,
   type StockAction,
   type StockBalanceRecord,
   type StockMovementRecord,
@@ -59,25 +62,35 @@ function isValidQuantity(value: string, allowNegative: boolean): boolean {
 interface StockActionDialogProps {
   assetModelId: string;
   action: StockDialogAction;
-  containers: AssetRecord[];
-  sourceContainerId?: string;
+  places: StockPlaceOption[];
+  sourcePlaceKey?: string;
   unit: string;
   onClose: () => void;
   onChanged: () => Promise<void>;
 }
 
+interface StockPlaceOption {
+  key: string;
+  label: string;
+  place: StockPlaceInput;
+}
+
+function stockPlaceName(balance: StockBalanceRecord): string {
+  return balance.locationDisplayName ?? balance.containerAssetDisplayName ?? "Unknown stock place";
+}
+
 function StockActionDialog({
   assetModelId,
   action,
-  containers,
-  sourceContainerId,
+  places,
+  sourcePlaceKey,
   unit,
   onClose,
   onChanged,
 }: StockActionDialogProps) {
-  const [containerId, setContainerId] = useState(sourceContainerId ?? containers[0]?.id ?? "");
-  const [destinationId, setDestinationId] = useState(
-    containers.find((container) => container.id !== sourceContainerId)?.id ?? "",
+  const [placeKey, setPlaceKey] = useState(sourcePlaceKey ?? places[0]?.key ?? "");
+  const [destinationKey, setDestinationKey] = useState(
+    places.find((place) => place.key !== sourcePlaceKey)?.key ?? "",
   );
   const [quantity, setQuantity] = useState("");
   const [note, setNote] = useState("");
@@ -96,16 +109,27 @@ function StockActionDialog({
     setError(undefined);
     const result =
       action === "adjust"
-        ? await adjustStock(assetModelId, containerId, amount, note.trim())
+        ? await adjustStock(
+            assetModelId,
+            places.find((place) => place.key === placeKey)?.place ?? {},
+            amount,
+            note.trim(),
+          )
         : action === "transfer"
           ? await transferStock(
               assetModelId,
-              containerId,
-              destinationId,
+              places.find((place) => place.key === placeKey)?.place ?? {},
+              places.find((place) => place.key === destinationKey)?.place ?? {},
               amount,
               note.trim() || undefined,
             )
-          : await changeStock(assetModelId, action, containerId, amount, note.trim() || undefined);
+          : await changeStock(
+              assetModelId,
+              action,
+              places.find((place) => place.key === placeKey)?.place ?? {},
+              amount,
+              note.trim() || undefined,
+            );
     setSaving(false);
     if (result.kind === "error") {
       setError(errorMessage(result.error));
@@ -126,36 +150,36 @@ function StockActionDialog({
             {error ? <Alert severity="error">{error}</Alert> : null}
             <TextField
               select
-              label={action === "transfer" ? "From container" : "Stock container"}
-              value={containerId}
+              label={action === "transfer" ? "From stock place" : "Stock place"}
+              value={placeKey}
               onChange={(event) => {
-                setContainerId(event.target.value);
+                setPlaceKey(event.target.value);
                 setError(undefined);
               }}
               required
             >
-              {containers.map((container) => (
-                <MenuItem key={container.id} value={container.id}>
-                  {container.displayName}
+              {places.map((place) => (
+                <MenuItem key={place.key} value={place.key}>
+                  {place.label}
                 </MenuItem>
               ))}
             </TextField>
             {action === "transfer" ? (
               <TextField
                 select
-                label="To container"
-                value={destinationId}
+                label="To stock place"
+                value={destinationKey}
                 onChange={(event) => {
-                  setDestinationId(event.target.value);
+                  setDestinationKey(event.target.value);
                   setError(undefined);
                 }}
                 required
               >
-                {containers
-                  .filter((container) => container.id !== containerId)
-                  .map((container) => (
-                    <MenuItem key={container.id} value={container.id}>
-                      {container.displayName}
+                {places
+                  .filter((place) => place.key !== placeKey)
+                  .map((place) => (
+                    <MenuItem key={place.key} value={place.key}>
+                      {place.label}
                     </MenuItem>
                   ))}
               </TextField>
@@ -200,10 +224,10 @@ function StockActionDialog({
             variant="contained"
             disabled={
               saving ||
-              !containerId ||
+              !placeKey ||
               !quantityValid ||
               (action === "adjust" && !note.trim()) ||
-              (action === "transfer" && (!destinationId || destinationId === containerId))
+              (action === "transfer" && (!destinationKey || destinationKey === placeKey))
             }
           >
             {ACTION_LABELS[action]}
@@ -228,7 +252,7 @@ function LedgerDialog({ balance, onClose }: { balance: StockBalanceRecord; onClo
 
   return (
     <Dialog open onClose={onClose} fullWidth maxWidth="md">
-      <DialogTitle>Movement history · {balance.containerAssetDisplayName}</DialogTitle>
+      <DialogTitle>Movement history · {stockPlaceName(balance)}</DialogTitle>
       <DialogContent>
         {error ? <Alert severity="error">{error}</Alert> : null}
         {!movements ? <CircularProgress size={24} /> : null}
@@ -282,20 +306,34 @@ export function ConsumableStockPanel({
   const [summary, setSummary] = useState<StockSummaryRecord>();
   const [balances, setBalances] = useState<StockBalanceRecord[]>();
   const [containers, setContainers] = useState<AssetRecord[]>([]);
+  const [locations, setLocations] = useState<LocationRecord[]>([]);
   const [error, setError] = useState<string>();
   const [dialog, setDialog] = useState<{
     action: StockDialogAction;
-    sourceContainerId?: string;
+    sourcePlaceKey?: string;
   }>();
   const [ledgerBalance, setLedgerBalance] = useState<StockBalanceRecord>();
   const loadRequest = useRef(0);
+  const stockPlaces: StockPlaceOption[] = [
+    ...locations.map((location) => ({
+      key: `location:${location.id}`,
+      label: `Location: ${location.effectivePath}`,
+      place: { locationId: location.id },
+    })),
+    ...containers.map((container) => ({
+      key: `container:${container.id}`,
+      label: `Container: ${container.displayName}`,
+      place: { containerAssetId: container.id },
+    })),
+  ];
 
   const load = useCallback(async () => {
     const request = ++loadRequest.current;
-    const [summaryResult, balanceResult, modelResult] = await Promise.all([
+    const [summaryResult, balanceResult, modelResult, locationsResult] = await Promise.all([
       getStockSummary(assetModelId),
       listStockBalances(assetModelId),
       listAssetModels(),
+      listLocations(),
     ]);
     if (request !== loadRequest.current) return;
     if (summaryResult.kind === "error") {
@@ -314,6 +352,10 @@ export function ConsumableStockPanel({
       setSummary(undefined);
       setBalances(undefined);
       setError(errorMessage(modelResult.error));
+      return;
+    }
+    if (locationsResult.kind === "error") {
+      setError(errorMessage(locationsResult.error));
       return;
     }
     const containerModels = modelResult.data.filter(
@@ -337,6 +379,7 @@ export function ConsumableStockPanel({
     setSummary(summaryResult.data);
     setBalances(balanceResult.data);
     setContainers(containerAssets);
+    setLocations(locationsResult.data.filter((location) => !location.archived));
     setError(undefined);
   }, [assetModelId]);
 
@@ -410,7 +453,7 @@ export function ConsumableStockPanel({
               <TableBody>
                 {balances.map((balance) => (
                   <TableRow key={balance.id} hover>
-                    <TableCell>{balance.containerAssetDisplayName}</TableCell>
+                    <TableCell>{stockPlaceName(balance)}</TableCell>
                     <TableCell align="right" sx={{ fontWeight: 700 }}>
                       {balance.quantity} {balance.stockUnitLabel}
                     </TableCell>
@@ -426,7 +469,9 @@ export function ConsumableStockPanel({
                               onClick={() =>
                                 setDialog({
                                   action: "consume",
-                                  sourceContainerId: balance.containerAssetId,
+                                  sourcePlaceKey: balance.locationId
+                                    ? `location:${balance.locationId}`
+                                    : `container:${balance.containerAssetId}`,
                                 })
                               }
                             >
@@ -437,7 +482,9 @@ export function ConsumableStockPanel({
                               onClick={() =>
                                 setDialog({
                                   action: "issue",
-                                  sourceContainerId: balance.containerAssetId,
+                                  sourcePlaceKey: balance.locationId
+                                    ? `location:${balance.locationId}`
+                                    : `container:${balance.containerAssetId}`,
                                 })
                               }
                             >
@@ -448,7 +495,9 @@ export function ConsumableStockPanel({
                               onClick={() =>
                                 setDialog({
                                   action: "return",
-                                  sourceContainerId: balance.containerAssetId,
+                                  sourcePlaceKey: balance.locationId
+                                    ? `location:${balance.locationId}`
+                                    : `container:${balance.containerAssetId}`,
                                 })
                               }
                             >
@@ -459,10 +508,12 @@ export function ConsumableStockPanel({
                               onClick={() =>
                                 setDialog({
                                   action: "transfer",
-                                  sourceContainerId: balance.containerAssetId,
+                                  sourcePlaceKey: balance.locationId
+                                    ? `location:${balance.locationId}`
+                                    : `container:${balance.containerAssetId}`,
                                 })
                               }
-                              disabled={containers.length < 2}
+                              disabled={stockPlaces.length < 2}
                             >
                               Transfer
                             </Button>
@@ -472,7 +523,9 @@ export function ConsumableStockPanel({
                               onClick={() =>
                                 setDialog({
                                   action: "adjust",
-                                  sourceContainerId: balance.containerAssetId,
+                                  sourcePlaceKey: balance.locationId
+                                    ? `location:${balance.locationId}`
+                                    : `container:${balance.containerAssetId}`,
                                 })
                               }
                             >
@@ -494,8 +547,8 @@ export function ConsumableStockPanel({
         <StockActionDialog
           assetModelId={assetModelId}
           action={dialog.action}
-          sourceContainerId={dialog.sourceContainerId}
-          containers={containers}
+          sourcePlaceKey={dialog.sourcePlaceKey}
+          places={stockPlaces}
           unit={summary.stockUnitLabel}
           onClose={() => setDialog(undefined)}
           onChanged={load}

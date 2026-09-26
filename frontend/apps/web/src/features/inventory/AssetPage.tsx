@@ -43,6 +43,7 @@ import {
   type CustomFieldRecord,
 } from "./inventoryApi";
 import { MediaPanel } from "./MediaPanel";
+import { AssetPlacementPanel } from "./AssetPlacementPanel";
 
 interface AssetDetailsDialogProps {
   asset: AssetRecord;
@@ -430,6 +431,7 @@ export function AssetPage() {
       ) : null}
 
       <Stack spacing={3}>
+        <AssetPlacementPanel assetId={asset.id} canManage={canManage} />
         <MediaPanel
           assetId={asset.id}
           fallbackAssetModelId={asset.assetModelId}

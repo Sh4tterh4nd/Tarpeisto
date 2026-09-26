@@ -31,9 +31,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class AssetController {
 
     private final AssetService assetService;
+    private final io.kellermann.bigcontainers.service.AssetPlacementService assetPlacementService;
 
-    public AssetController(AssetService assetService) {
+    public AssetController(
+            AssetService assetService,
+            io.kellermann.bigcontainers.service.AssetPlacementService assetPlacementService) {
         this.assetService = assetService;
+        this.assetPlacementService = assetPlacementService;
     }
 
     @GetMapping("/asset-models/{assetModelId}/assets")
@@ -69,6 +73,29 @@ public class AssetController {
     @GetMapping("/assets/{assetId}")
     public AssetResponse get(@AuthenticationPrincipal BigContainersPrincipal principal, @PathVariable UUID assetId) {
         return AssetResponse.from(assetService.get(principal, assetId));
+    }
+
+    @GetMapping("/assets/{assetId}/placement")
+    public AssetPlacementResponse placement(
+            @AuthenticationPrincipal BigContainersPrincipal principal, @PathVariable UUID assetId) {
+        return AssetPlacementResponse.from(assetPlacementService.get(principal, assetId));
+    }
+
+    @PutMapping("/assets/{assetId}/placement")
+    public AssetPlacementResponse move(
+            @AuthenticationPrincipal BigContainersPrincipal principal,
+            @PathVariable UUID assetId,
+            @RequestBody AssetPlacementRequest request) {
+        return AssetPlacementResponse.from(assetPlacementService.move(
+                principal, assetId, request.locationId(), request.parentContainerAssetId(), request.expectedVersion()));
+    }
+
+    @GetMapping("/assets/{assetId}/contents")
+    public List<AssetPlacementResponse> contents(
+            @AuthenticationPrincipal BigContainersPrincipal principal, @PathVariable UUID assetId) {
+        return assetPlacementService.contents(principal, assetId).stream()
+                .map(AssetPlacementResponse::from)
+                .toList();
     }
 
     @GetMapping("/assets/by-code/{rawCode}")

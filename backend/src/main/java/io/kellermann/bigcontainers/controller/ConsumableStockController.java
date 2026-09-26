@@ -1,5 +1,6 @@
 package io.kellermann.bigcontainers.controller;
 
+import io.kellermann.bigcontainers.model.StockMovementReason;
 import io.kellermann.bigcontainers.security.BigContainersPrincipal;
 import io.kellermann.bigcontainers.service.ConsumableStockService;
 import jakarta.validation.Valid;
@@ -39,6 +40,22 @@ public class ConsumableStockController {
                 .toList();
     }
 
+    @GetMapping("/assets/{assetId}/consumable-stock")
+    public List<ConsumableStockResponse> listAtContainer(
+            @AuthenticationPrincipal BigContainersPrincipal principal, @PathVariable UUID assetId) {
+        return consumableStockService.listAtContainer(principal, assetId).stream()
+                .map(ConsumableStockResponse::from)
+                .toList();
+    }
+
+    @GetMapping("/locations/{locationId}/consumable-stock")
+    public List<ConsumableStockResponse> listAtLocation(
+            @AuthenticationPrincipal BigContainersPrincipal principal, @PathVariable UUID locationId) {
+        return consumableStockService.listAtLocation(principal, locationId).stream()
+                .map(ConsumableStockResponse::from)
+                .toList();
+    }
+
     @GetMapping("/asset-models/{assetModelId}/consumable-stock/summary")
     public AssetModelStockSummaryResponse summary(
             @AuthenticationPrincipal BigContainersPrincipal principal, @PathVariable UUID assetModelId) {
@@ -71,8 +88,16 @@ public class ConsumableStockController {
             @AuthenticationPrincipal BigContainersPrincipal principal,
             @PathVariable UUID assetModelId,
             @Valid @RequestBody ReceiveStockRequest request) {
-        return ConsumableStockResponse.from(consumableStockService.receive(
-                principal, assetModelId, request.containerAssetId(), request.quantity(), request.note()));
+        return ConsumableStockResponse.from(consumableStockService.changeAtPlace(
+                principal,
+                assetModelId,
+                request.containerAssetId(),
+                request.locationId(),
+                request.quantity(),
+                StockMovementReason.RECEIPT,
+                request.note(),
+                null,
+                null));
     }
 
     @PostMapping("/asset-models/{assetModelId}/consumable-stock/issue")
@@ -80,13 +105,16 @@ public class ConsumableStockController {
             @AuthenticationPrincipal BigContainersPrincipal principal,
             @PathVariable UUID assetModelId,
             @Valid @RequestBody IssueStockRequest request) {
-        return ConsumableStockResponse.from(consumableStockService.issue(
+        return ConsumableStockResponse.from(consumableStockService.changeAtPlace(
                 principal,
                 assetModelId,
                 request.containerAssetId(),
-                request.quantity(),
+                request.locationId(),
+                request.quantity().negate(),
+                StockMovementReason.EVENT_ISSUE,
                 request.note(),
-                request.eventReferenceId()));
+                request.eventReferenceId(),
+                null));
     }
 
     @PostMapping("/asset-models/{assetModelId}/consumable-stock/return")
@@ -94,13 +122,16 @@ public class ConsumableStockController {
             @AuthenticationPrincipal BigContainersPrincipal principal,
             @PathVariable UUID assetModelId,
             @Valid @RequestBody ReturnStockRequest request) {
-        return ConsumableStockResponse.from(consumableStockService.returnStock(
+        return ConsumableStockResponse.from(consumableStockService.changeAtPlace(
                 principal,
                 assetModelId,
                 request.containerAssetId(),
+                request.locationId(),
                 request.quantity(),
+                StockMovementReason.EVENT_RETURN,
                 request.note(),
-                request.eventReferenceId()));
+                request.eventReferenceId(),
+                null));
     }
 
     @PostMapping("/asset-models/{assetModelId}/consumable-stock/consume")
@@ -108,8 +139,16 @@ public class ConsumableStockController {
             @AuthenticationPrincipal BigContainersPrincipal principal,
             @PathVariable UUID assetModelId,
             @Valid @RequestBody ConsumeStockRequest request) {
-        return ConsumableStockResponse.from(consumableStockService.consume(
-                principal, assetModelId, request.containerAssetId(), request.quantity(), request.note()));
+        return ConsumableStockResponse.from(consumableStockService.changeAtPlace(
+                principal,
+                assetModelId,
+                request.containerAssetId(),
+                request.locationId(),
+                request.quantity().negate(),
+                StockMovementReason.CONSUMPTION,
+                request.note(),
+                null,
+                null));
     }
 
     @PostMapping("/asset-models/{assetModelId}/consumable-stock/transfer")
@@ -117,11 +156,13 @@ public class ConsumableStockController {
             @AuthenticationPrincipal BigContainersPrincipal principal,
             @PathVariable UUID assetModelId,
             @Valid @RequestBody TransferStockRequest request) {
-        return StockTransferResponse.from(consumableStockService.transfer(
+        return StockTransferResponse.from(consumableStockService.transferBetweenPlaces(
                 principal,
                 assetModelId,
                 request.sourceContainerAssetId(),
+                request.sourceLocationId(),
                 request.destinationContainerAssetId(),
+                request.destinationLocationId(),
                 request.quantity(),
                 request.note()));
     }
@@ -131,13 +172,14 @@ public class ConsumableStockController {
             @AuthenticationPrincipal BigContainersPrincipal principal,
             @PathVariable UUID assetModelId,
             @Valid @RequestBody AdjustStockRequest request) {
-        return ConsumableStockResponse.from(consumableStockService.adjust(
+        return ConsumableStockResponse.from(consumableStockService.adjustAtPlace(
                 principal,
                 assetModelId,
                 request.containerAssetId(),
+                request.locationId(),
                 request.delta(),
                 request.type(),
                 request.reason(),
-                request.auditReferenceId()));
+                request.type() == StockMovementReason.AUDIT_ADJUSTMENT ? request.auditReferenceId() : null));
     }
 }

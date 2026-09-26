@@ -16,6 +16,8 @@ public record ConsumableStockView(
         String stockUnitLabel,
         UUID containerAssetId,
         String containerAssetDisplayName,
+        UUID locationId,
+        String locationDisplayName,
         BigDecimal quantity,
         Instant createdAt,
         Instant updatedAt) {}

@@ -64,6 +64,12 @@ public class Asset {
     @Column(name = "purchase_date")
     private LocalDate purchaseDate;
 
+    @Column(name = "direct_location_id")
+    private UUID directLocationId;
+
+    @Column(name = "parent_container_asset_id")
+    private UUID parentContainerAssetId;
+
     @Column(name = "archived_at")
     private Instant archivedAt;
 
@@ -119,6 +125,16 @@ public class Asset {
 
     public void setPurchaseDate(LocalDate newPurchaseDate, Instant now) {
         this.purchaseDate = newPurchaseDate;
+        touch(now);
+    }
+
+    /** Sets exactly one direct physical placement, or neither for an explicitly unplaced asset. */
+    public void moveTo(UUID locationId, UUID containerAssetId, Instant now) {
+        if (locationId != null && containerAssetId != null) {
+            throw new IllegalArgumentException("An asset cannot have both a location and a parent container.");
+        }
+        this.directLocationId = locationId;
+        this.parentContainerAssetId = containerAssetId;
         touch(now);
     }
 
@@ -220,6 +236,14 @@ public class Asset {
 
     public LocalDate getPurchaseDate() {
         return purchaseDate;
+    }
+
+    public UUID getDirectLocationId() {
+        return directLocationId;
+    }
+
+    public UUID getParentContainerAssetId() {
+        return parentContainerAssetId;
     }
 
     public Instant getArchivedAt() {

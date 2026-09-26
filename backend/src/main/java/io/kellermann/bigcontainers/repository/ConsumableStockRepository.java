@@ -1,6 +1,7 @@
 package io.kellermann.bigcontainers.repository;
 
 import io.kellermann.bigcontainers.model.ConsumableStock;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -25,4 +26,15 @@ public interface ConsumableStockRepository extends JpaRepository<ConsumableStock
 
     Optional<ConsumableStock> findByOrganizationIdAndAssetModelIdAndContainerAssetId(
             UUID organizationId, UUID assetModelId, UUID containerAssetId);
+
+    List<ConsumableStock> findAllByOrganizationIdAndContainerAssetIdOrderByCreatedAtAsc(
+            UUID organizationId, UUID containerAssetId);
+
+    List<ConsumableStock> findAllByOrganizationIdAndLocationIdOrderByCreatedAtAsc(UUID organizationId, UUID locationId);
+
+    boolean existsByOrganizationIdAndLocationIdAndQuantityGreaterThan(
+            UUID organizationId, UUID locationId, BigDecimal quantity);
+
+    boolean existsByOrganizationIdAndContainerAssetIdAndQuantityGreaterThan(
+            UUID organizationId, UUID containerAssetId, BigDecimal quantity);
 }
