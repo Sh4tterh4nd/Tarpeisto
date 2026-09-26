@@ -32,16 +32,39 @@ export function AppShellLayout({
   return (
     <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
       <AppBar position="sticky" color="primary" enableColorOnDark>
-        <Toolbar sx={{ gap: 2 }}>
-          <Typography variant="h3" component="h1" sx={{ flexGrow: 1 }}>
+        <Toolbar
+          sx={{
+            gap: { xs: 1, sm: 2 },
+            flexWrap: { xs: "wrap", sm: "nowrap" },
+            py: { xs: 1, sm: 0 },
+          }}
+        >
+          <Typography
+            variant="h3"
+            component="h1"
+            sx={{ flexGrow: 1, fontSize: { xs: "1.2rem", sm: "1.25rem" } }}
+          >
             {title}
           </Typography>
-          {navSlot}
-          {statusSlot}
+          {statusSlot ? <Box sx={{ order: { xs: 2, sm: 3 } }}>{statusSlot}</Box> : null}
+          {navSlot ? (
+            <Box
+              component="nav"
+              aria-label="Primary navigation"
+              sx={{
+                order: { xs: 3, sm: 2 },
+                width: { xs: "100%", sm: "auto" },
+                minWidth: 0,
+                overflowX: "auto",
+              }}
+            >
+              {navSlot}
+            </Box>
+          ) : null}
         </Toolbar>
       </AppBar>
       {bannerSlot}
-      <Container component="main" maxWidth="md" sx={{ flexGrow: 1, py: { xs: 2, sm: 3 } }}>
+      <Container component="main" maxWidth="xl" sx={{ flexGrow: 1, py: { xs: 2, sm: 3 } }}>
         {children}
       </Container>
     </Box>

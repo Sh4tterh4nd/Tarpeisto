@@ -6,8 +6,8 @@
   },
   "servers": [
     {
-      "url": "http://localhost:8097",
-      "description": "Generated server url"
+      "url": "/",
+      "description": "Same-origin application server"
     }
   ],
   "paths": {
@@ -71,6 +71,723 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/categories/{categoryId}": {
+      "put": {
+        "tags": ["category-controller"],
+        "operationId": "rename",
+        "parameters": [
+          {
+            "name": "categoryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameCategoryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{assetId}/values": {
+      "put": {
+        "tags": ["asset-controller"],
+        "operationId": "setValues",
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/AssetCustomFieldValueRequest"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{assetId}/purchase-date": {
+      "put": {
+        "tags": ["asset-controller"],
+        "operationId": "changePurchaseDate",
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAssetPurchaseDateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{assetId}/name": {
+      "put": {
+        "tags": ["asset-controller"],
+        "operationId": "rename_1",
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameAssetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{assetId}/lifecycle": {
+      "put": {
+        "tags": ["asset-controller"],
+        "operationId": "changeLifecycleState",
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeAssetLifecycleStateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{assetId}/condition": {
+      "put": {
+        "tags": ["asset-controller"],
+        "operationId": "changeCondition",
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeAssetConditionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/asset-models/{assetModelId}": {
+      "get": {
+        "tags": ["asset-model-controller"],
+        "operationId": "get",
+        "parameters": [
+          {
+            "name": "assetModelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetModelResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["asset-model-controller"],
+        "operationId": "rename_2",
+        "parameters": [
+          {
+            "name": "assetModelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameAssetModelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetModelResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/asset-models/{assetModelId}/tracking-mode": {
+      "put": {
+        "tags": ["asset-model-controller"],
+        "operationId": "changeTrackingMode",
+        "parameters": [
+          {
+            "name": "assetModelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeTrackingModeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetModelResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/asset-models/{assetModelId}/replacement-url": {
+      "put": {
+        "tags": ["asset-model-controller"],
+        "operationId": "changeReplacementUrl",
+        "parameters": [
+          {
+            "name": "assetModelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeReplacementUrlRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetModelResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/asset-models/{assetModelId}/custom-fields/{fieldId}": {
+      "put": {
+        "tags": ["model-custom-field-controller"],
+        "operationId": "rename_3",
+        "parameters": [
+          {
+            "name": "assetModelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "fieldId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameModelCustomFieldRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelCustomFieldResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/asset-models/{assetModelId}/custom-fields/{fieldId}/options/{optionId}": {
+      "put": {
+        "tags": ["model-custom-field-option-controller"],
+        "operationId": "rename_4",
+        "parameters": [
+          {
+            "name": "assetModelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "fieldId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "optionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameModelCustomFieldOptionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelCustomFieldOptionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/asset-models/{assetModelId}/custom-fields/{fieldId}/options/{optionId}/display-order": {
+      "put": {
+        "tags": ["model-custom-field-option-controller"],
+        "operationId": "reorder",
+        "parameters": [
+          {
+            "name": "assetModelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "fieldId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "optionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelCustomFieldOptionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/asset-models/{assetModelId}/custom-fields/{fieldId}/display-order": {
+      "put": {
+        "tags": ["model-custom-field-controller"],
+        "operationId": "reorder_1",
+        "parameters": [
+          {
+            "name": "assetModelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "fieldId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelCustomFieldResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/asset-models/{assetModelId}/custom-fields/{fieldId}/data-type": {
+      "put": {
+        "tags": ["model-custom-field-controller"],
+        "operationId": "changeDataType",
+        "parameters": [
+          {
+            "name": "assetModelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "fieldId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeModelCustomFieldDataTypeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelCustomFieldResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/asset-models/{assetModelId}/category": {
+      "put": {
+        "tags": ["asset-model-controller"],
+        "operationId": "changeCategory",
+        "parameters": [
+          {
+            "name": "assetModelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeAssetModelCategoryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetModelResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/asset-models/{assetModelId}/can-contain-assets": {
+      "put": {
+        "tags": ["asset-model-controller"],
+        "operationId": "setCanContainAssets",
+        "parameters": [
+          {
+            "name": "assetModelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetCanContainAssetsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetModelResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -244,10 +961,1120 @@
         }
       }
     },
+    "/api/v1/categories": {
+      "get": {
+        "tags": ["category-controller"],
+        "operationId": "list_2",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CategoryResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["category-controller"],
+        "operationId": "create_2",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCategoryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/categories/{categoryId}/restore": {
+      "post": {
+        "tags": ["category-controller"],
+        "operationId": "restore",
+        "parameters": [
+          {
+            "name": "categoryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/categories/{categoryId}/archive": {
+      "post": {
+        "tags": ["category-controller"],
+        "operationId": "archive",
+        "parameters": [
+          {
+            "name": "categoryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{assetId}/restore": {
+      "post": {
+        "tags": ["asset-controller"],
+        "operationId": "restore_1",
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{assetId}/archive": {
+      "post": {
+        "tags": ["asset-controller"],
+        "operationId": "archive_1",
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/asset-models": {
+      "get": {
+        "tags": ["asset-model-controller"],
+        "operationId": "list_3",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AssetModelResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["asset-model-controller"],
+        "operationId": "create_3",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAssetModelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetModelResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/asset-models/{assetModelId}/restore": {
+      "post": {
+        "tags": ["asset-model-controller"],
+        "operationId": "restore_2",
+        "parameters": [
+          {
+            "name": "assetModelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/asset-models/{assetModelId}/custom-fields": {
+      "get": {
+        "tags": ["model-custom-field-controller"],
+        "operationId": "list_4",
+        "parameters": [
+          {
+            "name": "assetModelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ModelCustomFieldResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["model-custom-field-controller"],
+        "operationId": "create_4",
+        "parameters": [
+          {
+            "name": "assetModelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateModelCustomFieldRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelCustomFieldResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/asset-models/{assetModelId}/custom-fields/{fieldId}/restore": {
+      "post": {
+        "tags": ["model-custom-field-controller"],
+        "operationId": "restore_3",
+        "parameters": [
+          {
+            "name": "assetModelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "fieldId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/asset-models/{assetModelId}/custom-fields/{fieldId}/options": {
+      "get": {
+        "tags": ["model-custom-field-option-controller"],
+        "operationId": "list_5",
+        "parameters": [
+          {
+            "name": "assetModelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "fieldId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ModelCustomFieldOptionResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["model-custom-field-option-controller"],
+        "operationId": "create_5",
+        "parameters": [
+          {
+            "name": "assetModelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "fieldId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateModelCustomFieldOptionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelCustomFieldOptionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/asset-models/{assetModelId}/custom-fields/{fieldId}/options/{optionId}/restore": {
+      "post": {
+        "tags": ["model-custom-field-option-controller"],
+        "operationId": "restore_4",
+        "parameters": [
+          {
+            "name": "assetModelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "fieldId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "optionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/asset-models/{assetModelId}/custom-fields/{fieldId}/options/{optionId}/archive": {
+      "post": {
+        "tags": ["model-custom-field-option-controller"],
+        "operationId": "archive_2",
+        "parameters": [
+          {
+            "name": "assetModelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "fieldId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "optionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/asset-models/{assetModelId}/custom-fields/{fieldId}/archive": {
+      "post": {
+        "tags": ["model-custom-field-controller"],
+        "operationId": "archive_3",
+        "parameters": [
+          {
+            "name": "assetModelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "fieldId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/asset-models/{assetModelId}/consumable-stock/transfer": {
+      "post": {
+        "tags": ["consumable-stock-controller"],
+        "operationId": "transfer",
+        "parameters": [
+          {
+            "name": "assetModelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferStockRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/StockTransferResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/asset-models/{assetModelId}/consumable-stock/return": {
+      "post": {
+        "tags": ["consumable-stock-controller"],
+        "operationId": "returnStock",
+        "parameters": [
+          {
+            "name": "assetModelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReturnStockRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsumableStockResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/asset-models/{assetModelId}/consumable-stock/receive": {
+      "post": {
+        "tags": ["consumable-stock-controller"],
+        "operationId": "receive",
+        "parameters": [
+          {
+            "name": "assetModelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReceiveStockRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsumableStockResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/asset-models/{assetModelId}/consumable-stock/issue": {
+      "post": {
+        "tags": ["consumable-stock-controller"],
+        "operationId": "issue",
+        "parameters": [
+          {
+            "name": "assetModelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueStockRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsumableStockResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/asset-models/{assetModelId}/consumable-stock/consume": {
+      "post": {
+        "tags": ["consumable-stock-controller"],
+        "operationId": "consume",
+        "parameters": [
+          {
+            "name": "assetModelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsumeStockRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsumableStockResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/asset-models/{assetModelId}/consumable-stock/adjust": {
+      "post": {
+        "tags": ["consumable-stock-controller"],
+        "operationId": "adjust",
+        "parameters": [
+          {
+            "name": "assetModelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdjustStockRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsumableStockResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/asset-models/{assetModelId}/assets": {
+      "get": {
+        "tags": ["asset-controller"],
+        "operationId": "list_6",
+        "parameters": [
+          {
+            "name": "assetModelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "includeInactive",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AssetResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["asset-controller"],
+        "operationId": "create_6",
+        "parameters": [
+          {
+            "name": "assetModelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAssetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/asset-models/{assetModelId}/assets/bulk": {
+      "post": {
+        "tags": ["asset-controller"],
+        "operationId": "createBulk",
+        "parameters": [
+          {
+            "name": "assetModelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkCreateAssetsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AssetResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/asset-models/{assetModelId}/archive": {
+      "post": {
+        "tags": ["asset-model-controller"],
+        "operationId": "archive_4",
+        "parameters": [
+          {
+            "name": "assetModelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/consumable-stock/{balanceId}": {
+      "get": {
+        "tags": ["consumable-stock-controller"],
+        "operationId": "get_1",
+        "parameters": [
+          {
+            "name": "balanceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsumableStockResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/consumable-stock/{balanceId}/movements": {
+      "get": {
+        "tags": ["consumable-stock-controller"],
+        "operationId": "movements",
+        "parameters": [
+          {
+            "name": "balanceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StockMovementResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/consumable-stock/low-stock": {
+      "get": {
+        "tags": ["consumable-stock-controller"],
+        "operationId": "lowStock",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AssetModelStockSummaryResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{assetId}": {
+      "get": {
+        "tags": ["asset-controller"],
+        "operationId": "get_2",
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{assetId}/history": {
+      "get": {
+        "tags": ["asset-controller"],
+        "operationId": "history",
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AssetStateChangeResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/by-code/{rawCode}": {
+      "get": {
+        "tags": ["asset-controller"],
+        "operationId": "getByCode",
+        "parameters": [
+          {
+            "name": "rawCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/asset-models/{assetModelId}/consumable-stock": {
+      "get": {
+        "tags": ["consumable-stock-controller"],
+        "operationId": "listByModel",
+        "parameters": [
+          {
+            "name": "assetModelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConsumableStockResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/asset-models/{assetModelId}/consumable-stock/summary": {
+      "get": {
+        "tags": ["consumable-stock-controller"],
+        "operationId": "summary",
+        "parameters": [
+          {
+            "name": "assetModelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetModelStockSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/application": {
       "get": {
         "tags": ["application-info-controller"],
-        "operationId": "get",
+        "operationId": "get_3",
         "responses": {
           "200": {
             "description": "OK",
@@ -314,6 +2141,395 @@
           }
         },
         "required": ["enabled"]
+      },
+      "RenameCategoryRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "color": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": ["color", "name"]
+      },
+      "CategoryResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AssetCustomFieldValueRequest": {
+        "type": "object",
+        "properties": {
+          "fieldId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "stringValue": {
+            "type": "string"
+          },
+          "dateValue": {
+            "type": "string",
+            "format": "date"
+          },
+          "optionId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["fieldId"]
+      },
+      "AssetCustomFieldValueResponse": {
+        "type": "object",
+        "properties": {
+          "fieldId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fieldName": {
+            "type": "string"
+          },
+          "dataType": {
+            "type": "string",
+            "enum": ["STRING", "DROPDOWN", "DATE"]
+          },
+          "displayOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "stringValue": {
+            "type": "string"
+          },
+          "dateValue": {
+            "type": "string",
+            "format": "date"
+          },
+          "optionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "optionValue": {
+            "type": "string"
+          }
+        }
+      },
+      "AssetResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetModelId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetModelName": {
+            "type": "string"
+          },
+          "publicCode": {
+            "type": "string"
+          },
+          "unitNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "individualName": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "condition": {
+            "type": "string",
+            "enum": ["GOOD", "DAMAGED"]
+          },
+          "lifecycleState": {
+            "type": "string",
+            "enum": ["ACTIVE", "LOST", "DESTROYED", "RETIRED"]
+          },
+          "purchaseDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "metadataIncomplete": {
+            "type": "boolean"
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssetCustomFieldValueResponse"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "SetAssetPurchaseDateRequest": {
+        "type": "object",
+        "properties": {
+          "purchaseDate": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
+      "RenameAssetRequest": {
+        "type": "object",
+        "properties": {
+          "individualName": {
+            "type": "string"
+          }
+        }
+      },
+      "ChangeAssetLifecycleStateRequest": {
+        "type": "object",
+        "properties": {
+          "lifecycleState": {
+            "type": "string",
+            "enum": ["ACTIVE", "LOST", "DESTROYED", "RETIRED"]
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": ["lifecycleState"]
+      },
+      "ChangeAssetConditionRequest": {
+        "type": "object",
+        "properties": {
+          "condition": {
+            "type": "string",
+            "enum": ["GOOD", "DAMAGED"]
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": ["condition"]
+      },
+      "RenameAssetModelRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": ["name"]
+      },
+      "AssetModelResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "categoryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "replacementUrl": {
+            "type": "string"
+          },
+          "trackingMode": {
+            "type": "string",
+            "enum": ["SERIALIZED_ASSET", "QUANTITY_STOCK"]
+          },
+          "stockUnitLabel": {
+            "type": "string"
+          },
+          "lowStockThreshold": {
+            "type": "number"
+          },
+          "canContainAssets": {
+            "type": "boolean"
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ChangeTrackingModeRequest": {
+        "type": "object",
+        "properties": {
+          "trackingMode": {
+            "type": "string",
+            "enum": ["SERIALIZED_ASSET", "QUANTITY_STOCK"]
+          },
+          "stockUnitLabel": {
+            "type": "string"
+          },
+          "lowStockThreshold": {
+            "type": "number"
+          }
+        },
+        "required": ["trackingMode"]
+      },
+      "ChangeReplacementUrlRequest": {
+        "type": "object",
+        "properties": {
+          "replacementUrl": {
+            "type": "string"
+          }
+        }
+      },
+      "RenameModelCustomFieldRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": ["name"]
+      },
+      "ModelCustomFieldResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetModelId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "dataType": {
+            "type": "string",
+            "enum": ["STRING", "DROPDOWN", "DATE"]
+          },
+          "displayOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "archived": {
+            "type": "boolean"
+          }
+        }
+      },
+      "RenameModelCustomFieldOptionRequest": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": ["value"]
+      },
+      "ModelCustomFieldOptionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "modelCustomFieldId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "value": {
+            "type": "string"
+          },
+          "displayOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "archived": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ReorderRequest": {
+        "type": "object",
+        "properties": {
+          "displayOrder": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "ChangeModelCustomFieldDataTypeRequest": {
+        "type": "object",
+        "properties": {
+          "dataType": {
+            "type": "string",
+            "enum": ["STRING", "DROPDOWN", "DATE"]
+          }
+        },
+        "required": ["dataType"]
+      },
+      "ChangeAssetModelCategoryRequest": {
+        "type": "object",
+        "properties": {
+          "categoryId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["categoryId"]
+      },
+      "SetCanContainAssetsRequest": {
+        "type": "object",
+        "properties": {
+          "canContainAssets": {
+            "type": "boolean"
+          }
+        }
       },
       "CreateUserRequest": {
         "type": "object",
@@ -451,6 +2667,392 @@
           "role": {
             "type": "string",
             "enum": ["OWNER", "DEPUTY", "OPERATOR_AUDITOR", "VIEWER"]
+          }
+        }
+      },
+      "CreateCategoryRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "color": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": ["color", "name"]
+      },
+      "CreateAssetModelRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string"
+          },
+          "categoryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "replacementUrl": {
+            "type": "string"
+          },
+          "trackingMode": {
+            "type": "string",
+            "enum": ["SERIALIZED_ASSET", "QUANTITY_STOCK"]
+          },
+          "stockUnitLabel": {
+            "type": "string"
+          },
+          "lowStockThreshold": {
+            "type": "number"
+          },
+          "canContainAssets": {
+            "type": "boolean"
+          }
+        },
+        "required": ["categoryId", "name", "trackingMode"]
+      },
+      "CreateModelCustomFieldRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "dataType": {
+            "type": "string",
+            "enum": ["STRING", "DROPDOWN", "DATE"]
+          }
+        },
+        "required": ["dataType", "name"]
+      },
+      "CreateModelCustomFieldOptionRequest": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": ["value"]
+      },
+      "TransferStockRequest": {
+        "type": "object",
+        "properties": {
+          "sourceContainerAssetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "destinationContainerAssetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": ["destinationContainerAssetId", "quantity", "sourceContainerAssetId"]
+      },
+      "ConsumableStockResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetModelId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetModelName": {
+            "type": "string"
+          },
+          "stockUnitLabel": {
+            "type": "string"
+          },
+          "containerAssetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "containerAssetDisplayName": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "StockTransferResponse": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "$ref": "#/components/schemas/ConsumableStockResponse"
+          },
+          "destination": {
+            "$ref": "#/components/schemas/ConsumableStockResponse"
+          }
+        }
+      },
+      "ReturnStockRequest": {
+        "type": "object",
+        "properties": {
+          "containerAssetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "note": {
+            "type": "string"
+          },
+          "eventReferenceId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["containerAssetId", "quantity"]
+      },
+      "ReceiveStockRequest": {
+        "type": "object",
+        "properties": {
+          "containerAssetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": ["containerAssetId", "quantity"]
+      },
+      "IssueStockRequest": {
+        "type": "object",
+        "properties": {
+          "containerAssetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "note": {
+            "type": "string"
+          },
+          "eventReferenceId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["containerAssetId", "quantity"]
+      },
+      "ConsumeStockRequest": {
+        "type": "object",
+        "properties": {
+          "containerAssetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": ["containerAssetId", "quantity"]
+      },
+      "AdjustStockRequest": {
+        "type": "object",
+        "properties": {
+          "containerAssetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "delta": {
+            "type": "number"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "RECEIPT",
+              "TRANSFER",
+              "EVENT_ISSUE",
+              "EVENT_RETURN",
+              "CONSUMPTION",
+              "AUDIT_ADJUSTMENT",
+              "MANUAL_ADJUSTMENT"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "auditReferenceId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["containerAssetId", "delta", "type"]
+      },
+      "CreateAssetRequest": {
+        "type": "object",
+        "properties": {
+          "individualName": {
+            "type": "string"
+          },
+          "purchaseDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssetCustomFieldValueRequest"
+            }
+          }
+        }
+      },
+      "BulkCreateAssetsRequest": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1
+          },
+          "purchaseDate": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
+      "StockMovementResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "consumableStockBalanceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantityDelta": {
+            "type": "number"
+          },
+          "resultingQuantity": {
+            "type": "number"
+          },
+          "stockUnitLabel": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "RECEIPT",
+              "TRANSFER",
+              "EVENT_ISSUE",
+              "EVENT_RETURN",
+              "CONSUMPTION",
+              "AUDIT_ADJUSTMENT",
+              "MANUAL_ADJUSTMENT"
+            ]
+          },
+          "actorUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "note": {
+            "type": "string"
+          },
+          "transferGroupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventReferenceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "auditReferenceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AssetModelStockSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "assetModelId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetModelName": {
+            "type": "string"
+          },
+          "stockUnitLabel": {
+            "type": "string"
+          },
+          "totalQuantity": {
+            "type": "number"
+          },
+          "lowStockThreshold": {
+            "type": "number"
+          },
+          "lowStock": {
+            "type": "boolean"
+          }
+        }
+      },
+      "AssetStateChangeResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "changeType": {
+            "type": "string",
+            "enum": ["CONDITION", "LIFECYCLE"]
+          },
+          "previousValue": {
+            "type": "string"
+          },
+          "newValue": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "actorUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "changedAt": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },

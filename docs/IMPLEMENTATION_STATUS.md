@@ -17,8 +17,8 @@ Read it together with [`DEVELOPMENT_POLICIES.md`](DEVELOPMENT_POLICIES.md) and t
 |---|---|---|
 | 0 | Repository, build, CI, Compose, migrations, app skeleton | Complete, verified |
 | 1 | Identity, roles, organization context, local login, OIDC | Complete, verified |
-| 2a | Public asset-code library, categories, asset models, custom-field definitions | Complete, verified |
-| 2b | Physical assets, custom-field values, consumable stock, movement ledger | Complete, verified |
+| 2a | Public asset-code library, categories, asset models, custom-field definitions | Complete end to end, verified |
+| 2b | Physical assets, custom-field values, consumable stock, movement ledger | Complete end to end, verified |
 | 3 | Media storage (S3-compatible) | Not started |
 | 4 | Hierarchical locations and physical containment | Not started |
 | 5-14 | Packing, labels, events, checkout, audits, findings, sheets, temporary access, search, hardening | Not started |
@@ -26,10 +26,9 @@ Read it together with [`DEVELOPMENT_POLICIES.md`](DEVELOPMENT_POLICIES.md) and t
 Verified test counts at the time of writing:
 
 - Backend: **305 tests, 0 failures**, against real PostgreSQL 18.6 through Testcontainers.
-- Frontend: **98 tests, 0 failures** (80 web, 11 api-client, 7 shared-ui), plus `format:check`,
-  `lint`, `typecheck` and `build` clean.
-
-The Phase 2 **frontend** (catalog, asset and consumable UI) is **not built**. Phase 1's identity UI is.
+- Frontend: **102 tests, 0 failures** (84 web, 11 api-client, 7 shared-ui), plus `format:check`,
+  `lint`, `typecheck` and `build` clean. The focused desktop and mobile Playwright smoke suite has
+  **2 passing tests**.
 
 ## 2. How to verify this yourself
 
@@ -103,9 +102,14 @@ React 19, Vite 8, TypeScript 6.0.3 (**not** 7.x — `typescript-eslint` declares
 behind owned wrappers and design tokens, `vite-plugin-pwa`/Workbox, React Router 7.
 
 Built: the app shell, a connectivity capability with its web implementation, the ADR-0002 asset-code
-normalization and checksum with its own test suite, and the Phase 1 identity UI (sign-in with the
-optional OIDC provider button, session restoration, role-gated routing, Owner-only user
-administration and external-identity management).
+normalization and checksum with its own test suite, the Phase 1 identity UI (sign-in with the optional
+OIDC provider button, session restoration, role-gated routing, Owner-only user administration and
+external-identity management), and the complete Phase 2 inventory workbench. Phase 2 covers category
+color/editor/archive controls; model creation and guarded editing of tracking, quantity and container
+settings; custom fields and dropdown choices; individual and bulk serialized-asset creation; asset
+details, state history and manual code lookup; consumable balances and immutable movement-ledger
+actions. Route and lookup responses are guarded against stale asynchronous results, and client
+validation limits stock values to non-zero three-decimal quantities and bulk creation to 1–500 units.
 
 API types are **generated** from the backend's OpenAPI document into
 `packages/api-client/src/generated/`. Hand-written duplicates of generated request/response shapes
@@ -199,9 +203,7 @@ what was verified. Treat the history as a readable grouping, not a bisectable ti
 
 ## 9. Suggested next steps
 
-1. **Phase 2 frontend** — catalog, asset and consumable UI, closing Phase 2 end to end. Regenerate
-   the API client from the current OpenAPI document first.
-2. **Phase 3** — media storage against the S3 contract, now targeting Garage for self-hosting.
-3. **Phase 4** — locations and containment, which also unblocks several deferred guards in section 5.
+1. **Phase 3** - media storage against the S3 contract, now targeting Garage for self-hosting.
+2. **Phase 4** - locations and containment, which also unblocks several deferred guards in section 5.
 
 Before starting, run the verification commands in section 2 to confirm the tree is still green.

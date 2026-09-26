@@ -13,6 +13,35 @@ import { AccountNav } from "./features/identity/AccountNav";
 import { OidcCallbackAlert } from "./features/identity/OidcCallbackAlert";
 import { SessionExpiredBanner } from "./features/identity/SessionExpiredBanner";
 import { SessionProvider } from "./features/identity/SessionProvider";
+import { useSession } from "./features/identity/useSession";
+
+function PrimaryNav() {
+  const { status } = useSession();
+
+  return (
+    <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>
+      <Button
+        component={RouterLink}
+        to="/"
+        color="inherit"
+        sx={{ display: { xs: "none", md: "inline-flex" } }}
+      >
+        Status
+      </Button>
+      {status === "authenticated" ? (
+        <>
+          <Button component={RouterLink} to="/inventory" color="inherit">
+            Inventory
+          </Button>
+          <Button component={RouterLink} to="/asset-code" color="inherit">
+            Find asset
+          </Button>
+        </>
+      ) : null}
+      <AccountNav />
+    </Stack>
+  );
+}
 
 export function App() {
   const prefersDark = useMediaQuery("(prefers-color-scheme: dark)");
@@ -35,17 +64,7 @@ export function App() {
             </>
           }
           statusSlot={<ConnectivityChip />}
-          navSlot={
-            <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-              <Button component={RouterLink} to="/" color="inherit">
-                Status
-              </Button>
-              <Button component={RouterLink} to="/asset-code" color="inherit">
-                Check code
-              </Button>
-              <AccountNav />
-            </Stack>
-          }
+          navSlot={<PrimaryNav />}
         >
           <AppRoutes />
         </AppShellLayout>

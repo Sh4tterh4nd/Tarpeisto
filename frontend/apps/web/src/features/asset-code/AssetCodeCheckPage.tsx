@@ -1,10 +1,13 @@
 import { useRef, useState, type FormEvent } from "react";
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
+import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import { Link as RouterLink } from "react-router-dom";
 import { PageHeading } from "@bigcontainers/shared-ui";
+import { errorMessage, findAssetByCode, type AssetRecord } from "../inventory/inventoryApi";
 import { validateAssetCode, type AssetCodeValidation } from "./normalizeAssetCode";
 
 const REASON_MESSAGES: Record<Exclude<AssetCodeValidation, { valid: true }>["reason"], string> = {
@@ -17,31 +20,53 @@ const REASON_MESSAGES: Record<Exclude<AssetCodeValidation, { valid: true }>["rea
 
 /**
  * Manual public-code entry, always available alongside camera scanning
- * (spec 9.4, policy 6.3). Phase 0 only wires up client-side normalization
- * and checksum validation; looking a valid code up against inventory is a
- * later phase.
+ * (spec 9.4, policy 6.3). Checksum validation happens locally before the
+ * organization-scoped inventory lookup, preserving the distinction between
+ * a transcription error and an unknown but well-formed code.
  */
 export function AssetCodeCheckPage() {
   const [rawInput, setRawInput] = useState("");
   const [result, setResult] = useState<AssetCodeValidation | undefined>(undefined);
+  const [asset, setAsset] = useState<AssetRecord>();
+  const [lookupError, setLookupError] = useState<string>();
+  const [loading, setLoading] = useState(false);
   const errorRef = useRef<HTMLDivElement>(null);
+  const lookupToken = useRef(0);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const token = ++lookupToken.current;
     const validation = validateAssetCode(rawInput);
     setResult(validation);
+    setAsset(undefined);
+    setLookupError(undefined);
     if (!validation.valid) {
       // Move focus to the error so screen-reader and keyboard users land on
       // the correction they need (policy 6.3: dialogs/validation manage focus).
       queueMicrotask(() => errorRef.current?.focus());
+      return;
     }
+    setLoading(true);
+    const lookup = await findAssetByCode(validation.normalized);
+    if (token !== lookupToken.current) return;
+    setLoading(false);
+    if (lookup.kind === "error") {
+      setLookupError(
+        lookup.error.status === 404
+          ? "That code is valid, but it is not assigned to an asset in this organization."
+          : errorMessage(lookup.error),
+      );
+      queueMicrotask(() => errorRef.current?.focus());
+      return;
+    }
+    setAsset(lookup.data);
   }
 
   return (
     <>
       <PageHeading
-        title="Check an asset code"
-        description="Enter a six-character public asset code to validate it before looking it up."
+        title="Find an asset"
+        description="Scan or type the six-character code printed on an asset label."
       />
       <Stack component="form" spacing={2} onSubmit={handleSubmit} noValidate sx={{ maxWidth: 360 }}>
         <TextField
@@ -49,26 +74,55 @@ export function AssetCodeCheckPage() {
           label="Public asset code"
           placeholder="7K3MXY"
           value={rawInput}
-          onChange={(event) => setRawInput(event.target.value)}
+          onChange={(event) => {
+            lookupToken.current += 1;
+            setLoading(false);
+            setRawInput(event.target.value);
+            setResult(undefined);
+            setAsset(undefined);
+            setLookupError(undefined);
+          }}
           slotProps={{ htmlInput: { autoComplete: "off", "aria-describedby": "asset-code-hint" } }}
           autoFocus
         />
         <Typography id="asset-code-hint" variant="body2" color="text.secondary">
           Letters and digits only; spaces and hyphens are ignored.
         </Typography>
-        <Button type="submit" variant="contained" sx={{ alignSelf: "flex-start" }}>
-          Validate code
+        <Button
+          type="submit"
+          variant="contained"
+          disabled={loading}
+          sx={{ alignSelf: "flex-start" }}
+        >
+          {loading ? "Looking up…" : "Find asset"}
         </Button>
 
-        {result?.valid === true ? (
-          <Alert severity="success" role="status">
-            {result.normalized} checks out.
-          </Alert>
-        ) : null}
         {result && !result.valid ? (
           <Alert severity="error" role="alert" tabIndex={-1} ref={errorRef}>
             {REASON_MESSAGES[result.reason]}
           </Alert>
+        ) : null}
+        {lookupError ? (
+          <Alert severity="error" role="alert" tabIndex={-1} ref={errorRef}>
+            {lookupError}
+          </Alert>
+        ) : null}
+        {asset ? (
+          <Paper variant="outlined" sx={{ p: 2 }}>
+            <Typography variant="h3">{asset.displayName}</Typography>
+            <Typography color="text.secondary">{asset.assetModelName}</Typography>
+            <Typography sx={{ fontFamily: "monospace", fontWeight: 800, letterSpacing: 2, my: 1 }}>
+              {asset.publicCode}
+            </Typography>
+            {asset.lifecycleState === "LOST" ? (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                This asset is marked lost.
+              </Alert>
+            ) : null}
+            <Button component={RouterLink} to={`/inventory/assets/${asset.id}`} variant="contained">
+              Open asset
+            </Button>
+          </Paper>
         ) : null}
       </Stack>
     </>

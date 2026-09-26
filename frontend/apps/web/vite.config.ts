@@ -2,6 +2,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
+import process from "node:process";
 
 export default defineConfig({
   plugins: [
@@ -50,7 +51,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/api": {
-        target: "http://localhost:8080",
+        target: process.env["BIGCONTAINERS_BACKEND_ORIGIN"] ?? "http://localhost:8080",
         changeOrigin: true,
       },
     },

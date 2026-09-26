@@ -9,7 +9,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "generate": "openapi-typescript http://localhost:8080/v3/api-docs --output src/generated/backendOpenApi.generated.ts",
+    "generate": "node scripts/capture-openapi.mjs && openapi-typescript openapi/backend-openapi.json --output src/generated/backendOpenApi.generated.ts",
     "generate:committed": "openapi-typescript openapi/backend-openapi.json --output src/generated/backendOpenApi.generated.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run"
