@@ -535,11 +535,15 @@ export function addPackingRequirement(containerAssetId: string, input: PackingRe
   );
 }
 
-export function archivePackingRequirement(id: string, expectedVersion: number) {
+export function archivePackingRequirement(
+  id: string,
+  expectedVersion: number,
+  confirmAffectedBookings = false,
+) {
   return command(() =>
     apiClient.POST("/api/v1/packing-requirements/{id}/archive", {
       params: { path: { id } },
-      body: { expectedVersion },
+      body: { expectedVersion, confirmAffectedBookings },
     }),
   );
 }

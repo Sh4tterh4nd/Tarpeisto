@@ -18,6 +18,7 @@ import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import { Link as RouterLink } from "react-router-dom";
 import {
   addPackingRequirement,
   addPackingTemplateRequirement,
@@ -107,6 +108,8 @@ export function PackingPanel({
   const [templateName, setTemplateName] = useState("");
   const [templateDescription, setTemplateDescription] = useState("");
   const [requirementEditor, setRequirementEditor] = useState<RequirementEditor>();
+  const [affectedBookingIds, setAffectedBookingIds] = useState<string[]>();
+  const [pendingArchive, setPendingArchive] = useState<PackingRequirementRecord>();
   const [type, setType] = useState<PackingRequirementInput["type"]>("MODEL_QUANTITY");
   const [assetModelId, setAssetModelId] = useState("");
   const [specificAssetReference, setSpecificAssetReference] = useState("");
@@ -239,6 +242,14 @@ export function PackingPanel({
         if (result.kind === "error") setError(errorMessage(result.error));
       } else {
         const failure = await archivePackingRequirement(requirement.id, requirement.version);
+        if (failure?.errorCode === "PACKING_REMOVAL_CONFIRMATION_REQUIRED") {
+          const problem = failure.problem as typeof failure.problem & {
+            affectedBookingIds?: string[];
+          };
+          setAffectedBookingIds(problem?.affectedBookingIds ?? []);
+          setPendingArchive(requirement);
+          return;
+        }
         if (failure) setError(errorMessage(failure));
       }
       await reload();
@@ -577,6 +588,52 @@ export function PackingPanel({
             </Button>
           </DialogActions>
         </form>
+      </Dialog>
+
+      <Dialog open={Boolean(pendingArchive)} onClose={() => !busy && setPendingArchive(undefined)}>
+        <DialogTitle>Confirm reservation impact</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1}>
+            <Typography>
+              Removing this packing requirement changes future reservations. Review the affected
+              events, then confirm the change.
+            </Typography>
+            {affectedBookingIds?.map((bookingId) => (
+              <Button key={bookingId} component={RouterLink} to={`/events/${bookingId}`}>
+                View affected event
+              </Button>
+            ))}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPendingArchive(undefined)} disabled={busy}>
+            Cancel
+          </Button>
+          <Button
+            color="warning"
+            variant="contained"
+            disabled={busy || !pendingArchive}
+            onClick={() =>
+              void run(async () => {
+                if (!pendingArchive) return;
+                const failure = await archivePackingRequirement(
+                  pendingArchive.id,
+                  pendingArchive.version,
+                  true,
+                );
+                if (failure) {
+                  setError(errorMessage(failure));
+                  return;
+                }
+                setPendingArchive(undefined);
+                setAffectedBookingIds(undefined);
+                await reload();
+              })
+            }
+          >
+            Confirm removal
+          </Button>
+        </DialogActions>
       </Dialog>
 
       <Dialog

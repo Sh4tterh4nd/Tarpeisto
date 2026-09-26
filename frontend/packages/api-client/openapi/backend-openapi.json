@@ -339,6 +339,72 @@
         }
       }
     },
+    "/api/v1/bookings/{bookingId}": {
+      "get": {
+        "tags": ["booking-controller"],
+        "operationId": "get_1",
+        "parameters": [
+          {
+            "name": "bookingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["booking-controller"],
+        "operationId": "update_2",
+        "parameters": [
+          {
+            "name": "bookingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateBookingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/assets/{assetId}/values": {
       "put": {
         "tags": ["asset-controller"],
@@ -606,7 +672,7 @@
     "/api/v1/asset-models/{assetModelId}": {
       "get": {
         "tags": ["asset-model-controller"],
-        "operationId": "get_1",
+        "operationId": "get_2",
         "parameters": [
           {
             "name": "assetModelId",
@@ -1490,7 +1556,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/LocationVersionRequest"
+                "$ref": "#/components/schemas/ArchivePackingRequirementRequest"
               }
             }
           },
@@ -1727,6 +1793,240 @@
         }
       }
     },
+    "/api/v1/bookings": {
+      "get": {
+        "tags": ["booking-controller"],
+        "operationId": "list_4",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "default": "2000-01-01T00:00:00Z"
+            }
+          },
+          {
+            "name": "until",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "default": "2100-01-01T00:00:00Z"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BookingResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["booking-controller"],
+        "operationId": "create_4",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBookingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/{bookingId}/reserve": {
+      "post": {
+        "tags": ["booking-controller"],
+        "operationId": "reserve",
+        "parameters": [
+          {
+            "name": "bookingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReserveBookingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingReservationPreviewResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/{bookingId}/reservation-preview": {
+      "post": {
+        "tags": ["booking-controller"],
+        "operationId": "preview",
+        "parameters": [
+          {
+            "name": "bookingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingReservationPreviewResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/{bookingId}/lines": {
+      "post": {
+        "tags": ["booking-controller"],
+        "operationId": "addLine",
+        "parameters": [
+          {
+            "name": "bookingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBookingLineRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/{bookingId}/cancel": {
+      "post": {
+        "tags": ["booking-controller"],
+        "operationId": "cancel",
+        "parameters": [
+          {
+            "name": "bookingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelBookingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/assets/{containerAssetId}/packing-templates/{templateId}/apply": {
       "post": {
         "tags": ["packing-requirement-controller"],
@@ -1771,7 +2071,7 @@
     "/api/v1/assets/{containerAssetId}/packing-requirements": {
       "get": {
         "tags": ["packing-requirement-controller"],
-        "operationId": "list_4",
+        "operationId": "list_5",
         "parameters": [
           {
             "name": "containerAssetId",
@@ -1840,7 +2140,7 @@
     "/api/v1/assets/{containerAssetId}/packing-preview": {
       "post": {
         "tags": ["packing-requirement-controller"],
-        "operationId": "preview",
+        "operationId": "preview_1",
         "parameters": [
           {
             "name": "containerAssetId",
@@ -2077,7 +2377,7 @@
     "/api/v1/asset-models": {
       "get": {
         "tags": ["asset-model-controller"],
-        "operationId": "list_5",
+        "operationId": "list_6",
         "responses": {
           "200": {
             "description": "OK",
@@ -2096,7 +2396,7 @@
       },
       "post": {
         "tags": ["asset-model-controller"],
-        "operationId": "create_4",
+        "operationId": "create_5",
         "requestBody": {
           "content": {
             "application/json": {
@@ -2218,7 +2518,7 @@
     "/api/v1/asset-models/{assetModelId}/custom-fields": {
       "get": {
         "tags": ["model-custom-field-controller"],
-        "operationId": "list_6",
+        "operationId": "list_7",
         "parameters": [
           {
             "name": "assetModelId",
@@ -2248,7 +2548,7 @@
       },
       "post": {
         "tags": ["model-custom-field-controller"],
-        "operationId": "create_5",
+        "operationId": "create_6",
         "parameters": [
           {
             "name": "assetModelId",
@@ -2318,7 +2618,7 @@
     "/api/v1/asset-models/{assetModelId}/custom-fields/{fieldId}/options": {
       "get": {
         "tags": ["model-custom-field-option-controller"],
-        "operationId": "list_7",
+        "operationId": "list_8",
         "parameters": [
           {
             "name": "assetModelId",
@@ -2357,7 +2657,7 @@
       },
       "post": {
         "tags": ["model-custom-field-option-controller"],
-        "operationId": "create_6",
+        "operationId": "create_7",
         "parameters": [
           {
             "name": "assetModelId",
@@ -2750,7 +3050,7 @@
     "/api/v1/asset-models/{assetModelId}/assets": {
       "get": {
         "tags": ["asset-controller"],
-        "operationId": "list_8",
+        "operationId": "list_9",
         "parameters": [
           {
             "name": "assetModelId",
@@ -2789,7 +3089,7 @@
       },
       "post": {
         "tags": ["asset-controller"],
-        "operationId": "create_7",
+        "operationId": "create_8",
         "parameters": [
           {
             "name": "assetModelId",
@@ -2976,6 +3276,39 @@
         }
       }
     },
+    "/api/v1/packing-requirements/{id}/reservation-impact": {
+      "get": {
+        "tags": ["packing-requirement-controller"],
+        "operationId": "reservationImpact",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/media/{mediaId}": {
       "get": {
         "tags": ["media-controller"],
@@ -3089,7 +3422,7 @@
     "/api/v1/consumable-stock/{balanceId}": {
       "get": {
         "tags": ["consumable-stock-controller"],
-        "operationId": "get_2",
+        "operationId": "get_3",
         "parameters": [
           {
             "name": "balanceId",
@@ -3168,10 +3501,61 @@
         }
       }
     },
+    "/api/v1/bookings/{bookingId}/history": {
+      "get": {
+        "tags": ["booking-controller"],
+        "operationId": "history",
+        "parameters": [
+          {
+            "name": "bookingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BookingHistoryResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/assets/{assetId}": {
       "get": {
         "tags": ["asset-controller"],
-        "operationId": "get_3",
+        "operationId": "get_4",
         "parameters": [
           {
             "name": "assetId",
@@ -3200,7 +3584,7 @@
     "/api/v1/assets/{assetId}/history": {
       "get": {
         "tags": ["asset-controller"],
-        "operationId": "history",
+        "operationId": "history_1",
         "parameters": [
           {
             "name": "assetId",
@@ -3385,7 +3769,7 @@
     "/api/v1/application": {
       "get": {
         "tags": ["application-info-controller"],
-        "operationId": "get_4",
+        "operationId": "get_5",
         "responses": {
           "200": {
             "description": "OK",
@@ -3427,6 +3811,54 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/{bookingId}/lines/{lineId}": {
+      "delete": {
+        "tags": ["booking-controller"],
+        "operationId": "removeLine",
+        "parameters": [
+          {
+            "name": "bookingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "lineId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RemoveBookingLineRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -3541,6 +3973,9 @@
           },
           "requirement": {
             "$ref": "#/components/schemas/PackingRequirementRequest"
+          },
+          "confirmAffectedBookings": {
+            "type": "boolean"
           }
         },
         "required": ["requirement"]
@@ -3730,6 +4165,148 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "CreateBookingRequest": {
+        "type": "object",
+        "properties": {
+          "mutationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 0
+          },
+          "clientText": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 0
+          },
+          "venueText": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 0
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 20000,
+            "minLength": 0
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endsAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["endsAt", "name", "startsAt"]
+      },
+      "UpdateBookingRequest": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "booking": {
+            "$ref": "#/components/schemas/CreateBookingRequest"
+          }
+        },
+        "required": ["booking", "expectedVersion"]
+      },
+      "BookingLineResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["CONTAINER", "ASSET", "CONSUMABLE"]
+          },
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "consumableStockId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "BookingResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "clientText": {
+            "type": "string"
+          },
+          "venueText": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "RESERVED",
+              "CHECKED_OUT",
+              "RETURNED_AUDITS_PENDING",
+              "REVIEW_REQUIRED",
+              "COMPLETED",
+              "CANCELLED"
+            ]
+          },
+          "reservationStatus": {
+            "type": "string",
+            "enum": ["NONE", "CONFIRMED", "ATTENTION_REQUIRED"]
+          },
+          "currentRevisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdByUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BookingLineResponse"
+            }
           }
         }
       },
@@ -4290,6 +4867,19 @@
           }
         }
       },
+      "ArchivePackingRequirementRequest": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "confirmAffectedBookings": {
+            "type": "boolean"
+          }
+        },
+        "required": ["expectedVersion"]
+      },
       "CreateCategoryRequest": {
         "type": "object",
         "properties": {
@@ -4303,6 +4893,118 @@
           }
         },
         "required": ["color", "name"]
+      },
+      "ReserveBookingRequest": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        },
+        "required": ["expectedVersion"]
+      },
+      "BookingConflictResponse": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "conflictingBookingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "stockId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "modelId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "containerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requirementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requiredQuantity": {
+            "type": "number"
+          },
+          "availableQuantity": {
+            "type": "number"
+          }
+        }
+      },
+      "BookingReservationPreviewResponse": {
+        "type": "object",
+        "properties": {
+          "reservable": {
+            "type": "boolean"
+          },
+          "conflicts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BookingConflictResponse"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BookingConflictResponse"
+            }
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "CreateBookingLineRequest": {
+        "type": "object",
+        "properties": {
+          "expectedBookingVersion": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["CONTAINER", "ASSET", "CONSUMABLE"]
+          },
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "consumableStockId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "number"
+          }
+        },
+        "required": ["expectedBookingVersion", "quantity", "type"]
+      },
+      "CancelBookingRequest": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        },
+        "required": ["expectedVersion"]
       },
       "PackingPreviewRequest": {
         "type": "object",
@@ -4834,6 +5536,30 @@
           }
         }
       },
+      "BookingHistoryResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "action": {
+            "type": "string"
+          },
+          "actorUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "snapshot": {
+            "type": "object",
+            "additionalProperties": {}
+          }
+        }
+      },
       "AssetStateChangeResponse": {
         "type": "object",
         "properties": {
@@ -4891,6 +5617,17 @@
             "type": "string"
           }
         }
+      },
+      "RemoveBookingLineRequest": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        },
+        "required": ["expectedVersion"]
       }
     }
   }

@@ -19,4 +19,6 @@ public interface PackingRequirementRepository extends JpaRepository<PackingRequi
     boolean existsByOrganizationIdAndContainerAssetIdAndArchivedAtIsNull(UUID org, UUID containerId);
 
     boolean existsByOrganizationIdAndAssetModelId(UUID organizationId, UUID assetModelId);
+
+    List<PackingRequirement> findAllByOrganizationIdAndArchivedAtIsNull(UUID organizationId);
 }

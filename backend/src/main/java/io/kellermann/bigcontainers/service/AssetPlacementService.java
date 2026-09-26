@@ -31,6 +31,7 @@ public class AssetPlacementService {
     private final LocationRepository locations;
     private final OrganizationRepository organizations;
     private final ActivityLogService activity;
+    private final BookingImpactService bookingImpact;
     private final Clock clock;
 
     public AssetPlacementService(
@@ -39,12 +40,14 @@ public class AssetPlacementService {
             LocationRepository locations,
             OrganizationRepository organizations,
             ActivityLogService activity,
+            BookingImpactService bookingImpact,
             Clock clock) {
         this.assets = assets;
         this.models = models;
         this.locations = locations;
         this.organizations = organizations;
         this.activity = activity;
+        this.bookingImpact = bookingImpact;
         this.clock = clock;
     }
 
@@ -113,6 +116,7 @@ public class AssetPlacementService {
                         String.valueOf(parentContainerAssetId)));
         // Flush makes the version included in this response usable for a consecutive move.
         assets.flush();
+        bookingImpact.changed(principal);
         return view(asset, principal.organizationId());
     }
 

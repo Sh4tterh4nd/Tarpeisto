@@ -53,6 +53,19 @@ class MigrationIntegrationTests extends AbstractIntegrationTest {
     }
 
     @Test
+    void phase7BookingReservationTablesExistAndAreQueryable() {
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM event_booking", Integer.class))
+                .isNotNull();
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM event_booking_line", Integer.class))
+                .isNotNull();
+        assertThat(jdbcTemplate.queryForObject(
+                        "SELECT count(*) FROM event_booking_reservation_revision", Integer.class))
+                .isNotNull();
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM event_booking_reservation_claim", Integer.class))
+                .isNotNull();
+    }
+
+    @Test
     @Transactional
     void externalIdentityEnforcesUniqueIssuerAndSubject() {
         UUID organizationId = insertOrganization();

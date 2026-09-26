@@ -33,6 +33,14 @@ const ScannerResultPage = lazy(() =>
     default: module.ScannerResultPage,
   })),
 );
+const EventsPage = lazy(() =>
+  import("../features/events/EventsPage").then((module) => ({ default: module.EventsPage })),
+);
+const EventDetailPage = lazy(() =>
+  import("../features/events/EventDetailPage").then((module) => ({
+    default: module.EventDetailPage,
+  })),
+);
 
 const INVENTORY_ROLES = ["OWNER", "DEPUTY", "OPERATOR_AUDITOR", "VIEWER"] as const;
 
@@ -70,6 +78,26 @@ export function AppRoutes() {
         }
       />
       <Route path="/asset-code" element={<Navigate to="/scan" replace />} />
+      <Route
+        path="/events"
+        element={
+          <RequireRole allow={[...INVENTORY_ROLES]}>
+            <Suspense fallback={<LoadingPage />}>
+              <EventsPage />
+            </Suspense>
+          </RequireRole>
+        }
+      />
+      <Route
+        path="/events/:bookingId"
+        element={
+          <RequireRole allow={[...INVENTORY_ROLES]}>
+            <Suspense fallback={<LoadingPage />}>
+              <EventDetailPage />
+            </Suspense>
+          </RequireRole>
+        }
+      />
       <Route
         path="/inventory"
         element={

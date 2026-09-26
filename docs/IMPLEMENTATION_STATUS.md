@@ -22,14 +22,16 @@ Read it together with [`DEVELOPMENT_POLICIES.md`](DEVELOPMENT_POLICIES.md) and t
 | 3     | Media storage (S3-compatible)                                                           | Complete, verified                                                                                                 |
 | 4     | Hierarchical locations and physical containment                                         | Complete, verified                                                                                                 |
 | 5     | Packing requirements and templates                                                      | Complete, verified                                                                                                 |
-| 6-14  | Labels, events, checkout, audits, findings, sheets, temporary access, search, hardening | Not started                                                                                                        |
+| 6     | QR scanning and initial asset-label output                                              | Implemented; automated verification complete, physical print/device acceptance pending                             |
+| 7     | Events, reservations, recursive expansion and conflict calculation                      | Complete, verified                                                                                                 |
+| 8-14  | Checkout, audits, findings, sheets, temporary access, search, hardening                  | Not started                                                                                                        |
 
-Verified at the Phase 3-5 checkpoint:
+Verified at the Phase 6-7 checkpoint:
 
-- Backend: **333 tests, 0 failures**, against real PostgreSQL 18.6 through Testcontainers.
-- Frontend: **113 tests, 0 failures** (95 web, 11 api-client, 7 shared-ui), plus `format:check`,
-  `lint`, `typecheck` and `build` clean. The focused desktop and mobile Playwright smoke suite has
-  **2 passing tests**.
+- Backend: **378 tests, 0 failures**, against real PostgreSQL through Testcontainers.
+- Frontend: **141 tests, 0 failures** (123 web, 11 api-client, 7 shared-ui), plus `format:check`,
+  `lint`, `typecheck` and `build` clean. The focused desktop and mobile Playwright scanner journey
+  has **2 passing tests**. `jibBuildTar` also succeeds with the matching frontend embedded.
 
 ## 2. How to verify this yourself
 
@@ -87,6 +89,7 @@ Migrations (Flyway owns all schema; applied migrations are immutable):
 | `V7`-`V8` | S3-compatible media metadata, layout images and deferred-cleanup support                            |
 | `V9`      | Organization locations, physical containment and generalized stock places                           |
 | `V10`     | Packing templates, copy-on-apply requirements and immutable packing history                         |
+| `V11`     | Events, booking lines, immutable reservation revisions/claims and event history                     |
 
 API surface is under `/api/v1`. The OpenAPI document at `/v3/api-docs` (enabled only under the `dev`
 profile) is the machine-readable contract; treat it as authoritative over any list here. Broadly:
@@ -105,6 +108,14 @@ referenced names and codes. Tracking-mode changes are blocked by current or arch
 requirements and their history. Checkout, seal assertion and audit state do not exist yet: their
 future guards and invalidation must be integrated into the packing mutation transaction when those
 lifecycles are implemented; Phase 5 does not claim to enforce nonexistent state.
+
+Phase 6 adds generated PDF asset labels for both specified A4 stocks, calibration sheets, UTF-8
+P-touch CSV, and raw-code QR round-trip verification. Phase 7 adds timestamped Draft/Reserved/
+Cancelled events, recursive container and exact-requirement expansion, interchangeable model
+capacity, carried and separately issued consumable snapshots, explainable conflicts, immutable
+reservation revisions/history, retry-safe creation, and recalculation after relevant packing,
+placement, lifecycle, model and stock changes. Reserved events that become conflicted are retained
+and marked `ATTENTION_REQUIRED`; completed snapshots are never rewritten.
 
 Authorization is enforced in the **service** layer, not by URL matchers. Owner administers users and
 identities; Owner or Deputy administers the catalog, assets, media, locations, containment, stock and
@@ -133,6 +144,13 @@ requirements, maintain reusable copy-on-apply templates, enter non-persistent ob
 amounts and inspect grouped complete, missing, extra and misplaced results. Archived rows remain
 visible and can be restored with optimistic-version checks.
 
+Phase 6 adds continuous camera scanning with native detection plus a pinned ZXing fallback, permanent
+manual entry, scanner results/restore, bulk/reprint label calibration and PDF/CSV downloads. Phase 7
+adds an Events month/list board and detail workflow for draft editing, equipment and consumable
+lines, availability preview, reservation, structured conflicts/warnings, attention state,
+cancellation and immutable activity history. Only Owners and Deputies mutate events; every permanent
+role may read them.
+
 API types are **generated** from the backend's OpenAPI document into
 `packages/api-client/src/generated/`. Hand-written duplicates of generated request/response shapes
 are forbidden by policy. Regenerate with the package's `generate` script against a running backend.
@@ -156,9 +174,8 @@ exist yet, and each is documented at its call site in code.
 
 | Deferred                                                          | Where it plugs in                                                                                                                                                                                                                                                                                            |
 | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Booking tracking-mode dependencies                                | Extend `AssetModelService.requireNoTrackingModeDependencyBlocksChange` and database backstops when Phase 7 adds booking state. Existing custom-field, asset, stock and packing dependencies are enforced now. |
 | Packing checkout guard and seal invalidation                       | Integrate at the organization-locked packing service mutation boundary when checkout and seal state exist. No substitute Phase 7/9 tables or flags are present. |
-| Stock movement event/audit references                             | Nullable columns exist without foreign keys; Phases 7 and 9 add the targets.                                                                                                                                                                                                                                 |
+| Stock movement audit references                                   | The Phase 7 event reference now has a tenant-scoped foreign key; the nullable audit reference receives its target in Phase 9.                                                                                                                                                                                |
 | Automatic email linking toggle                                    | A static environment variable, not a runtime Owner-toggled setting, because no settings store exists yet.                                                                                                                                                                                                    |
 | Cross-model "metadata incomplete" dashboard view                  | Per-asset and per-model visibility exists; the organization-wide operational view belongs to Phase 13.                                                                                                                                                                                                       |
 
@@ -214,6 +231,14 @@ exercised against a running application and a real database.
   pinned assets are misplaced rather than reused, only direct active contents count, and observed
   consumable amounts do not mutate stock. Concurrent exact pins produce one winner, template copies
   are atomic and independent, and immutable history retains before/after JSON.
+- **Phase 6 label/scanner acceptance.** Rendered PDFs for both A4 presets and the calibration sheet
+  were visually inspected, and rendered QR output decodes to the canonical code. CSV quoting,
+  Unicode and CRLF output are covered. Physical sheet alignment, printed mobile scanning and the
+  real P-touch import remain manual acceptance checks.
+- **Phase 7 reservation acceptance.** PostgreSQL tests cover recursive ancestor/descendant holds,
+  external exact requirements, half-open time ranges, interval-peak model capacity, interchangeable
+  replacement, global consumable ATP, carried/source stock, concurrency, cancellation, immutable
+  revisions/history, tenant/role boundaries, retries and recalculation after inventory changes.
 
 ## 8. Commit history caveat
 
@@ -225,6 +250,7 @@ what was verified. Treat the history as a readable grouping, not a bisectable ti
 
 ## 9. Suggested next steps
 
-1. **Phase 6** - QR scanning and initial label output, after review and authorization to continue.
+1. Review Phases 6 and 7, including physical label-stock/mobile/P-touch acceptance.
+2. **Phase 8** - checkout, frozen manifests, consumable issue movements and return/check-in.
 
 Before starting, run the verification commands in section 2 to confirm the tree is still green.

@@ -57,12 +57,17 @@ public class PackingRequirementController {
                         r.requiredQuantity())));
     }
 
+    @GetMapping("/packing-requirements/{id}/reservation-impact")
+    public List<UUID> reservationImpact(@AuthenticationPrincipal BigContainersPrincipal p, @PathVariable UUID id) {
+        return service.reservationImpact(p, id);
+    }
+
     @PostMapping("/packing-requirements/{id}/archive")
     public ResponseEntity<Void> archive(
             @AuthenticationPrincipal BigContainersPrincipal p,
             @PathVariable UUID id,
-            @RequestBody LocationVersionRequest r) {
-        service.archive(p, id, r.expectedVersion());
+            @Valid @RequestBody ArchivePackingRequirementRequest r) {
+        service.archive(p, id, r.expectedVersion(), Boolean.TRUE.equals(r.confirmAffectedBookings()));
         return ResponseEntity.noContent().build();
     }
 
@@ -79,7 +84,8 @@ public class PackingRequirementController {
                 r.type(),
                 r.assetModelId(),
                 r.specificAssetReference(),
-                r.requiredQuantity()));
+                r.requiredQuantity(),
+                Boolean.TRUE.equals(request.confirmAffectedBookings())));
     }
 
     @PostMapping("/packing-requirements/{id}/restore")

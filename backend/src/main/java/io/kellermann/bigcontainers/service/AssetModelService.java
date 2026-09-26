@@ -43,10 +43,9 @@ import org.springframework.transaction.annotation.Transactional;
  *       tr_asset_model_reject_quantity_mode_with_custom_fields} trigger in {@code
  *       V4__create_catalog_schema.sql} remains the authoritative backstop.
  *   <li>Changing tracking mode once dependent data exists (assets, stock balances, packing
- *       requirements, bookings, or history - specification section 6.2) is only partly enforceable
- *       so far: physical assets, stock balances, custom fields, and actual/template packing rows
- *       (including archived rows and their immutable history) are checked. Booking dependencies
- *       extend this seam when the booking lifecycle exists.
+ *       requirements, bookings, or history - specification section 6.2) is rejected. Booking lines
+ *       reference an asset or stock balance, so those existing dependency checks also preserve
+ *       current and historical booking references.
  *   <li>Disabling container capability while units contain assets, consumable stock, or active
  *       packing requirements is rejected under the same organization lock used for placement and
  *       packing mutations.
@@ -65,6 +64,7 @@ public class AssetModelService {
     private final CategoryService categoryService;
     private final OrganizationRepository organizationRepository;
     private final ActivityLogService activityLogService;
+    private final BookingImpactService bookingImpact;
     private final Clock clock;
 
     public AssetModelService(
@@ -78,6 +78,7 @@ public class AssetModelService {
             CategoryService categoryService,
             OrganizationRepository organizationRepository,
             ActivityLogService activityLogService,
+            BookingImpactService bookingImpact,
             Clock clock) {
         this.assetModelRepository = assetModelRepository;
         this.modelCustomFieldRepository = modelCustomFieldRepository;
@@ -89,6 +90,7 @@ public class AssetModelService {
         this.categoryService = categoryService;
         this.organizationRepository = organizationRepository;
         this.activityLogService = activityLogService;
+        this.bookingImpact = bookingImpact;
         this.clock = clock;
     }
 
@@ -272,12 +274,15 @@ public class AssetModelService {
                 "ASSET_MODEL",
                 assetModel.getId(),
                 Map.of("canContainAssets", canContainAssets));
+        assetModelRepository.flush();
+        bookingImpact.changed(principal);
         return AssetModelView.from(assetModel);
     }
 
     @Transactional
     public void archive(BigContainersPrincipal principal, UUID assetModelId) {
         requireOwnerOrDeputy(principal);
+        lockOrganization(principal.organizationId());
         AssetModel assetModel = requireAssetModel(principal.organizationId(), assetModelId);
         assetModel.archive(clock.instant());
         activityLogService.record(
@@ -287,11 +292,14 @@ public class AssetModelService {
                 "ASSET_MODEL",
                 assetModel.getId(),
                 null);
+        assetModelRepository.flush();
+        bookingImpact.changed(principal);
     }
 
     @Transactional
     public void restore(BigContainersPrincipal principal, UUID assetModelId) {
         requireOwnerOrDeputy(principal);
+        lockOrganization(principal.organizationId());
         AssetModel assetModel = requireAssetModel(principal.organizationId(), assetModelId);
         assetModel.restore(clock.instant());
         activityLogService.record(
@@ -301,6 +309,8 @@ public class AssetModelService {
                 "ASSET_MODEL",
                 assetModel.getId(),
                 null);
+        assetModelRepository.flush();
+        bookingImpact.changed(principal);
     }
 
     /**

@@ -69,6 +69,11 @@ public class ApplicationExceptionHandler {
         return problemDetail(HttpStatus.CONFLICT, "Stale Packing Version", exception);
     }
 
+    @ExceptionHandler(StaleBookingVersionException.class)
+    public ProblemDetail handleStaleBookingVersion(StaleBookingVersionException exception) {
+        return problemDetail(HttpStatus.CONFLICT, "Stale Booking Version", exception);
+    }
+
     @ExceptionHandler(PackingConflictException.class)
     public ProblemDetail handlePackingConflict(PackingConflictException exception) {
         return problemDetail(HttpStatus.CONFLICT, "Packing Conflict", exception);
@@ -77,6 +82,18 @@ public class ApplicationExceptionHandler {
     @ExceptionHandler(StaleLocationVersionException.class)
     public ProblemDetail handleStaleLocationVersion(StaleLocationVersionException exception) {
         return problemDetail(HttpStatus.CONFLICT, "Stale Location Version", exception);
+    }
+
+    @ExceptionHandler(PackingRemovalConfirmationException.class)
+    public ProblemDetail handlePackingRemovalConfirmation(PackingRemovalConfirmationException exception) {
+        ProblemDetail p = problemDetail(HttpStatus.CONFLICT, "Packing removal confirmation required", exception);
+        p.setProperty("affectedBookingIds", exception.affectedBookingIds());
+        return p;
+    }
+
+    @ExceptionHandler(BookingMutationConflictException.class)
+    public ProblemDetail handleBookingMutationConflict(BookingMutationConflictException e) {
+        return problemDetail(HttpStatus.CONFLICT, "Booking mutation conflict", e);
     }
 
     private ProblemDetail problemDetail(HttpStatus status, String title, ApplicationException exception) {

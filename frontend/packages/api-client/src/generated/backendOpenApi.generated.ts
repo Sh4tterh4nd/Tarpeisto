@@ -132,6 +132,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/bookings/{bookingId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_1"];
+        put: operations["update_2"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/assets/{assetId}/values": {
         parameters: {
             query?: never;
@@ -235,7 +251,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get_1"];
+        get: operations["get_2"];
         put: operations["rename_2"];
         post?: never;
         delete?: never;
@@ -644,6 +660,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/bookings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_4"];
+        put?: never;
+        post: operations["create_4"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bookings/{bookingId}/reserve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["reserve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bookings/{bookingId}/reservation-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["preview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bookings/{bookingId}/lines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["addLine"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bookings/{bookingId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/assets/{containerAssetId}/packing-templates/{templateId}/apply": {
         parameters: {
             query?: never;
@@ -667,7 +763,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_4"];
+        get: operations["list_5"];
         put?: never;
         post: operations["add"];
         delete?: never;
@@ -685,7 +781,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["preview"];
+        post: operations["preview_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -763,9 +859,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_5"];
+        get: operations["list_6"];
         put?: never;
-        post: operations["create_4"];
+        post: operations["create_5"];
         delete?: never;
         options?: never;
         head?: never;
@@ -811,9 +907,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_6"];
+        get: operations["list_7"];
         put?: never;
-        post: operations["create_5"];
+        post: operations["create_6"];
         delete?: never;
         options?: never;
         head?: never;
@@ -843,9 +939,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_7"];
+        get: operations["list_8"];
         put?: never;
-        post: operations["create_6"];
+        post: operations["create_7"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1003,9 +1099,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_8"];
+        get: operations["list_9"];
         put?: never;
-        post: operations["create_7"];
+        post: operations["create_8"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1092,6 +1188,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/packing-requirements/{id}/reservation-impact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["reservationImpact"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/media/{mediaId}": {
         parameters: {
             query?: never;
@@ -1147,7 +1259,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get_2"];
+        get: operations["get_3"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1188,6 +1300,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/bookings/{bookingId}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["history"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/assets/{assetId}": {
         parameters: {
             query?: never;
@@ -1195,7 +1323,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get_3"];
+        get: operations["get_4"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1211,7 +1339,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["history"];
+        get: operations["history_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1307,7 +1435,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get_4"];
+        get: operations["get_5"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1327,6 +1455,22 @@ export interface paths {
         put?: never;
         post?: never;
         delete: operations["unlink"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bookings/{bookingId}/lines/{lineId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["removeLine"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1378,6 +1522,7 @@ export interface components {
             /** Format: int64 */
             expectedVersion?: number;
             requirement: components["schemas"]["PackingRequirementRequest"];
+            confirmAffectedBookings?: boolean;
         };
         PackingRequirementRequest: {
             /** @enum {string} */
@@ -1453,6 +1598,59 @@ export interface components {
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
+        };
+        CreateBookingRequest: {
+            /** Format: uuid */
+            mutationId?: string;
+            name: string;
+            clientText?: string;
+            venueText?: string;
+            notes?: string;
+            /** Format: date-time */
+            startsAt: string;
+            /** Format: date-time */
+            endsAt: string;
+        };
+        UpdateBookingRequest: {
+            /** Format: int64 */
+            expectedVersion: number;
+            booking: components["schemas"]["CreateBookingRequest"];
+        };
+        BookingLineResponse: {
+            /** Format: uuid */
+            id?: string;
+            /** @enum {string} */
+            type?: "CONTAINER" | "ASSET" | "CONSUMABLE";
+            /** Format: uuid */
+            assetId?: string;
+            /** Format: uuid */
+            consumableStockId?: string;
+            quantity?: number;
+            /** Format: int64 */
+            version?: number;
+        };
+        BookingResponse: {
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+            clientText?: string;
+            venueText?: string;
+            notes?: string;
+            /** Format: date-time */
+            startsAt?: string;
+            /** Format: date-time */
+            endsAt?: string;
+            /** @enum {string} */
+            status?: "DRAFT" | "RESERVED" | "CHECKED_OUT" | "RETURNED_AUDITS_PENDING" | "REVIEW_REQUIRED" | "COMPLETED" | "CANCELLED";
+            /** @enum {string} */
+            reservationStatus?: "NONE" | "CONFIRMED" | "ATTENTION_REQUIRED";
+            /** Format: uuid */
+            currentRevisionId?: string;
+            /** Format: uuid */
+            createdByUserId?: string;
+            /** Format: int64 */
+            version?: number;
+            lines?: components["schemas"]["BookingLineResponse"][];
         };
         AssetCustomFieldValueRequest: {
             /** Format: uuid */
@@ -1675,9 +1873,58 @@ export interface components {
             /** Format: int64 */
             expectedVersion?: number;
         };
+        ArchivePackingRequirementRequest: {
+            /** Format: int64 */
+            expectedVersion: number;
+            confirmAffectedBookings?: boolean;
+        };
         CreateCategoryRequest: {
             name: string;
             color: string;
+        };
+        ReserveBookingRequest: {
+            /** Format: int64 */
+            expectedVersion: number;
+        };
+        BookingConflictResponse: {
+            type?: string;
+            message?: string;
+            /** Format: uuid */
+            conflictingBookingId?: string;
+            /** Format: uuid */
+            assetId?: string;
+            /** Format: uuid */
+            stockId?: string;
+            /** Format: uuid */
+            modelId?: string;
+            /** Format: uuid */
+            containerId?: string;
+            /** Format: uuid */
+            requirementId?: string;
+            requiredQuantity?: number;
+            availableQuantity?: number;
+        };
+        BookingReservationPreviewResponse: {
+            reservable?: boolean;
+            conflicts?: components["schemas"]["BookingConflictResponse"][];
+            warnings?: components["schemas"]["BookingConflictResponse"][];
+            /** Format: int64 */
+            version?: number;
+        };
+        CreateBookingLineRequest: {
+            /** Format: int64 */
+            expectedBookingVersion: number;
+            /** @enum {string} */
+            type: "CONTAINER" | "ASSET" | "CONSUMABLE";
+            /** Format: uuid */
+            assetId?: string;
+            /** Format: uuid */
+            consumableStockId?: string;
+            quantity: number;
+        };
+        CancelBookingRequest: {
+            /** Format: int64 */
+            expectedVersion: number;
         };
         PackingPreviewRequest: {
             observedConsumableQuantities?: {
@@ -1874,6 +2121,18 @@ export interface components {
             lowStockThreshold?: number;
             lowStock?: boolean;
         };
+        BookingHistoryResponse: {
+            /** Format: uuid */
+            id?: string;
+            action?: string;
+            /** Format: uuid */
+            actorUserId?: string;
+            /** Format: date-time */
+            occurredAt?: string;
+            snapshot?: {
+                [key: string]: unknown;
+            };
+        };
         AssetStateChangeResponse: {
             /** Format: uuid */
             id?: string;
@@ -1896,6 +2155,10 @@ export interface components {
         OidcProviderInfo: {
             displayName?: string;
             authorizationEndpoint?: string;
+        };
+        RemoveBookingLineRequest: {
+            /** Format: int64 */
+            expectedVersion: number;
         };
     };
     responses: never;
@@ -2132,6 +2395,54 @@ export interface operations {
             };
         };
     };
+    get_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BookingResponse"];
+                };
+            };
+        };
+    };
+    update_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateBookingRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BookingResponse"];
+                };
+            };
+        };
+    };
     setValues: {
         parameters: {
             query?: never;
@@ -2310,7 +2621,7 @@ export interface operations {
             };
         };
     };
-    get_1: {
+    get_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -2914,7 +3225,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["LocationVersionRequest"];
+                "application/json": components["schemas"]["ArchivePackingRequirementRequest"];
             };
         };
         responses: {
@@ -3123,6 +3434,155 @@ export interface operations {
             };
         };
     };
+    list_4: {
+        parameters: {
+            query?: {
+                from?: string;
+                until?: string;
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BookingResponse"][];
+                };
+            };
+        };
+    };
+    create_4: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBookingRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BookingResponse"];
+                };
+            };
+        };
+    };
+    reserve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReserveBookingRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BookingReservationPreviewResponse"];
+                };
+            };
+        };
+    };
+    preview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BookingReservationPreviewResponse"];
+                };
+            };
+        };
+    };
+    addLine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBookingLineRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BookingResponse"];
+                };
+            };
+        };
+    };
+    cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelBookingRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BookingResponse"];
+                };
+            };
+        };
+    };
     apply: {
         parameters: {
             query?: never;
@@ -3146,7 +3606,7 @@ export interface operations {
             };
         };
     };
-    list_4: {
+    list_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -3194,7 +3654,7 @@ export interface operations {
             };
         };
     };
-    preview: {
+    preview_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -3364,7 +3824,7 @@ export interface operations {
             };
         };
     };
-    list_5: {
+    list_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -3384,7 +3844,7 @@ export interface operations {
             };
         };
     };
-    create_4: {
+    create_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -3479,7 +3939,7 @@ export interface operations {
             };
         };
     };
-    list_6: {
+    list_7: {
         parameters: {
             query?: never;
             header?: never;
@@ -3501,7 +3961,7 @@ export interface operations {
             };
         };
     };
-    create_5: {
+    create_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -3548,7 +4008,7 @@ export interface operations {
             };
         };
     };
-    list_7: {
+    list_8: {
         parameters: {
             query?: never;
             header?: never;
@@ -3571,7 +4031,7 @@ export interface operations {
             };
         };
     };
-    create_6: {
+    create_7: {
         parameters: {
             query?: never;
             header?: never;
@@ -3819,7 +4279,7 @@ export interface operations {
             };
         };
     };
-    list_8: {
+    list_9: {
         parameters: {
             query?: {
                 includeInactive?: boolean;
@@ -3843,7 +4303,7 @@ export interface operations {
             };
         };
     };
-    create_7: {
+    create_8: {
         parameters: {
             query?: never;
             header?: never;
@@ -3987,6 +4447,28 @@ export interface operations {
             };
         };
     };
+    reservationImpact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string[];
+                };
+            };
+        };
+    };
     stream: {
         parameters: {
             query?: never;
@@ -4073,7 +4555,7 @@ export interface operations {
             };
         };
     };
-    get_2: {
+    get_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -4137,7 +4619,32 @@ export interface operations {
             };
         };
     };
-    get_3: {
+    history: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                bookingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BookingHistoryResponse"][];
+                };
+            };
+        };
+    };
+    get_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -4159,7 +4666,7 @@ export interface operations {
             };
         };
     };
-    history: {
+    history_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -4291,7 +4798,7 @@ export interface operations {
             };
         };
     };
-    get_4: {
+    get_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -4329,6 +4836,33 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    removeLine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bookingId: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RemoveBookingLineRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BookingResponse"];
+                };
             };
         };
     };

@@ -73,6 +73,7 @@ public class ConsumableStockService {
     private final LocationRepository locationRepository;
     private final OrganizationRepository organizationRepository;
     private final ActivityLogService activityLogService;
+    private final BookingImpactService bookingImpact;
     private final Clock clock;
 
     public ConsumableStockService(
@@ -85,6 +86,7 @@ public class ConsumableStockService {
             LocationRepository locationRepository,
             OrganizationRepository organizationRepository,
             ActivityLogService activityLogService,
+            BookingImpactService bookingImpact,
             Clock clock) {
         this.consumableStockRepository = consumableStockRepository;
         this.stockMovementRepository = stockMovementRepository;
@@ -95,6 +97,7 @@ public class ConsumableStockService {
         this.locationRepository = locationRepository;
         this.organizationRepository = organizationRepository;
         this.activityLogService = activityLogService;
+        this.bookingImpact = bookingImpact;
         this.clock = clock;
     }
 
@@ -757,6 +760,8 @@ public class ConsumableStockService {
                 eventReferenceId,
                 auditReferenceId,
                 now));
+        stockMovementRepository.flush();
+        bookingImpact.changed(principal);
     }
 
     private Asset requireContainerAsset(UUID organizationId, UUID containerAssetId) {

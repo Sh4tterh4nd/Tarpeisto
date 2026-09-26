@@ -86,6 +86,7 @@ public class AssetService {
     private final AssetModelService assetModelService;
     private final AssetCodeGenerationService assetCodeGenerationService;
     private final ActivityLogService activityLogService;
+    private final BookingImpactService bookingImpact;
     private final Clock clock;
 
     public AssetService(
@@ -100,6 +101,7 @@ public class AssetService {
             AssetModelService assetModelService,
             AssetCodeGenerationService assetCodeGenerationService,
             ActivityLogService activityLogService,
+            BookingImpactService bookingImpact,
             Clock clock) {
         this.assetRepository = assetRepository;
         this.assetCustomFieldValueRepository = assetCustomFieldValueRepository;
@@ -112,6 +114,7 @@ public class AssetService {
         this.assetModelService = assetModelService;
         this.assetCodeGenerationService = assetCodeGenerationService;
         this.activityLogService = activityLogService;
+        this.bookingImpact = bookingImpact;
         this.clock = clock;
     }
 
@@ -205,6 +208,8 @@ public class AssetService {
                 "ASSET",
                 asset.getId(),
                 Map.of("assetModelId", assetModelId.toString(), "publicCode", publicCode, "unitNumber", unitNumber));
+        assetRepository.flush();
+        bookingImpact.changed(principal);
         return toView(asset, assetModel.getName());
     }
 
@@ -258,6 +263,8 @@ public class AssetService {
                             asset.getUnitNumber()));
             created.add(toView(asset, assetModel.getName()));
         }
+        assetRepository.flush();
+        bookingImpact.changed(principal);
         return created;
     }
 
@@ -356,6 +363,7 @@ public class AssetService {
     public AssetView changeLifecycleState(
             BigContainersPrincipal principal, UUID assetId, LifecycleState newLifecycleState, String reason) {
         requireOwnerOrDeputy(principal);
+        lockOrganization(principal.organizationId());
         Asset asset = requireAsset(principal.organizationId(), assetId);
         var now = clock.instant();
         LifecycleState previous;
@@ -381,6 +389,8 @@ public class AssetService {
                 "ASSET",
                 asset.getId(),
                 Map.of("previous", previous.name(), "new", newLifecycleState.name()));
+        assetRepository.flush();
+        bookingImpact.changed(principal);
         return toView(
                 asset, assetModelService.get(principal, asset.getAssetModelId()).name());
     }
@@ -409,15 +419,20 @@ public class AssetService {
         asset.archive(clock.instant());
         activityLogService.record(
                 principal.organizationId(), principal.userId(), "ASSET_ARCHIVED", "ASSET", asset.getId(), null);
+        assetRepository.flush();
+        bookingImpact.changed(principal);
     }
 
     @Transactional
     public void restore(BigContainersPrincipal principal, UUID assetId) {
         requireOwnerOrDeputy(principal);
+        lockOrganization(principal.organizationId());
         Asset asset = requireAsset(principal.organizationId(), assetId);
         asset.restore(clock.instant());
         activityLogService.record(
                 principal.organizationId(), principal.userId(), "ASSET_RESTORED", "ASSET", asset.getId(), null);
+        assetRepository.flush();
+        bookingImpact.changed(principal);
     }
 
     private String generatePublicCode(UUID organizationId) {

@@ -79,6 +79,8 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
 
     List<Asset> findAllByOrganizationIdAndAssetModelIdOrderByUnitNumberAsc(UUID organizationId, UUID assetModelId);
 
+    List<Asset> findAllByOrganizationId(UUID organizationId);
+
     /** "Normal" results only (specification section 8.4): active lifecycle, not archived. */
     List<Asset> findAllByOrganizationIdAndAssetModelIdAndLifecycleStateAndArchivedAtIsNullOrderByUnitNumberAsc(
             UUID organizationId, UUID assetModelId, LifecycleState lifecycleState);

@@ -59,6 +59,7 @@ public class PackingRequirementService {
     private final PackingRequirementHistoryRepository histories;
     private final OrganizationRepository organizations;
     private final ActivityLogService activity;
+    private final BookingImpactService bookingImpact;
     private final Clock clock;
     private final ObjectMapper objectMapper;
 
@@ -72,6 +73,7 @@ public class PackingRequirementService {
             PackingRequirementHistoryRepository histories,
             OrganizationRepository organizations,
             ActivityLogService activity,
+            BookingImpactService bookingImpact,
             Clock clock,
             ObjectMapper objectMapper) {
         this.requirements = requirements;
@@ -83,6 +85,7 @@ public class PackingRequirementService {
         this.histories = histories;
         this.organizations = organizations;
         this.activity = activity;
+        this.bookingImpact = bookingImpact;
         this.clock = clock;
         this.objectMapper = objectMapper;
     }
@@ -257,11 +260,26 @@ public class PackingRequirementService {
                 row.getId(),
                 transition(null, snapshot(row)));
         requirements.flush();
+        bookingImpact.changed(p);
         return view(row);
     }
 
     @Transactional
     public void archive(BigContainersPrincipal p, UUID id, long expectedVersion) {
+        archive(p, id, expectedVersion, false);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UUID> reservationImpact(BigContainersPrincipal p, UUID id) {
+        auth(p);
+        PackingRequirement row = requirements
+                .findByIdAndOrganizationId(id, p.organizationId())
+                .orElseThrow(() -> new NotFoundException("Packing requirement not found."));
+        return bookingImpact.affectedBookings(p.organizationId(), row.getContainerAssetId());
+    }
+
+    @Transactional
+    public void archive(BigContainersPrincipal p, UUID id, long expectedVersion, boolean confirmed) {
         admin(p);
         lock(p.organizationId());
         PackingRequirement row = requirements
@@ -270,6 +288,9 @@ public class PackingRequirementService {
         if (row.getVersion() != expectedVersion) throw new StalePackingRequirementVersionException();
         requireContainerForWrite(p.organizationId(), row.getContainerAssetId());
         if (row.isArchived()) return;
+        List<UUID> affected = bookingImpact.affectedBookings(p.organizationId(), row.getContainerAssetId());
+        if (!affected.isEmpty() && !confirmed)
+            throw new io.kellermann.bigcontainers.exception.PackingRemovalConfirmationException(affected);
         Map<String, Object> before = snapshot(row);
         row.archive(clock.instant());
         history(p, row, "ARCHIVED", before, snapshot(row));
@@ -280,6 +301,7 @@ public class PackingRequirementService {
                 "PACKING_REQUIREMENT",
                 id,
                 transition(before, snapshot(row)));
+        bookingImpact.changed(p);
     }
 
     @Transactional
@@ -291,6 +313,19 @@ public class PackingRequirementService {
             UUID model,
             String assetReference,
             BigDecimal quantity) {
+        return update(p, id, expectedVersion, type, model, assetReference, quantity, false);
+    }
+
+    @Transactional
+    public PackingRequirementView update(
+            BigContainersPrincipal p,
+            UUID id,
+            long expectedVersion,
+            PackingRequirementType type,
+            UUID model,
+            String assetReference,
+            BigDecimal quantity,
+            boolean confirmed) {
         admin(p);
         lock(p.organizationId());
         PackingRequirement row = requirements
@@ -302,6 +337,15 @@ public class PackingRequirementService {
         validate(p.organizationId(), type, model, asset, quantity);
         if (row.isArchived()) throw new ValidationFailedException("Restore a requirement before editing it.");
         requireAvailable(p.organizationId(), row.getContainerAssetId(), id, type, model, asset);
+        boolean removes = row.getRequirementType() != type
+                || !java.util.Objects.equals(row.getAssetModelId(), model)
+                || !java.util.Objects.equals(row.getSpecificAssetId(), asset)
+                || quantity.compareTo(row.getRequiredQuantity()) < 0;
+        if (removes && !confirmed) {
+            List<UUID> affected = bookingImpact.affectedBookings(p.organizationId(), row.getContainerAssetId());
+            if (!affected.isEmpty())
+                throw new io.kellermann.bigcontainers.exception.PackingRemovalConfirmationException(affected);
+        }
         Map<String, Object> before = snapshot(row);
         row.change(type, model, asset, quantity, clock.instant());
         history(p, row, "UPDATED", before, snapshot(row));
@@ -313,6 +357,7 @@ public class PackingRequirementService {
                 "PACKING_REQUIREMENT",
                 id,
                 transition(before, snapshot(row)));
+        bookingImpact.changed(p);
         return view(row);
     }
 
@@ -350,6 +395,7 @@ public class PackingRequirementService {
                 "PACKING_REQUIREMENT",
                 id,
                 transition(before, snapshot(row)));
+        bookingImpact.changed(p);
         return view(row);
     }
 
