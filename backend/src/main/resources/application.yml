@@ -1,0 +1,95 @@
+spring:
+  application:
+    name: bigcontainers
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    baseline-on-migrate: false
+  session:
+    store-type: jdbc
+    jdbc:
+      initialize-schema: never
+  mvc:
+    problemdetails:
+      enabled: true
+  threads:
+    virtual:
+      enabled: true
+
+# spring.datasource.url / .username / .password are intentionally not set here. They come
+# entirely from the standard SPRING_DATASOURCE_URL / SPRING_DATASOURCE_USERNAME /
+# SPRING_DATASOURCE_PASSWORD environment variables (or a mounted secret file translated to
+# those variables); no credential or endpoint default belongs in a committed file. See
+# application-dev.yml for a documented local-development-only convenience default.
+
+server:
+  port: ${SERVER_PORT:8080}
+  forward-headers-strategy: framework
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        same-site: lax
+        secure: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+bigcontainers:
+  application:
+    display-name: ${BIGCONTAINERS_APPLICATION_DISPLAY_NAME:BigContainers}
+  seed:
+    default-organization-name: ${BIGCONTAINERS_SEED_DEFAULT_ORGANIZATION_NAME:Default Organization}
+    # Bootstrap credentials for the first-run Owner (OwnerSeeder). Both must be set to create an
+    # Owner; if either is blank (the default), no Owner is created automatically. Never logged.
+    owner-username: ${BIGCONTAINERS_SEED_OWNER_USERNAME:}
+    owner-password: ${BIGCONTAINERS_SEED_OWNER_PASSWORD:}
+    owner-display-name: ${BIGCONTAINERS_SEED_OWNER_DISPLAY_NAME:Owner}
+    owner-email: ${BIGCONTAINERS_SEED_OWNER_EMAIL:}
+  security:
+    login-rate-limit:
+      max-attempts: ${BIGCONTAINERS_SECURITY_LOGIN_RATE_LIMIT_MAX_ATTEMPTS:5}
+      window: ${BIGCONTAINERS_SECURITY_LOGIN_RATE_LIMIT_WINDOW:PT15M}
+  authentication:
+    # LOCAL_ONLY (the default) or LOCAL_AND_OIDC. Selecting LOCAL_AND_OIDC without a usable
+    # oidc.* configuration below fails application startup (AuthenticationProperties) rather
+    # than starting half-configured (ADR-0003). Local login is always available in both modes.
+    mode: ${BIGCONTAINERS_AUTHENTICATION_MODE:LOCAL_ONLY}
+    # Automatic verified-email linking is disabled by default (ADR-0003 "Linking policy": "Owner-
+    # approved or preconfigured linking is the safe default"). An Owner opts in explicitly.
+    auto-link-by-email: ${BIGCONTAINERS_AUTHENTICATION_AUTO_LINK_BY_EMAIL:false}
+    oidc:
+      # All blank/unset by default (LOCAL_ONLY). Every value below comes only from environment
+      # variables - never committed - per ADR-0003's "Provider secrets are supplied through
+      # environment variables or mounted secret files".
+      display-name: ${BIGCONTAINERS_OIDC_DISPLAY_NAME:}
+      issuer-uri: ${BIGCONTAINERS_OIDC_ISSUER_URI:}
+      client-id: ${BIGCONTAINERS_OIDC_CLIENT_ID:}
+      client-secret: ${BIGCONTAINERS_OIDC_CLIENT_SECRET:}
+      scopes: ${BIGCONTAINERS_OIDC_SCOPES:openid,profile,email}

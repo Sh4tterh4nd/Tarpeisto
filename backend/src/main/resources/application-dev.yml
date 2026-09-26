@@ -1,0 +1,33 @@
+# Local-development-only convenience defaults. Never used in a real deployment: the "dev"
+# profile must be enabled explicitly (SPRING_PROFILES_ACTIVE=dev) and is also what unlocks the
+# OpenAPI document / Swagger UI in SecurityConfiguration.
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/bigcontainers
+    username: bigcontainers
+    password: bigcontainers
+
+server:
+  servlet:
+    session:
+      cookie:
+        # Plain HTTP localhost during development; production stays Secure (application.yml).
+        secure: false
+
+bigcontainers:
+  seed:
+    # Local-development-only bootstrap Owner so a fresh dev database is immediately usable.
+    # Never used in a real deployment: BIGCONTAINERS_SEED_OWNER_USERNAME/PASSWORD remain unset
+    # by default in application.yml, and this profile itself must be enabled explicitly.
+    owner-username: ${BIGCONTAINERS_SEED_OWNER_USERNAME:owner}
+    owner-password: ${BIGCONTAINERS_SEED_OWNER_PASSWORD:dev-owner-password}
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+logging:
+  level:
+    io.kellermann.bigcontainers: DEBUG
