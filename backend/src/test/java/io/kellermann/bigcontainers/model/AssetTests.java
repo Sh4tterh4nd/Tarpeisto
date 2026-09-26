@@ -2,6 +2,7 @@ package io.kellermann.bigcontainers.model;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -95,6 +96,30 @@ class AssetTests {
         asset.restore(NOW.plusSeconds(2));
         assertThat(asset.isArchived()).isFalse();
         assertThat(asset.isActive()).isTrue();
+    }
+
+    @Test
+    void sealProjectionRequiresSealabilityAndTracksBreakage() {
+        Asset asset = asset("7K3MXY", 1, "Container");
+        assertThatIllegalStateException().isThrownBy(() -> asset.applySeal(NOW));
+
+        asset.setSealable(true, NOW);
+        asset.applySeal(NOW.plusSeconds(1));
+        assertThat(asset.getSealState()).isEqualTo(SealState.APPLIED);
+        asset.breakSeal(NOW.plusSeconds(2));
+        assertThat(asset.getSealState()).isEqualTo(SealState.BROKEN);
+        assertThat(asset.getSealVerifiedAt()).isNull();
+    }
+
+    @Test
+    void verificationAndReplacementPredecessorAreExplicitProjections() {
+        Asset asset = asset("7K3MXY", 1, null);
+        UUID auditId = UUID.randomUUID();
+        UUID predecessorId = UUID.randomUUID();
+        asset.recordVerification(auditId, NOW.plusSeconds(1));
+        asset.setReplacementPredecessor(predecessorId, NOW.plusSeconds(2));
+        assertThat(asset.getLastVerifiedAuditId()).isEqualTo(auditId);
+        assertThat(asset.getReplacesAssetId()).isEqualTo(predecessorId);
     }
 
     private static Asset asset(String publicCode, int unitNumber, String individualName) {

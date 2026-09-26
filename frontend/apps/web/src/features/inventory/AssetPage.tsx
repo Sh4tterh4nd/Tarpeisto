@@ -46,6 +46,7 @@ import { MediaPanel } from "./MediaPanel";
 import { AssetPlacementPanel } from "./AssetPlacementPanel";
 import { PackingPanel } from "./PackingPanel";
 import { AssetLabelExportDialog } from "./AssetLabelExportDialog";
+import { AssetReviewPanel } from "./AssetReviewPanel";
 
 interface AssetDetailsDialogProps {
   asset: AssetRecord;
@@ -419,6 +420,17 @@ export function AssetPage() {
             ) : null}
           </Stack>
         }
+      />
+      <AssetReviewPanel
+        assetId={asset.id}
+        canManage={canManage}
+        containerCapable={containerCapable}
+        lifecycleState={asset.lifecycleState}
+        sealable={asset.sealable}
+        sealState={asset.sealState}
+        sealVerifiedAt={asset.sealVerifiedAt ?? undefined}
+        lastVerifiedAt={asset.lastVerifiedAt ?? undefined}
+        replacesAssetId={asset.replacesAssetId ?? undefined}
       />
       {currentActionError ? (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setActionError(undefined)}>

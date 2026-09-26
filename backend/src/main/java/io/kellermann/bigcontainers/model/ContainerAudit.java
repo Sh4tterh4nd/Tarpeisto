@@ -54,9 +54,20 @@ public class ContainerAudit {
     @Column(name = "seal_confirmed")
     private Boolean sealConfirmed;
 
+    @Column(name = "attempt_number")
+    private int attemptNumber = 1;
+
+    @Column(name = "current_attempt")
+    private boolean currentAttempt = true;
+
     protected ContainerAudit() {}
 
     public ContainerAudit(UUID id, UUID org, UUID batch, UUID task, UUID container, UUID actor, Instant at) {
+        this(id, org, batch, task, container, actor, at, 1);
+    }
+
+    public ContainerAudit(
+            UUID id, UUID org, UUID batch, UUID task, UUID container, UUID actor, Instant at, int attemptNumber) {
         this.id = id;
         organizationId = org;
         auditBatchId = batch;
@@ -64,6 +75,7 @@ public class ContainerAudit {
         containerAssetId = container;
         startedByUserId = actor;
         startedAt = at;
+        this.attemptNumber = attemptNumber;
         state = ContainerAuditState.IN_PROGRESS;
     }
 
@@ -104,5 +116,17 @@ public class ContainerAudit {
 
     public AuditCompletionOutcome getCompletionOutcome() {
         return completionOutcome;
+    }
+
+    public int getAttemptNumber() {
+        return attemptNumber;
+    }
+
+    public boolean isCurrentAttempt() {
+        return currentAttempt;
+    }
+
+    public void retireFromCurrentAttempt() {
+        currentAttempt = false;
     }
 }

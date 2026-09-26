@@ -217,6 +217,35 @@ public class AssetService {
         return toView(asset, assetModel.getName());
     }
 
+    /** Creates a separate, newly coded asset; predecessor history and requirements are never rewritten. */
+    @Transactional
+    public AssetView createReplacement(
+            BigContainersPrincipal principal,
+            UUID predecessorId,
+            String individualName,
+            LocalDate purchaseDate,
+            List<AssetCustomFieldValueInput> values) {
+        requireOwnerOrDeputy(principal);
+        lockOrganization(principal.organizationId());
+        Asset predecessor = requireAsset(principal.organizationId(), predecessorId);
+        if (predecessor.getLifecycleState() != LifecycleState.LOST
+                && predecessor.getLifecycleState() != LifecycleState.DESTROYED) {
+            throw new ValidationFailedException("Only a lost or destroyed asset can be replaced.");
+        }
+        AssetView created = create(principal, predecessor.getAssetModelId(), individualName, purchaseDate, values);
+        Asset replacement = requireAsset(principal.organizationId(), created.id());
+        replacement.setReplacementPredecessor(predecessorId, clock.instant());
+        assetRepository.flush();
+        activityLogService.record(
+                principal.organizationId(),
+                principal.userId(),
+                "ASSET_REPLACED",
+                "ASSET",
+                predecessorId,
+                java.util.Map.of("replacementAssetId", replacement.getId()));
+        return toView(replacement, created.assetModelName());
+    }
+
     /**
      * Creates {@code count} new units with sequential model-local unit numbers (specification
      * section 8.2). Deliberately takes no per-unit custom field values - see the class Javadoc.
@@ -371,6 +400,9 @@ public class AssetService {
         lockOrganization(principal.organizationId());
         Asset asset = requireAsset(principal.organizationId(), assetId);
         rejectCheckedOutMutation(principal.organizationId(), assetId);
+        if (asset.getLifecycleState() == LifecycleState.DESTROYED && newLifecycleState == LifecycleState.ACTIVE) {
+            throw new ValidationFailedException("Destroyed assets are terminal and cannot be restored.");
+        }
         var now = clock.instant();
         LifecycleState previous;
         try {
@@ -580,7 +612,13 @@ public class AssetService {
                 metadataIncomplete,
                 values,
                 asset.getCreatedAt(),
-                asset.getUpdatedAt());
+                asset.getUpdatedAt(),
+                asset.isSealable(),
+                asset.getSealState(),
+                asset.getSealVerifiedAt(),
+                asset.getLastVerifiedAt(),
+                asset.getLastVerifiedAuditId(),
+                asset.getReplacesAssetId());
     }
 
     private AssetCustomFieldValueView toValueView(UUID organizationId, AssetCustomFieldValue value) {

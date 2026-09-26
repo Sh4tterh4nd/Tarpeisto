@@ -44,6 +44,9 @@ const EventDetailPage = lazy(() =>
 const AuditTaskPage = lazy(() =>
   import("../features/audits/AuditTaskPage").then((module) => ({ default: module.AuditTaskPage })),
 );
+const ReviewPage = lazy(() =>
+  import("../features/review/ReviewPage").then((module) => ({ default: module.ReviewPage })),
+);
 
 const INVENTORY_ROLES = ["OWNER", "DEPUTY", "OPERATOR_AUDITOR", "VIEWER"] as const;
 
@@ -97,6 +100,16 @@ export function AppRoutes() {
           <RequireRole allow={[...INVENTORY_ROLES]}>
             <Suspense fallback={<LoadingPage />}>
               <EventDetailPage />
+            </Suspense>
+          </RequireRole>
+        }
+      />
+      <Route
+        path="/review"
+        element={
+          <RequireRole allow={["OWNER", "DEPUTY"]}>
+            <Suspense fallback={<LoadingPage />}>
+              <ReviewPage />
             </Suspense>
           </RequireRole>
         }

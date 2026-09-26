@@ -2,6 +2,7 @@ package io.kellermann.bigcontainers.service;
 
 import io.kellermann.bigcontainers.model.Condition;
 import io.kellermann.bigcontainers.model.LifecycleState;
+import io.kellermann.bigcontainers.model.SealState;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -31,4 +32,10 @@ public record AssetView(
         boolean metadataIncomplete,
         List<AssetCustomFieldValueView> values,
         Instant createdAt,
-        Instant updatedAt) {}
+        Instant updatedAt,
+        boolean sealable,
+        SealState sealState,
+        Instant sealVerifiedAt,
+        Instant lastVerifiedAt,
+        UUID lastVerifiedAuditId,
+        UUID replacesAssetId) {}

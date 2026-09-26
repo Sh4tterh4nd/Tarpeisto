@@ -97,6 +97,14 @@ public class CheckoutManifestAsset {
         if (auditReleasedAt == null) auditReleasedAt = at;
     }
 
+    /** Formal loss/destruction accounting releases custody without inventing a physical return. */
+    public void releaseThroughFormalAccounting(Instant at) {
+        if (returnedAt != null) {
+            throw new IllegalStateException("Physical returns must be released through audit/review, not accounting.");
+        }
+        if (auditReleasedAt == null) auditReleasedAt = at;
+    }
+
     public UUID getId() {
         return id;
     }

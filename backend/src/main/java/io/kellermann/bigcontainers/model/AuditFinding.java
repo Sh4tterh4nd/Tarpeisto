@@ -71,6 +71,14 @@ public class AuditFinding {
         return id;
     }
 
+    public UUID getOrganizationId() {
+        return organizationId;
+    }
+
+    public UUID getAuditId() {
+        return auditId;
+    }
+
     public AuditFindingType getType() {
         return type;
     }
@@ -85,5 +93,13 @@ public class AuditFinding {
 
     public String getDetail() {
         return detail;
+    }
+
+    public UUID getActor() {
+        return actor;
+    }
+
+    public Instant getRecordedAt() {
+        return recordedAt;
     }
 }

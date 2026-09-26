@@ -13,4 +13,6 @@ public interface CheckoutManifestAssetRepository extends JpaRepository<CheckoutM
             UUID org, UUID manifestId, UUID assetId);
 
     boolean existsByOrganizationIdAndAssetIdAndAuditReleasedAtIsNull(UUID org, UUID assetId);
+
+    List<CheckoutManifestAsset> findAllByOrganizationIdAndAssetIdAndAuditReleasedAtIsNull(UUID org, UUID assetId);
 }

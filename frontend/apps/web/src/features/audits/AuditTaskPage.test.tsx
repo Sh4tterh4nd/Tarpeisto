@@ -16,6 +16,7 @@ vi.mock("./auditApi", () => ({
   undoAuditScan: vi.fn(),
 }));
 vi.mock("../scanner/ScannerViewport", () => ({ ScannerViewport: () => <div>Camera</div> }));
+vi.mock("../identity/useSession", () => ({ useSession: () => ({ role: "OPERATOR_AUDITOR" }) }));
 
 describe("AuditTaskPage", () => {
   beforeEach(() => {

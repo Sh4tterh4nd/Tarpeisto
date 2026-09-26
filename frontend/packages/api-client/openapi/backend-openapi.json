@@ -447,6 +447,38 @@
         }
       }
     },
+    "/api/v1/assets/{assetId}/sealable": {
+      "put": {
+        "tags": ["asset-controller"],
+        "operationId": "setSealable",
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAssetSealableRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/assets/{assetId}/purchase-date": {
       "put": {
         "tags": ["asset-controller"],
@@ -1318,6 +1350,45 @@
         }
       }
     },
+    "/api/v1/repairs/{repairId}/close": {
+      "post": {
+        "tags": ["review-controller"],
+        "operationId": "closeRepair",
+        "parameters": [
+          {
+            "name": "repairId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CloseRepairRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepairResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/packing-templates": {
       "get": {
         "tags": ["packing-requirement-controller"],
@@ -1698,6 +1769,45 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/findings/{findingId}/resolutions": {
+      "post": {
+        "tags": ["review-controller"],
+        "operationId": "resolve",
+        "parameters": [
+          {
+            "name": "findingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveFindingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/FindingReviewResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -2679,6 +2789,37 @@
         }
       }
     },
+    "/api/v1/assets/{assetId}/seal/break": {
+      "post": {
+        "tags": ["asset-controller"],
+        "operationId": "breakSeal",
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BreakSealRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/assets/{assetId}/restore": {
       "post": {
         "tags": ["asset-controller"],
@@ -2697,6 +2838,114 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{assetId}/replacement": {
+      "post": {
+        "tags": ["asset-controller"],
+        "operationId": "createReplacement",
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReplacementAssetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{assetId}/repairs": {
+      "get": {
+        "tags": ["review-controller"],
+        "operationId": "repairs",
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RepairResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["review-controller"],
+        "operationId": "openRepair",
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpenRepairRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepairResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -3923,10 +4172,71 @@
         }
       }
     },
+    "/api/v1/findings": {
+      "get": {
+        "tags": ["review-controller"],
+        "operationId": "list_10",
+        "parameters": [
+          {
+            "name": "unresolvedOnly",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FindingReviewResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/findings/{findingId}": {
+      "get": {
+        "tags": ["review-controller"],
+        "operationId": "get_3",
+        "parameters": [
+          {
+            "name": "findingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/FindingReviewResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/consumable-stock/{balanceId}": {
       "get": {
         "tags": ["consumable-stock-controller"],
-        "operationId": "get_3",
+        "operationId": "get_4",
         "parameters": [
           {
             "name": "balanceId",
@@ -4118,7 +4428,7 @@
     "/api/v1/audits/tasks/{taskId}": {
       "get": {
         "tags": ["audit-controller"],
-        "operationId": "get_4",
+        "operationId": "get_5",
         "parameters": [
           {
             "name": "taskId",
@@ -4147,7 +4457,7 @@
     "/api/v1/assets/{assetId}": {
       "get": {
         "tags": ["asset-controller"],
-        "operationId": "get_5",
+        "operationId": "get_6",
         "parameters": [
           {
             "name": "assetId",
@@ -4166,6 +4476,38 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/AssetResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{assetId}/seal/history": {
+      "get": {
+        "tags": ["asset-controller"],
+        "operationId": "sealHistory",
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SealHistoryView"
+                  }
                 }
               }
             }
@@ -4361,7 +4703,7 @@
     "/api/v1/application": {
       "get": {
         "tags": ["application-info-controller"],
-        "operationId": "get_6",
+        "operationId": "get_7",
         "responses": {
           "200": {
             "description": "OK",
@@ -5015,6 +5357,37 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "sealable": {
+            "type": "boolean"
+          },
+          "sealState": {
+            "type": "string",
+            "enum": ["UNSEALED", "APPLIED", "BROKEN", "VERIFIED", "INVALIDATED"]
+          },
+          "sealVerifiedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastVerifiedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastVerifiedAuditId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "replacesAssetId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "SetAssetSealableRequest": {
+        "type": "object",
+        "properties": {
+          "sealable": {
+            "type": "boolean"
           }
         }
       },
@@ -5437,6 +5810,48 @@
           }
         }
       },
+      "CloseRepairRequest": {
+        "type": "object",
+        "properties": {
+          "resultingCondition": {
+            "type": "string",
+            "enum": ["GOOD", "DAMAGED"]
+          }
+        },
+        "required": ["resultingCondition"]
+      },
+      "RepairResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sourceFindingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "referenceOrDescription": {
+            "type": "string"
+          },
+          "openedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "closedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resultingCondition": {
+            "type": "string",
+            "enum": ["GOOD", "DAMAGED"]
+          }
+        }
+      },
       "PackingTemplateRequest": {
         "type": "object",
         "properties": {
@@ -5471,6 +5886,128 @@
           }
         },
         "required": ["expectedVersion"]
+      },
+      "ResolveFindingRequest": {
+        "type": "object",
+        "properties": {
+          "operationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "FOUND_AND_RETURNED",
+              "MOVE_TO_CORRECT_CONTAINER",
+              "REASSIGN_CURRENT_CONTAINER",
+              "MARK_LOST",
+              "MARK_DAMAGED",
+              "CREATE_REPAIR",
+              "MARK_DESTROYED",
+              "REPLACE_LABEL",
+              "DISMISS"
+            ]
+          },
+          "note": {
+            "type": "string"
+          },
+          "targetAssetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "targetContainerAssetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "repairReference": {
+            "type": "string"
+          }
+        },
+        "required": ["action", "operationId"]
+      },
+      "FindingReviewResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "auditId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "MISSING",
+              "DAMAGED",
+              "UNEXPECTED",
+              "MISPLACED",
+              "UNREADABLE_LABEL",
+              "UNKNOWN_CODE"
+            ]
+          },
+          "note": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "recordedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resolved": {
+            "type": "boolean"
+          },
+          "resolutionAction": {
+            "type": "string",
+            "enum": [
+              "FOUND_AND_RETURNED",
+              "MOVE_TO_CORRECT_CONTAINER",
+              "REASSIGN_CURRENT_CONTAINER",
+              "MARK_LOST",
+              "MARK_DAMAGED",
+              "CREATE_REPAIR",
+              "MARK_DESTROYED",
+              "REPLACE_LABEL",
+              "DISMISS"
+            ]
+          },
+          "resolvedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "applicableActions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "FOUND_AND_RETURNED",
+                "MOVE_TO_CORRECT_CONTAINER",
+                "REASSIGN_CURRENT_CONTAINER",
+                "MARK_LOST",
+                "MARK_DAMAGED",
+                "CREATE_REPAIR",
+                "MARK_DESTROYED",
+                "REPLACE_LABEL",
+                "DISMISS"
+              ]
+            }
+          },
+          "auditTaskId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "containerAssetId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
       },
       "CreateCategoryRequest": {
         "type": "object",
@@ -6141,6 +6678,46 @@
           }
         }
       },
+      "BreakSealRequest": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateReplacementAssetRequest": {
+        "type": "object",
+        "properties": {
+          "individualName": {
+            "type": "string"
+          },
+          "purchaseDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssetCustomFieldValueRequest"
+            }
+          }
+        }
+      },
+      "OpenRepairRequest": {
+        "type": "object",
+        "properties": {
+          "sourceFindingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "referenceOrDescription": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": ["referenceOrDescription"]
+      },
       "CreateAssetModelRequest": {
         "type": "object",
         "properties": {
@@ -6617,6 +7194,19 @@
           "snapshot": {
             "type": "object",
             "additionalProperties": {}
+          }
+        }
+      },
+      "SealHistoryView": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": ["APPLIED", "BROKEN", "VERIFIED", "INVALIDATED"]
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },

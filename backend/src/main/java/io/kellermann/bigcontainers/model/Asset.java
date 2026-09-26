@@ -70,6 +70,25 @@ public class Asset {
     @Column(name = "parent_container_asset_id")
     private UUID parentContainerAssetId;
 
+    @Column(name = "sealable", nullable = false)
+    private boolean sealable;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "seal_state", nullable = false, length = 20)
+    private SealState sealState = SealState.UNSEALED;
+
+    @Column(name = "seal_verified_at")
+    private Instant sealVerifiedAt;
+
+    @Column(name = "last_verified_at")
+    private Instant lastVerifiedAt;
+
+    @Column(name = "last_verified_audit_id")
+    private UUID lastVerifiedAuditId;
+
+    @Column(name = "replaces_asset_id")
+    private UUID replacesAssetId;
+
     @Column(name = "archived_at")
     private Instant archivedAt;
 
@@ -156,6 +175,9 @@ public class Asset {
         if (newLifecycleState == this.lifecycleState) {
             throw new IllegalArgumentException("Asset already has lifecycle state " + newLifecycleState);
         }
+        if (this.lifecycleState == LifecycleState.DESTROYED) {
+            throw new IllegalArgumentException("Destroyed assets are terminal.");
+        }
         LifecycleState previous = this.lifecycleState;
         this.lifecycleState = newLifecycleState;
         touch(now);
@@ -179,6 +201,64 @@ public class Asset {
     /** Excluded from normal inventory results (specification section 8.4). */
     public boolean isActive() {
         return !isArchived() && lifecycleState == LifecycleState.ACTIVE;
+    }
+
+    /** Only a container-capable asset may be configured as sealable; its service checks capability. */
+    public void setSealable(boolean sealable, Instant now) {
+        this.sealable = sealable;
+        if (!sealable) {
+            this.sealState = SealState.UNSEALED;
+            this.sealVerifiedAt = null;
+        }
+        touch(now);
+    }
+
+    public void applySeal(Instant now) {
+        if (!sealable) throw new IllegalStateException("This asset is not sealable.");
+        sealState = SealState.APPLIED;
+        sealVerifiedAt = null;
+        touch(now);
+    }
+
+    public void breakSeal(Instant now) {
+        if (!sealable) throw new IllegalStateException("This asset is not sealable.");
+        sealState = SealState.BROKEN;
+        sealVerifiedAt = null;
+        touch(now);
+    }
+
+    public void verifySeal(Instant now) {
+        if (!sealable || sealState != SealState.APPLIED)
+            throw new IllegalStateException("Only an applied seal can be verified.");
+        sealState = SealState.VERIFIED;
+        sealVerifiedAt = now;
+        touch(now);
+    }
+
+    public void invalidateSeal(Instant now) {
+        if (sealable && sealState != SealState.UNSEALED) {
+            sealState = SealState.INVALIDATED;
+            sealVerifiedAt = null;
+            touch(now);
+        }
+    }
+
+    public void recordVerification(UUID auditId, Instant now) {
+        lastVerifiedAuditId = Objects.requireNonNull(auditId, "auditId must not be null");
+        lastVerifiedAt = Objects.requireNonNull(now, "now must not be null");
+        touch(now);
+    }
+
+    public void invalidateVerification(Instant now) {
+        lastVerifiedAuditId = null;
+        lastVerifiedAt = null;
+        touch(now);
+    }
+
+    public void setReplacementPredecessor(UUID predecessorId, Instant now) {
+        if (replacesAssetId != null) throw new IllegalStateException("The replacement predecessor is immutable.");
+        replacesAssetId = Objects.requireNonNull(predecessorId, "predecessorId must not be null");
+        touch(now);
     }
 
     private void touch(Instant now) {
@@ -244,6 +324,30 @@ public class Asset {
 
     public UUID getParentContainerAssetId() {
         return parentContainerAssetId;
+    }
+
+    public boolean isSealable() {
+        return sealable;
+    }
+
+    public SealState getSealState() {
+        return sealState;
+    }
+
+    public Instant getSealVerifiedAt() {
+        return sealVerifiedAt;
+    }
+
+    public Instant getLastVerifiedAt() {
+        return lastVerifiedAt;
+    }
+
+    public UUID getLastVerifiedAuditId() {
+        return lastVerifiedAuditId;
+    }
+
+    public UUID getReplacesAssetId() {
+        return replacesAssetId;
     }
 
     public Instant getArchivedAt() {

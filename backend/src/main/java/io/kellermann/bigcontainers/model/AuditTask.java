@@ -71,4 +71,12 @@ public class AuditTask {
         if (state != AuditTaskState.READY) throw new IllegalStateException("Only a ready audit task can complete.");
         state = AuditTaskState.COMPLETED;
     }
+
+    public void reopen() {
+        state = AuditTaskState.READY;
+    }
+
+    public void block() {
+        state = AuditTaskState.BLOCKED;
+    }
 }

@@ -35,6 +35,7 @@ public class AssetPlacementService {
     private final BookingImpactService bookingImpact;
     private final CheckoutManifestAssetRepository checkoutManifestAssets;
     private final Clock clock;
+    private final AssetSealService seals;
 
     public AssetPlacementService(
             AssetRepository assets,
@@ -44,6 +45,7 @@ public class AssetPlacementService {
             ActivityLogService activity,
             BookingImpactService bookingImpact,
             CheckoutManifestAssetRepository checkoutManifestAssets,
+            AssetSealService seals,
             Clock clock) {
         this.assets = assets;
         this.models = models;
@@ -53,6 +55,7 @@ public class AssetPlacementService {
         this.bookingImpact = bookingImpact;
         this.checkoutManifestAssets = checkoutManifestAssets;
         this.clock = clock;
+        this.seals = seals;
     }
 
     @Transactional(readOnly = true)
@@ -128,6 +131,12 @@ public class AssetPlacementService {
                         String.valueOf(locationId),
                         "parentContainerAssetId",
                         String.valueOf(parentContainerAssetId)));
+        if (!java.util.Objects.equals(previousParentContainerAssetId, parentContainerAssetId)) {
+            if (previousParentContainerAssetId != null)
+                seals.invalidate(principal, previousParentContainerAssetId, "Direct contents moved.");
+            if (parentContainerAssetId != null)
+                seals.invalidate(principal, parentContainerAssetId, "Direct contents moved.");
+        }
         // Flush makes the version included in this response usable for a consecutive move.
         assets.flush();
         bookingImpact.changed(principal);

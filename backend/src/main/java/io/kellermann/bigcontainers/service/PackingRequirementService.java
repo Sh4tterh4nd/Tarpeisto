@@ -64,6 +64,7 @@ public class PackingRequirementService {
     private final CheckoutManifestAssetRepository checkoutManifestAssets;
     private final Clock clock;
     private final ObjectMapper objectMapper;
+    private final AssetSealService seals;
 
     public PackingRequirementService(
             PackingRequirementRepository requirements,
@@ -77,6 +78,7 @@ public class PackingRequirementService {
             ActivityLogService activity,
             BookingImpactService bookingImpact,
             CheckoutManifestAssetRepository checkoutManifestAssets,
+            AssetSealService seals,
             Clock clock,
             ObjectMapper objectMapper) {
         this.requirements = requirements;
@@ -92,6 +94,7 @@ public class PackingRequirementService {
         this.checkoutManifestAssets = checkoutManifestAssets;
         this.clock = clock;
         this.objectMapper = objectMapper;
+        this.seals = seals;
     }
 
     @Transactional(readOnly = true)
@@ -866,6 +869,7 @@ public class PackingRequirementService {
             String action,
             Map<String, Object> before,
             Map<String, Object> after) {
+        seals.invalidate(principal, row.getContainerAssetId(), "Packing requirements changed.");
         histories.save(new PackingRequirementHistory(
                 UUID.randomUUID(),
                 principal.organizationId(),

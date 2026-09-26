@@ -9,9 +9,11 @@ import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import { Link as RouterLink } from "react-router-dom";
 import { PageHeading } from "@bigcontainers/shared-ui";
 import { useParams } from "react-router-dom";
 import { ScannerViewport } from "../scanner/ScannerViewport";
+import { useSession } from "../identity/useSession";
 import { webQrScannerCapability } from "../../platform/web/WebQrScannerCapability";
 import {
   completeAudit,
@@ -58,6 +60,7 @@ function scanContext(scan: ContainerAudit["scans"][number]) {
 }
 
 export function AuditTaskPage() {
+  const { role } = useSession();
   const { taskId = "" } = useParams();
   const [audit, setAudit] = useState<ContainerAudit>();
   const [code, setCode] = useState("");
@@ -68,6 +71,7 @@ export function AuditTaskPage() {
     (() => Promise<AuditResult<ContainerAudit>>) | null
   >(null);
   const [confirmMissing, setConfirmMissing] = useState(false);
+  const [sealConfirmed, setSealConfirmed] = useState(false);
   const [findingNote, setFindingNote] = useState("");
   const [observedQuantities, setObservedQuantities] = useState<Record<string, string>>({});
   const [observationReasons, setObservationReasons] = useState<Record<string, string>>({});
@@ -405,6 +409,16 @@ export function AuditTaskPage() {
               label="I confirm that the remaining expected contents are missing."
             />
           ) : null}
+          <FormControlLabel
+            sx={{ mt: 1 }}
+            control={
+              <Checkbox
+                checked={sealConfirmed}
+                onChange={(event) => setSealConfirmed(event.target.checked)}
+              />
+            }
+            label="I applied a seal if this container requires one."
+          />
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 1 }}>
             <Button
               variant="outlined"
@@ -430,7 +444,9 @@ export function AuditTaskPage() {
               disabled={busy || (hasUnmet && !confirmMissing)}
               onClick={() => {
                 const operationId = crypto.randomUUID();
-                void apply(() => completeAudit(audit.id!, code, confirmMissing, operationId));
+                void apply(() =>
+                  completeAudit(audit.id!, code, confirmMissing, sealConfirmed, operationId),
+                );
               }}
             >
               Complete with this code
@@ -445,6 +461,11 @@ export function AuditTaskPage() {
             <Typography key={finding.id}>
               {finding.type.replaceAll("_", " ")}
               {finding.note ? ` - ${finding.note}` : ""}
+              {role === "OWNER" || role === "DEPUTY" ? (
+                <Button component={RouterLink} to={`/review?finding=${finding.id}`} size="small">
+                  Review finding
+                </Button>
+              ) : null}
             </Typography>
           ))}
         </Paper>

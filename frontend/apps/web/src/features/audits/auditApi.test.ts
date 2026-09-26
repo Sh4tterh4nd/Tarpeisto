@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getAuditTask, scanAudit, startAudit } from "./auditApi";
+import { completeAudit, getAuditTask, scanAudit, startAudit } from "./auditApi";
 
 describe("audit API", () => {
   afterEach(() => {
@@ -91,6 +91,30 @@ describe("audit API", () => {
     });
     await expect(requests[1]?.json()).resolves.toMatchObject({
       operationId: "11111111-1111-1111-1111-111111111111",
+    });
+  });
+
+  it("sends an explicit seal confirmation with the stable completion operation", async () => {
+    const requests: Request[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        requests.push(
+          input instanceof Request
+            ? input
+            : new Request(new URL(input.toString(), window.location.origin), init),
+        );
+        return Promise.resolve(
+          new Response(JSON.stringify({ scans: [], findings: [] }), { status: 200 }),
+        );
+      }),
+    );
+
+    await completeAudit("audit-1", "000000", false, true, "11111111-1111-1111-1111-111111111111");
+
+    await expect(requests[0]?.json()).resolves.toMatchObject({
+      operationId: "11111111-1111-1111-1111-111111111111",
+      sealConfirmed: true,
     });
   });
 });

@@ -161,7 +161,10 @@ public class Booking {
 
     /** Return facts are separate from the manifest and imply a Phase-9 audit is required. */
     public void markReturnedAuditsPending(Instant now) {
-        if (status != BookingStatus.CHECKED_OUT && status != BookingStatus.RETURNED_AUDITS_PENDING) {
+        if (status != BookingStatus.CHECKED_OUT
+                && status != BookingStatus.RETURNED_AUDITS_PENDING
+                && status != BookingStatus.REVIEW_REQUIRED
+                && status != BookingStatus.COMPLETED) {
             throw new IllegalStateException("Only checked-out bookings can be checked in.");
         }
         status = BookingStatus.RETURNED_AUDITS_PENDING;
@@ -175,7 +178,8 @@ public class Booking {
     public void markReviewRequired(Instant now) {
         if (status != BookingStatus.CHECKED_OUT
                 && status != BookingStatus.RETURNED_AUDITS_PENDING
-                && status != BookingStatus.REVIEW_REQUIRED)
+                && status != BookingStatus.REVIEW_REQUIRED
+                && status != BookingStatus.COMPLETED)
             throw new IllegalStateException("Booking is not awaiting return review.");
         status = BookingStatus.REVIEW_REQUIRED;
         updatedAt = Objects.requireNonNull(now);
@@ -184,7 +188,8 @@ public class Booking {
     public void completeReturn(Instant now) {
         if (status != BookingStatus.CHECKED_OUT
                 && status != BookingStatus.RETURNED_AUDITS_PENDING
-                && status != BookingStatus.REVIEW_REQUIRED)
+                && status != BookingStatus.REVIEW_REQUIRED
+                && status != BookingStatus.COMPLETED)
             throw new IllegalStateException("Booking is not awaiting return.");
         status = BookingStatus.COMPLETED;
         reservationStatus = BookingReservationStatus.NONE;

@@ -7,6 +7,8 @@ import io.kellermann.bigcontainers.model.Asset;
 import io.kellermann.bigcontainers.model.AssetCode;
 import io.kellermann.bigcontainers.model.AssetCodeValidation;
 import io.kellermann.bigcontainers.model.AssetModel;
+import io.kellermann.bigcontainers.model.AssetSealHistory;
+import io.kellermann.bigcontainers.model.AssetVerificationHistory;
 import io.kellermann.bigcontainers.model.AuditBatch;
 import io.kellermann.bigcontainers.model.AuditCompletionOutcome;
 import io.kellermann.bigcontainers.model.AuditConsumableObservation;
@@ -20,7 +22,6 @@ import io.kellermann.bigcontainers.model.AuditScanOutcome;
 import io.kellermann.bigcontainers.model.AuditTask;
 import io.kellermann.bigcontainers.model.AuditTaskDependency;
 import io.kellermann.bigcontainers.model.AuditTaskState;
-import io.kellermann.bigcontainers.model.CheckoutConsumableSemantics;
 import io.kellermann.bigcontainers.model.CheckoutManifestAsset;
 import io.kellermann.bigcontainers.model.ConsumableStock;
 import io.kellermann.bigcontainers.model.ContainerAudit;
@@ -28,9 +29,13 @@ import io.kellermann.bigcontainers.model.ContainerAuditState;
 import io.kellermann.bigcontainers.model.OrganizationRole;
 import io.kellermann.bigcontainers.model.PackingRequirement;
 import io.kellermann.bigcontainers.model.PackingRequirementType;
+import io.kellermann.bigcontainers.model.SealHistoryAction;
 import io.kellermann.bigcontainers.model.StockMovementReason;
+import io.kellermann.bigcontainers.model.VerificationState;
 import io.kellermann.bigcontainers.repository.AssetModelRepository;
 import io.kellermann.bigcontainers.repository.AssetRepository;
+import io.kellermann.bigcontainers.repository.AssetSealHistoryRepository;
+import io.kellermann.bigcontainers.repository.AssetVerificationHistoryRepository;
 import io.kellermann.bigcontainers.repository.AuditBatchRepository;
 import io.kellermann.bigcontainers.repository.AuditConsumableObservationRepository;
 import io.kellermann.bigcontainers.repository.AuditExpectedRequirementRepository;
@@ -76,6 +81,8 @@ public class AuditService {
     private final AuditOperationRepository operations;
     private final PackingRequirementRepository requirements;
     private final AssetRepository assets;
+    private final AssetSealHistoryRepository sealHistory;
+    private final AssetVerificationHistoryRepository verificationHistory;
     private final ConsumableStockRepository stockBalances;
     private final ConsumableStockService stock;
     private final CheckoutManifestAssetRepository manifestAssets;
@@ -86,6 +93,7 @@ public class AuditService {
     private final BookingRepository bookings;
     private final CheckoutManifestConsumableRepository manifestConsumables;
     private final AssetModelRepository models;
+    private final BookingReturnStateService returnStates;
 
     public AuditService(
             AuditTaskRepository tasks,
@@ -99,6 +107,8 @@ public class AuditService {
             AuditOperationRepository operations,
             PackingRequirementRepository requirements,
             AssetRepository assets,
+            AssetSealHistoryRepository sealHistory,
+            AssetVerificationHistoryRepository verificationHistory,
             ConsumableStockRepository stockBalances,
             ConsumableStockService stock,
             CheckoutManifestAssetRepository manifestAssets,
@@ -108,7 +118,8 @@ public class AuditService {
             OrganizationRepository organizations,
             BookingRepository bookings,
             CheckoutManifestConsumableRepository manifestConsumables,
-            AssetModelRepository models) {
+            AssetModelRepository models,
+            BookingReturnStateService returnStates) {
         this.tasks = tasks;
         this.dependencies = dependencies;
         this.batches = batches;
@@ -120,6 +131,8 @@ public class AuditService {
         this.operations = operations;
         this.requirements = requirements;
         this.assets = assets;
+        this.sealHistory = sealHistory;
+        this.verificationHistory = verificationHistory;
         this.stockBalances = stockBalances;
         this.stock = stock;
         this.manifestAssets = manifestAssets;
@@ -130,13 +143,14 @@ public class AuditService {
         this.bookings = bookings;
         this.manifestConsumables = manifestConsumables;
         this.models = models;
+        this.returnStates = returnStates;
     }
 
     @Transactional(readOnly = true)
     public ContainerAuditView get(BigContainersPrincipal principal, UUID taskId) {
         if (principal == null) throw new AccessDeniedException("Authentication required.");
         AuditTask task = task(principal, taskId);
-        return audits.findByOrganizationIdAndAuditTaskId(principal.organizationId(), taskId)
+        return audits.findByOrganizationIdAndAuditTaskIdAndCurrentAttemptTrue(principal.organizationId(), taskId)
                 .map(a -> view(principal.organizationId(), a))
                 .orElseGet(() -> pendingView(principal.organizationId(), task));
     }
@@ -150,7 +164,7 @@ public class AuditService {
         if (!target.getId().equals(task.getContainerAssetId()))
             throw new ValidationFailedException("Scan the assigned container to start this audit.");
         Optional<ContainerAudit> existing =
-                audits.findByOrganizationIdAndAuditTaskId(principal.organizationId(), taskId);
+                audits.findByOrganizationIdAndAuditTaskIdAndCurrentAttemptTrue(principal.organizationId(), taskId);
         if (existing.isPresent()) return view(principal.organizationId(), existing.get());
         if (task.getState() != AuditTaskState.READY)
             throw new ValidationFailedException("This audit is blocked until its child containers are completed.");
@@ -163,7 +177,10 @@ public class AuditService {
                 task.getId(),
                 target.getId(),
                 principal.userId(),
-                clock.instant()));
+                clock.instant(),
+                audits.findAllByOrganizationIdAndAuditTaskIdOrderByAttemptNumberAsc(principal.organizationId(), taskId)
+                                .size()
+                        + 1));
         for (PackingRequirement requirement :
                 requirements.findAllByOrganizationIdAndContainerAssetIdOrderByDisplayOrderAsc(
                         principal.organizationId(), target.getId())) {
@@ -229,6 +246,7 @@ public class AuditService {
         List<UUID> otherAudits = audits
                 .findAllByOrganizationIdAndAuditBatchIdOrderById(principal.organizationId(), audit.getAuditBatchId())
                 .stream()
+                .filter(ContainerAudit::isCurrentAttempt)
                 .map(ContainerAudit::getId)
                 .filter(id -> !id.equals(auditId))
                 .toList();
@@ -335,6 +353,7 @@ public class AuditService {
         List<UUID> otherIds = audits
                 .findAllByOrganizationIdAndAuditBatchIdOrderById(principal.organizationId(), target.getAuditBatchId())
                 .stream()
+                .filter(ContainerAudit::isCurrentAttempt)
                 .map(ContainerAudit::getId)
                 .filter(id -> !id.equals(auditId))
                 .toList();
@@ -405,6 +424,7 @@ public class AuditService {
                     .findAllByOrganizationIdAndAuditBatchIdOrderById(
                             principal.organizationId(), audit.getAuditBatchId())
                     .stream()
+                    .filter(ContainerAudit::isCurrentAttempt)
                     .map(ContainerAudit::getId)
                     .filter(id -> !id.equals(auditId))
                     .toList();
@@ -538,6 +558,9 @@ public class AuditService {
         Asset target = requireAssetCode(principal.organizationId(), finalCode);
         if (!target.getId().equals(audit.getContainerAssetId()))
             throw new ValidationFailedException("Rescan the same container to complete this audit.");
+        if (target.isSealable() && !Boolean.TRUE.equals(sealConfirmed))
+            throw new ValidationFailedException(
+                    "Confirm that a seal was applied before completing this sealable container audit.");
         List<AuditExpectedRequirement> unmet = unmet(principal.organizationId(), audit);
         if (!unmet.isEmpty() && !confirmMissing)
             throw new ValidationFailedException("Confirm remaining expected contents as missing before completion.");
@@ -593,11 +616,36 @@ public class AuditService {
                 target.getPublicCode(),
                 sealConfirmed,
                 clock.instant());
+        if (target.isSealable()) {
+            target.applySeal(clock.instant());
+            sealHistory.save(new AssetSealHistory(
+                    UUID.randomUUID(),
+                    principal.organizationId(),
+                    target.getId(),
+                    SealHistoryAction.APPLIED,
+                    audit.getId(),
+                    null,
+                    principal.userId(),
+                    clock.instant()));
+        }
         AuditTask task = task(principal, audit.getAuditTaskId());
         task.complete();
         if (!hasFindings) {
             Set<UUID> verifiedIds = new HashSet<>(presentIds);
             verifiedIds.add(audit.getContainerAssetId());
+            for (UUID assetId : verifiedIds)
+                assets.findByIdAndOrganizationId(assetId, principal.organizationId())
+                        .ifPresent(asset -> {
+                            asset.recordVerification(audit.getId(), clock.instant());
+                            verificationHistory.save(new AssetVerificationHistory(
+                                    UUID.randomUUID(),
+                                    principal.organizationId(),
+                                    assetId,
+                                    audit.getId(),
+                                    VerificationState.VERIFIED,
+                                    clock.instant(),
+                                    principal.userId()));
+                        });
             for (UUID assetId : verifiedIds)
                 manifestAssets
                         .findAllByOrganizationIdAndManifestIdOrderById(
@@ -609,34 +657,8 @@ public class AuditService {
                         .filter(item -> item.getAssetId().equals(assetId) && item.getReturnedAt() != null)
                         .forEach(item -> item.releaseAfterAudit(clock.instant()));
         }
-        unlockParents(principal.organizationId(), task.getId());
-        List<ContainerAudit> batchAudits = audits.findAllByOrganizationIdAndAuditBatchIdOrderById(
-                principal.organizationId(), audit.getAuditBatchId());
-        boolean cleanBatch = tasks
-                        .findAllByOrganizationIdAndAuditBatchIdOrderById(
-                                principal.organizationId(), audit.getAuditBatchId())
-                        .stream()
-                        .allMatch(t -> t.getState() == AuditTaskState.COMPLETED)
-                && batchAudits.stream().allMatch(a -> a.getCompletionOutcome() == AuditCompletionOutcome.CLEAN);
-        AuditBatch batch = batches.findById(audit.getAuditBatchId()).orElseThrow();
-        boolean allReturned = manifestAssets
-                .findAllByOrganizationIdAndManifestIdOrderById(principal.organizationId(), batch.getManifestId())
-                .stream()
-                .allMatch(a -> a.getReturnedAt() != null);
-        boolean accountingComplete = manifestConsumables
-                .findAllByOrganizationIdAndManifestIdOrderById(principal.organizationId(), batch.getManifestId())
-                .stream()
-                .filter(c -> c.getSemantics() == CheckoutConsumableSemantics.SEPARATELY_ISSUED)
-                .allMatch(c -> c.getAccountedAt() != null);
-        if (allReturned
-                && batchAudits.stream().anyMatch(a -> a.getCompletionOutcome() == AuditCompletionOutcome.FINDINGS))
-            bookings.findByIdAndOrganizationId(batch.getBookingId(), principal.organizationId())
-                    .orElseThrow()
-                    .markReviewRequired(clock.instant());
-        else if (cleanBatch && allReturned && accountingComplete)
-            bookings.findByIdAndOrganizationId(batch.getBookingId(), principal.organizationId())
-                    .orElseThrow()
-                    .completeReturn(clock.instant());
+        returnStates.confirmReviewedAudit(principal, auditId);
+        returnStates.recalculateForBatch(principal.organizationId(), audit.getAuditBatchId());
         activity.record(
                 principal.organizationId(),
                 principal.userId(),
@@ -732,7 +754,7 @@ public class AuditService {
             List<AuditTaskDependency> all =
                     dependencies.findAllByOrganizationIdAndIdTaskIdIn(org, List.of(parent.getId()));
             boolean done = all.stream()
-                    .allMatch(d -> audits.findByOrganizationIdAndAuditTaskId(
+                    .allMatch(d -> audits.findByOrganizationIdAndAuditTaskIdAndCurrentAttemptTrue(
                                     org, d.getId().getDependsOnTaskId())
                             .map(a -> a.getState() == ContainerAuditState.COMPLETED
                                     && a.getCompletionOutcome() == AuditCompletionOutcome.CLEAN)
@@ -769,7 +791,7 @@ public class AuditService {
                     || !old.get().getFingerprint().equals(fingerprint)) throw new AuditMutationConflictException();
             return false;
         }
-        if (audit.getState() != ContainerAuditState.IN_PROGRESS)
+        if (audit.getState() != ContainerAuditState.IN_PROGRESS || !audit.isCurrentAttempt())
             throw new ValidationFailedException("Completed audits are immutable.");
         operations.save(new AuditOperation(
                 UUID.randomUUID(), p.organizationId(), audit.getId(), op, action, fingerprint, clock.instant()));
@@ -840,6 +862,7 @@ public class AuditService {
         Set<UUID> found = new HashSet<>();
         for (ContainerAudit audit : audits.findAllByOrganizationIdAndAuditBatchIdOrderById(
                 principal.organizationId(), current.getAuditBatchId())) {
+            if (!audit.isCurrentAttempt()) continue;
             found.add(audit.getContainerAssetId());
             activeScans(principal.organizationId(), audit.getId()).forEach(s -> found.add(s.getAssetId()));
         }
@@ -847,7 +870,9 @@ public class AuditService {
                 batches.findById(current.getAuditBatchId()).orElseThrow().getManifestId();
         for (CheckoutManifestAsset item :
                 manifestAssets.findAllByOrganizationIdAndManifestIdOrderById(principal.organizationId(), manifestId)) {
-            if (item.getReturnedAt() != null && item.getAuditReleasedAt() == null && !found.contains(item.getAssetId()))
+            if (found.contains(item.getAssetId()))
+                item.markReturned(principal.userId(), UUID.randomUUID(), clock.instant());
+            else if (item.getAuditReleasedAt() == null)
                 addFinding(
                         principal,
                         current.getId(),
@@ -971,7 +996,8 @@ public class AuditService {
             for (AuditTask task : tasks.findAllByOrganizationIdAndAuditBatchIdOrderById(org, audit.getAuditBatchId())) {
                 if (task.getContainerAssetId().equals(audit.getContainerAssetId())
                         || task.getState() == AuditTaskState.COMPLETED) continue;
-                Optional<ContainerAudit> otherAudit = audits.findByOrganizationIdAndAuditTaskId(org, task.getId());
+                Optional<ContainerAudit> otherAudit =
+                        audits.findByOrganizationIdAndAuditTaskIdAndCurrentAttemptTrue(org, task.getId());
                 boolean needsModel = otherAudit
                         .map(other -> unmet(org, other).stream()
                                 .anyMatch(r -> r.getType() == PackingRequirementType.MODEL_QUANTITY

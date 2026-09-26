@@ -2,6 +2,7 @@ package io.kellermann.bigcontainers.controller;
 
 import io.kellermann.bigcontainers.model.Condition;
 import io.kellermann.bigcontainers.model.LifecycleState;
+import io.kellermann.bigcontainers.model.SealState;
 import io.kellermann.bigcontainers.service.AssetView;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -24,7 +25,13 @@ public record AssetResponse(
         boolean metadataIncomplete,
         List<AssetCustomFieldValueResponse> values,
         Instant createdAt,
-        Instant updatedAt) {
+        Instant updatedAt,
+        boolean sealable,
+        SealState sealState,
+        Instant sealVerifiedAt,
+        Instant lastVerifiedAt,
+        UUID lastVerifiedAuditId,
+        UUID replacesAssetId) {
 
     public static AssetResponse from(AssetView view) {
         return new AssetResponse(
@@ -42,6 +49,12 @@ public record AssetResponse(
                 view.metadataIncomplete(),
                 view.values().stream().map(AssetCustomFieldValueResponse::from).toList(),
                 view.createdAt(),
-                view.updatedAt());
+                view.updatedAt(),
+                view.sealable(),
+                view.sealState(),
+                view.sealVerifiedAt(),
+                view.lastVerifiedAt(),
+                view.lastVerifiedAuditId(),
+                view.replacesAssetId());
     }
 }

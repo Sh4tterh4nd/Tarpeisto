@@ -164,6 +164,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/assets/{assetId}/sealable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["setSealable"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/assets/{assetId}/purchase-date": {
         parameters: {
             query?: never;
@@ -452,6 +468,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/repairs/{repairId}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["closeRepair"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/packing-templates": {
         parameters: {
             query?: never;
@@ -606,6 +638,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["archive_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/findings/{findingId}/resolutions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["resolve"];
         delete?: never;
         options?: never;
         head?: never;
@@ -980,6 +1028,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/assets/{assetId}/seal/break": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["breakSeal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/assets/{assetId}/restore": {
         parameters: {
             query?: never;
@@ -990,6 +1054,38 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["restore_3"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assets/{assetId}/replacement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["createReplacement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assets/{assetId}/repairs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["repairs"];
+        put?: never;
+        post: operations["openRepair"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1444,7 +1540,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/consumable-stock/{balanceId}": {
+    "/api/v1/findings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_10"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/findings/{findingId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1452,6 +1564,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["get_3"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/consumable-stock/{balanceId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_4"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1547,7 +1675,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get_4"];
+        get: operations["get_5"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1563,7 +1691,23 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get_5"];
+        get: operations["get_6"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assets/{assetId}/seal/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["sealHistory"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1675,7 +1819,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get_6"];
+        get: operations["get_7"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1940,6 +2084,20 @@ export interface components {
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
+            sealable?: boolean;
+            /** @enum {string} */
+            sealState?: "UNSEALED" | "APPLIED" | "BROKEN" | "VERIFIED" | "INVALIDATED";
+            /** Format: date-time */
+            sealVerifiedAt?: string;
+            /** Format: date-time */
+            lastVerifiedAt?: string;
+            /** Format: uuid */
+            lastVerifiedAuditId?: string;
+            /** Format: uuid */
+            replacesAssetId?: string;
+        };
+        SetAssetSealableRequest: {
+            sealable?: boolean;
         };
         SetAssetPurchaseDateRequest: {
             /** Format: date */
@@ -2105,6 +2263,25 @@ export interface components {
             /** @enum {string} */
             role?: "OWNER" | "DEPUTY" | "OPERATOR_AUDITOR" | "VIEWER";
         };
+        CloseRepairRequest: {
+            /** @enum {string} */
+            resultingCondition: "GOOD" | "DAMAGED";
+        };
+        RepairResponse: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            assetId?: string;
+            /** Format: uuid */
+            sourceFindingId?: string;
+            referenceOrDescription?: string;
+            /** Format: date-time */
+            openedAt?: string;
+            /** Format: date-time */
+            closedAt?: string;
+            /** @enum {string} */
+            resultingCondition?: "GOOD" | "DAMAGED";
+        };
         PackingTemplateRequest: {
             name: string;
             description?: string;
@@ -2117,6 +2294,42 @@ export interface components {
             /** Format: int64 */
             expectedVersion: number;
             confirmAffectedBookings?: boolean;
+        };
+        ResolveFindingRequest: {
+            /** Format: uuid */
+            operationId: string;
+            /** @enum {string} */
+            action: "FOUND_AND_RETURNED" | "MOVE_TO_CORRECT_CONTAINER" | "REASSIGN_CURRENT_CONTAINER" | "MARK_LOST" | "MARK_DAMAGED" | "CREATE_REPAIR" | "MARK_DESTROYED" | "REPLACE_LABEL" | "DISMISS";
+            note?: string;
+            /** Format: uuid */
+            targetAssetId?: string;
+            /** Format: uuid */
+            targetContainerAssetId?: string;
+            repairReference?: string;
+        };
+        FindingReviewResponse: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            auditId?: string;
+            /** Format: uuid */
+            assetId?: string;
+            /** @enum {string} */
+            type?: "MISSING" | "DAMAGED" | "UNEXPECTED" | "MISPLACED" | "UNREADABLE_LABEL" | "UNKNOWN_CODE";
+            note?: string;
+            detail?: string;
+            /** Format: date-time */
+            recordedAt?: string;
+            resolved?: boolean;
+            /** @enum {string} */
+            resolutionAction?: "FOUND_AND_RETURNED" | "MOVE_TO_CORRECT_CONTAINER" | "REASSIGN_CURRENT_CONTAINER" | "MARK_LOST" | "MARK_DAMAGED" | "CREATE_REPAIR" | "MARK_DESTROYED" | "REPLACE_LABEL" | "DISMISS";
+            /** Format: date-time */
+            resolvedAt?: string;
+            applicableActions?: ("FOUND_AND_RETURNED" | "MOVE_TO_CORRECT_CONTAINER" | "REASSIGN_CURRENT_CONTAINER" | "MARK_LOST" | "MARK_DAMAGED" | "CREATE_REPAIR" | "MARK_DESTROYED" | "REPLACE_LABEL" | "DISMISS")[];
+            /** Format: uuid */
+            auditTaskId?: string;
+            /** Format: uuid */
+            containerAssetId?: string;
         };
         CreateCategoryRequest: {
             name: string;
@@ -2366,6 +2579,20 @@ export interface components {
             misplacedAssetIds?: string[];
             consumables?: components["schemas"]["ConsumableStatus"][];
         };
+        BreakSealRequest: {
+            note?: string;
+        };
+        CreateReplacementAssetRequest: {
+            individualName?: string;
+            /** Format: date */
+            purchaseDate?: string;
+            values?: components["schemas"]["AssetCustomFieldValueRequest"][];
+        };
+        OpenRepairRequest: {
+            /** Format: uuid */
+            sourceFindingId?: string;
+            referenceOrDescription: string;
+        };
         CreateAssetModelRequest: {
             name: string;
             description?: string;
@@ -2550,6 +2777,12 @@ export interface components {
             snapshot?: {
                 [key: string]: unknown;
             };
+        };
+        SealHistoryView: {
+            /** @enum {string} */
+            action?: "APPLIED" | "BROKEN" | "VERIFIED" | "INVALIDATED";
+            /** Format: date-time */
+            occurredAt?: string;
         };
         AssetStateChangeResponse: {
             /** Format: uuid */
@@ -2884,6 +3117,30 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["AssetResponse"];
                 };
+            };
+        };
+    };
+    setSealable: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetAssetSealableRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -3482,6 +3739,32 @@ export interface operations {
             };
         };
     };
+    closeRepair: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                repairId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CloseRepairRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RepairResponse"];
+                };
+            };
+        };
+    };
     templates: {
         parameters: {
             query?: never;
@@ -3765,6 +4048,32 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    resolve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                findingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolveFindingRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["FindingReviewResponse"];
+                };
             };
         };
     };
@@ -4414,6 +4723,30 @@ export interface operations {
             };
         };
     };
+    breakSeal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["BreakSealRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     restore_3: {
         parameters: {
             query?: never;
@@ -4431,6 +4764,80 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    createReplacement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateReplacementAssetRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AssetResponse"];
+                };
+            };
+        };
+    };
+    repairs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RepairResponse"][];
+                };
+            };
+        };
+    };
+    openRepair: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpenRepairRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RepairResponse"];
+                };
             };
         };
     };
@@ -5289,7 +5696,51 @@ export interface operations {
             };
         };
     };
+    list_10: {
+        parameters: {
+            query?: {
+                unresolvedOnly?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["FindingReviewResponse"][];
+                };
+            };
+        };
+    };
     get_3: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                findingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["FindingReviewResponse"];
+                };
+            };
+        };
+    };
+    get_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -5422,7 +5873,7 @@ export interface operations {
             };
         };
     };
-    get_4: {
+    get_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -5444,7 +5895,7 @@ export interface operations {
             };
         };
     };
-    get_5: {
+    get_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -5462,6 +5913,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["AssetResponse"];
+                };
+            };
+        };
+    };
+    sealHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SealHistoryView"][];
                 };
             };
         };
@@ -5598,7 +6071,7 @@ export interface operations {
             };
         };
     };
-    get_6: {
+    get_7: {
         parameters: {
             query?: never;
             header?: never;

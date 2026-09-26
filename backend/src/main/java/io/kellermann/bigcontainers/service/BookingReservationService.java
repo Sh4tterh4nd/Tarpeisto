@@ -16,7 +16,9 @@ import io.kellermann.bigcontainers.model.ConsumableStock;
 import io.kellermann.bigcontainers.model.PackingRequirement;
 import io.kellermann.bigcontainers.model.PackingRequirementType;
 import io.kellermann.bigcontainers.repository.AssetModelRepository;
+import io.kellermann.bigcontainers.repository.AssetRepairRepository;
 import io.kellermann.bigcontainers.repository.AssetRepository;
+import io.kellermann.bigcontainers.repository.AuditTaskRepository;
 import io.kellermann.bigcontainers.repository.BookingLineRepository;
 import io.kellermann.bigcontainers.repository.BookingRepository;
 import io.kellermann.bigcontainers.repository.BookingReservationClaimRepository;
@@ -49,6 +51,8 @@ public class BookingReservationService {
     private final BookingReservationClaimRepository claims;
     private final AssetRepository assets;
     private final AssetModelRepository models;
+    private final AssetRepairRepository repairs;
+    private final AuditTaskRepository auditTasks;
     private final ConsumableStockRepository stocks;
     private final CheckoutManifestAssetRepository checkoutManifestAssets;
     private final PackingRequirementRepository requirements;
@@ -67,6 +71,8 @@ public class BookingReservationService {
             BookingReservationClaimRepository claims,
             AssetRepository assets,
             AssetModelRepository models,
+            AssetRepairRepository repairs,
+            AuditTaskRepository auditTasks,
             ConsumableStockRepository stocks,
             CheckoutManifestAssetRepository checkoutManifestAssets,
             PackingRequirementRepository requirements,
@@ -83,6 +89,8 @@ public class BookingReservationService {
         this.claims = claims;
         this.assets = assets;
         this.models = models;
+        this.repairs = repairs;
+        this.auditTasks = auditTasks;
         this.stocks = stocks;
         this.checkoutManifestAssets = checkoutManifestAssets;
         this.requirements = requirements;
@@ -262,6 +270,8 @@ public class BookingReservationService {
                         || !a.isActive()
                         || m == null
                         || m.isArchived()
+                        || repairs.existsByOrganizationIdAndAssetIdAndClosedAtIsNull(org, c.assetId())
+                        || auditTasks.hasPendingAudit(org, c.assetId())
                         || checkoutManifestAssets.existsByOrganizationIdAndAssetIdAndAuditReleasedAtIsNull(
                                 org, c.assetId()))
                     conflicts.add(conflict(
@@ -314,6 +324,8 @@ public class BookingReservationService {
             if (a.isActive()
                     && m != null
                     && !m.isArchived()
+                    && !repairs.existsByOrganizationIdAndAssetIdAndClosedAtIsNull(org, a.getId())
+                    && !auditTasks.hasPendingAudit(org, a.getId())
                     && !checkoutManifestAssets.existsByOrganizationIdAndAssetIdAndAuditReleasedAtIsNull(org, a.getId())
                     && !inventory.pins().containsKey(a.getId()))
                 pool.merge(a.getAssetModelId(), BigDecimal.ONE, BigDecimal::add);
@@ -375,7 +387,9 @@ public class BookingReservationService {
                         BigDecimal.ZERO));
             if (stock != null && stock.getContainerAssetId() != null) {
                 UUID source = stock.getContainerAssetId();
-                if (hasActiveCustodyAtOrAbove(org, inventory, source))
+                if (hasActiveCustodyAtOrAbove(org, inventory, source)
+                        || repairs.existsByOrganizationIdAndAssetIdAndClosedAtIsNull(org, source)
+                        || auditTasks.hasPendingAudit(org, source))
                     conflicts.add(conflict(
                             "SOURCE_CONTAINER_UNAVAILABLE",
                             "The stock source container is checked out or awaiting audit.",
@@ -548,8 +562,8 @@ public class BookingReservationService {
         Set<UUID> seen = new HashSet<>();
         UUID current = containerAssetId;
         while (current != null && seen.add(current)) {
-            if (checkoutManifestAssets.existsByOrganizationIdAndAssetIdAndAuditReleasedAtIsNull(
-                    organizationId, current)) {
+            if (checkoutManifestAssets.existsByOrganizationIdAndAssetIdAndAuditReleasedAtIsNull(organizationId, current)
+                    || repairs.existsByOrganizationIdAndAssetIdAndClosedAtIsNull(organizationId, current)) {
                 return true;
             }
             Asset asset = inventory.assets().get(current);

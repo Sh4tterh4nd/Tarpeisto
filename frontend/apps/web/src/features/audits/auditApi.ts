@@ -112,11 +112,12 @@ export const completeAudit = (
   auditId: string,
   containerCode: string,
   confirmMissing: boolean,
+  sealConfirmed: boolean,
   operationId = crypto.randomUUID(),
 ) =>
   read<ContainerAudit>(() =>
     apiClient.POST("/api/v1/audits/{auditId}/complete", {
       params: { path: { auditId } },
-      body: { operationId, containerCode, confirmMissing },
+      body: { operationId, containerCode, confirmMissing, sealConfirmed },
     }),
   );

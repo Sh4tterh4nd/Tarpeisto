@@ -491,6 +491,11 @@ export function EventDetailPage() {
             label={booking.status.replaceAll("_", " ")}
             color={booking.status === "RESERVED" ? "success" : "default"}
           />
+          {booking.status === "REVIEW_REQUIRED" ? (
+            <Button component={RouterLink} to="/review" size="small">
+              Review findings
+            </Button>
+          ) : null}
           {booking.reservationStatus === "ATTENTION_REQUIRED" ? (
             <Chip label="Attention required" color="warning" />
           ) : null}

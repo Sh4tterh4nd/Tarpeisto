@@ -32,12 +32,15 @@ public class AssetController {
 
     private final AssetService assetService;
     private final io.kellermann.bigcontainers.service.AssetPlacementService assetPlacementService;
+    private final io.kellermann.bigcontainers.service.AssetSealService assetSealService;
 
     public AssetController(
             AssetService assetService,
-            io.kellermann.bigcontainers.service.AssetPlacementService assetPlacementService) {
+            io.kellermann.bigcontainers.service.AssetPlacementService assetPlacementService,
+            io.kellermann.bigcontainers.service.AssetSealService assetSealService) {
         this.assetService = assetService;
         this.assetPlacementService = assetPlacementService;
+        this.assetSealService = assetSealService;
     }
 
     @GetMapping("/asset-models/{assetModelId}/assets")
@@ -68,6 +71,16 @@ public class AssetController {
         var created = assetService.createBulk(principal, assetModelId, request.count(), request.purchaseDate());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(created.stream().map(AssetResponse::from).toList());
+    }
+
+    @PostMapping("/assets/{assetId}/replacement")
+    public ResponseEntity<AssetResponse> createReplacement(
+            @AuthenticationPrincipal BigContainersPrincipal principal,
+            @PathVariable UUID assetId,
+            @RequestBody CreateReplacementAssetRequest request) {
+        var created = assetService.createReplacement(
+                principal, assetId, request.individualName(), request.purchaseDate(), toInputs(request.values()));
+        return ResponseEntity.status(HttpStatus.CREATED).body(AssetResponse.from(created));
     }
 
     @GetMapping("/assets/{assetId}")
@@ -166,6 +179,30 @@ public class AssetController {
             @AuthenticationPrincipal BigContainersPrincipal principal, @PathVariable UUID assetId) {
         assetService.restore(principal, assetId);
         return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/assets/{assetId}/sealable")
+    public ResponseEntity<Void> setSealable(
+            @AuthenticationPrincipal BigContainersPrincipal principal,
+            @PathVariable UUID assetId,
+            @RequestBody SetAssetSealableRequest request) {
+        assetSealService.setSealable(principal, assetId, request.sealable());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/assets/{assetId}/seal/break")
+    public ResponseEntity<Void> breakSeal(
+            @AuthenticationPrincipal BigContainersPrincipal principal,
+            @PathVariable UUID assetId,
+            @RequestBody(required = false) BreakSealRequest request) {
+        assetSealService.breakSeal(principal, assetId, request == null ? null : request.note());
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/assets/{assetId}/seal/history")
+    public List<io.kellermann.bigcontainers.service.SealHistoryView> sealHistory(
+            @AuthenticationPrincipal BigContainersPrincipal principal, @PathVariable UUID assetId) {
+        return assetSealService.history(principal, assetId);
     }
 
     private static List<AssetCustomFieldValueInput> toInputs(List<AssetCustomFieldValueRequest> values) {

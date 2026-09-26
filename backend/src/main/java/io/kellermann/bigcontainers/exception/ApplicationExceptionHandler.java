@@ -19,6 +19,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  */
 @RestControllerAdvice
 public class ApplicationExceptionHandler {
+    @ExceptionHandler(ReviewMutationConflictException.class)
+    public ProblemDetail handleReviewMutationConflict(ReviewMutationConflictException exception) {
+        return problemDetail(HttpStatus.CONFLICT, "Review mutation conflict", exception);
+    }
+
     @ExceptionHandler(AuditMutationConflictException.class)
     public ProblemDetail handleAuditMutationConflict(AuditMutationConflictException exception) {
         return problemDetail(HttpStatus.CONFLICT, "Audit mutation conflict", exception);

@@ -1433,6 +1433,504 @@ class BookingControllerIntegrationTests extends AbstractIntegrationTest {
                 });
     }
 
+    @Test
+    void phase10ResolutionReplaysConflictAndRepairClosurePreserveImmutableAuditAndStateHistory() {
+        Fixture f = fixture();
+        UUID box = createAsset(f, createSerializedModel(f, "Review case", true), "Case");
+        UUID cable = createAsset(f, "Damaged cable");
+        addExactRequirement(f, box, cable);
+        place(f, cable, box);
+        UUID booking = returnedContainers(f, List.of(box));
+        UUID audit = startAudit(f, box);
+        scanForReview(f, audit, cable);
+        ResponseEntity<String> observation = exchange(
+                f.owner(),
+                HttpMethod.POST,
+                "/api/v1/audits/" + audit + "/findings",
+                Map.of(
+                        "operationId",
+                        UUID.randomUUID(),
+                        "type",
+                        "DAMAGED",
+                        "assetId",
+                        cable,
+                        "note",
+                        "Cracked connector"));
+        assertThat(observation.getStatusCode()).isEqualTo(HttpStatus.OK);
+        UUID finding = UUID.fromString(
+                json(observation.getBody()).path("findings").get(0).path("id").asText());
+        assertThat(completeForReview(f, audit, box, false, false).getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        String frozen = exchange(f.owner(), HttpMethod.GET, "/api/v1/audits/tasks/" + auditTask(box), null)
+                .getBody();
+        Map<String, Object> command =
+                Map.of("operationId", UUID.randomUUID(), "action", "CREATE_REPAIR", "repairReference", "R-101");
+        String path = "/api/v1/findings/" + finding + "/resolutions";
+        assertThat(exchange(f.deputy(), HttpMethod.POST, path, command).getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertThat(exchange(f.deputy(), HttpMethod.POST, path, command).getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertThat(exchange(
+                                f.owner(),
+                                HttpMethod.POST,
+                                path,
+                                Map.of(
+                                        "operationId",
+                                        command.get("operationId"),
+                                        "action",
+                                        "DISMISS",
+                                        "note",
+                                        "different"))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+        assertThat(exchange(
+                                f.owner(),
+                                HttpMethod.POST,
+                                path,
+                                Map.of("operationId", UUID.randomUUID(), "action", "DISMISS", "note", "different"))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+        assertThat(exchange(f.owner(), HttpMethod.GET, "/api/v1/audits/tasks/" + auditTask(box), null)
+                        .getBody())
+                .isEqualTo(frozen);
+        assertThat(json(exchange(f.owner(), HttpMethod.GET, "/api/v1/bookings/" + booking, null)
+                                .getBody())
+                        .path("status")
+                        .asText())
+                .isEqualTo("COMPLETED");
+        assertThat(jdbc.sql("SELECT count(*) FROM audit_finding_resolution WHERE audit_finding_id=:id")
+                        .param("id", finding)
+                        .query(Long.class)
+                        .single())
+                .isEqualTo(1);
+        UUID repair = jdbc.sql("SELECT id FROM asset_repair WHERE asset_id=:id")
+                .param("id", cable)
+                .query(UUID.class)
+                .single();
+        UUID future = createBooking(f, "Future equipment", LocalDate.of(2027, 6, 1), LocalDate.of(2027, 6, 2));
+        assertThat(addAssetLine(f.owner(), future, bookingVersion(f.owner(), future), cable)
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertConflict(preview(f.owner(), future), "ASSET_UNAVAILABLE");
+        assertThat(exchange(
+                                f.owner(),
+                                HttpMethod.POST,
+                                "/api/v1/repairs/" + repair + "/close",
+                                Map.of("resultingCondition", "DAMAGED"))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertThat(jdbc.sql(
+                                "SELECT count(*) FROM asset_state_history WHERE asset_id=:id AND change_type='CONDITION' AND new_value='DAMAGED'")
+                        .param("id", cable)
+                        .query(Long.class)
+                        .single())
+                .isEqualTo(1);
+        assertThat(exchange(
+                                f.owner(),
+                                HttpMethod.POST,
+                                "/api/v1/repairs/" + repair + "/close",
+                                Map.of("resultingCondition", "GOOD"))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+        assertThat(json(preview(f.owner(), future).getBody()).path("reservable").asBoolean())
+                .isTrue();
+        assertThatThrownBy(() -> jdbc.sql("UPDATE asset_repair SET reference_or_description='rewrite' WHERE id=:id")
+                        .param("id", repair)
+                        .update())
+                .isInstanceOf(DataAccessException.class);
+    }
+
+    @Test
+    void phase10FormalLostAccountingDoesNotInventPhysicalReturnAndReplacementGetsANewIdentity() {
+        Fixture f = fixture();
+        UUID box = createAsset(f, createSerializedModel(f, "Empty return case", true), "Case");
+        UUID missing = createAsset(f, "Lost separately issued asset");
+        UUID booking = createBooking(f, "Partial return", LocalDate.of(2027, 5, 1), LocalDate.of(2027, 5, 2));
+        addContainerLine(f.owner(), booking, bookingVersion(f.owner(), booking), box);
+        addAssetLine(f.owner(), booking, bookingVersion(f.owner(), booking), missing);
+        assertThat(reserve(f.owner(), booking, bookingVersion(f.owner(), booking))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertThat(checkout(f, booking, List.of()).getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(exchange(
+                                f.owner(),
+                                HttpMethod.POST,
+                                "/api/v1/bookings/" + booking + "/check-in/assets/" + box,
+                                Map.of("mutationId", UUID.randomUUID()))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        UUID audit = startAudit(f, box);
+        ResponseEntity<String> result = completeForReview(f, audit, box, false, false);
+        assertThat(result.getStatusCode()).withFailMessage(result.getBody()).isEqualTo(HttpStatus.OK);
+        UUID finding = UUID.fromString(
+                json(result.getBody()).path("findings").get(0).path("id").asText());
+        assertThat(resolveForReview(f, finding, "MARK_LOST", Map.of()).getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertThat(jdbc.sql(
+                                "SELECT returned_at IS NULL AND audit_released_at IS NOT NULL FROM checkout_manifest_asset WHERE physical_asset_id=:id")
+                        .param("id", missing)
+                        .query(Boolean.class)
+                        .single())
+                .isTrue();
+        assertThat(jdbc.sql(
+                                "SELECT count(*) FROM manifest_asset_accounting accounting JOIN checkout_manifest_asset item ON item.id=accounting.checkout_manifest_asset_id WHERE item.physical_asset_id=:id AND accounting.accounting_state='LOST'")
+                        .param("id", missing)
+                        .query(Long.class)
+                        .single())
+                .isEqualTo(1);
+        assertThat(jdbc.sql("SELECT count(*) FROM asset_state_history WHERE asset_id=:id AND new_value='LOST'")
+                        .param("id", missing)
+                        .query(Long.class)
+                        .single())
+                .isEqualTo(1);
+        assertThat(json(exchange(f.owner(), HttpMethod.GET, "/api/v1/bookings/" + booking, null)
+                                .getBody())
+                        .path("status")
+                        .asText())
+                .isEqualTo("COMPLETED");
+        String oldCode = publicCode(missing);
+        ResponseEntity<String> replacement = exchange(
+                f.owner(),
+                HttpMethod.POST,
+                "/api/v1/assets/" + missing + "/replacement",
+                Map.of("individualName", "Replacement"));
+        assertThat(replacement.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        UUID newId = UUID.fromString(json(replacement.getBody()).path("id").asText());
+        assertThat(newId).isNotEqualTo(missing);
+        assertThat(publicCode(newId)).isNotEqualTo(oldCode);
+        assertThat(publicCode(missing)).isEqualTo(oldCode);
+        assertThat(jdbc.sql("SELECT replaces_asset_id FROM physical_asset WHERE id=:id")
+                        .param("id", newId)
+                        .query(UUID.class)
+                        .single())
+                .isEqualTo(missing);
+        assertThatThrownBy(() -> jdbc.sql(
+                                "UPDATE manifest_asset_accounting SET accounting_state='DESTROYED' WHERE checkout_manifest_asset_id IN (SELECT id FROM checkout_manifest_asset WHERE physical_asset_id=:id)")
+                        .param("id", missing)
+                        .update())
+                .isInstanceOf(DataAccessException.class);
+    }
+
+    @Test
+    void phase10ReviewedChildUnlocksParentAndSealBreakRequiresFreshAttemptsWithoutOldScanConflicts() {
+        Fixture f = fixture();
+        UUID model = createSerializedModel(f, "Nested sealed case", true);
+        UUID root = createAsset(f, model, "Root"), child = createAsset(f, model, "Child");
+        UUID cable = createAsset(f, "Sealed cable");
+        addExactRequirement(f, child, cable);
+        addExactRequirement(f, root, child);
+        place(f, cable, child);
+        place(f, child, root);
+        assertThat(exchange(
+                                f.owner(),
+                                HttpMethod.PUT,
+                                "/api/v1/assets/" + child + "/sealable",
+                                Map.of("sealable", true))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
+        UUID booking = returnedContainers(f, List.of(root));
+        UUID audit = startAudit(f, child);
+        scanForReview(f, audit, cable);
+        assertThat(completeForReview(f, audit, child, false, false).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+        ResponseEntity<String> findingResponse = exchange(
+                f.owner(),
+                HttpMethod.POST,
+                "/api/v1/audits/" + audit + "/findings",
+                Map.of(
+                        "operationId",
+                        UUID.randomUUID(),
+                        "type",
+                        "DAMAGED",
+                        "assetId",
+                        cable,
+                        "note",
+                        "Review seal contents"));
+        UUID finding = UUID.fromString(json(findingResponse.getBody())
+                .path("findings")
+                .get(0)
+                .path("id")
+                .asText());
+        assertThat(completeForReview(f, audit, child, false, true).getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertThat(jdbc.sql("SELECT state FROM audit_task WHERE id=:id")
+                        .param("id", auditTask(root))
+                        .query(String.class)
+                        .single())
+                .isEqualTo("BLOCKED");
+        assertThat(resolveForReview(f, finding, "DISMISS", Map.of("note", "Checked and usable"))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertThat(jdbc.sql("SELECT state FROM audit_task WHERE id=:id")
+                        .param("id", auditTask(root))
+                        .query(String.class)
+                        .single())
+                .isEqualTo("READY");
+        UUID rootAudit = startAudit(f, root);
+        scanForReview(f, rootAudit, child);
+        assertThat(completeForReview(f, rootAudit, root, false, false).getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertThat(json(exchange(f.owner(), HttpMethod.GET, "/api/v1/bookings/" + booking, null)
+                                .getBody())
+                        .path("status")
+                        .asText())
+                .isEqualTo("COMPLETED");
+        assertThat(exchange(
+                                f.owner(),
+                                HttpMethod.POST,
+                                "/api/v1/assets/" + child + "/seal/break",
+                                Map.of("note", "Reopen contents"))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(jdbc.sql("SELECT state FROM audit_task WHERE id=:id")
+                        .param("id", auditTask(root))
+                        .query(String.class)
+                        .single())
+                .isEqualTo("BLOCKED");
+        assertThat(json(exchange(f.owner(), HttpMethod.GET, "/api/v1/bookings/" + booking, null)
+                                .getBody())
+                        .path("status")
+                        .asText())
+                .isEqualTo("RETURNED_AUDITS_PENDING");
+        assertThat(jdbc.sql("SELECT last_verified_at IS NULL FROM physical_asset WHERE id=:id")
+                        .param("id", child)
+                        .query(Boolean.class)
+                        .single())
+                .isTrue();
+        UUID fresh = startAudit(f, child);
+        assertThat(fresh).isNotEqualTo(audit);
+        scanForReview(f, fresh, cable);
+        assertThat(completeForReview(f, fresh, child, false, true).getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        UUID freshParent = startAudit(f, root);
+        scanForReview(f, freshParent, child);
+        assertThat(completeForReview(f, freshParent, root, false, false).getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertThat(jdbc.sql("SELECT max(attempt_number) FROM container_audit WHERE audit_task_id=:id")
+                        .param("id", auditTask(child))
+                        .query(Integer.class)
+                        .single())
+                .isEqualTo(2);
+        assertThat(jdbc.sql("SELECT count(*) FROM asset_seal_history WHERE asset_id=:id AND action='VERIFIED'")
+                        .param("id", child)
+                        .query(Long.class)
+                        .single())
+                .isEqualTo(2);
+        assertThat(jdbc.sql("SELECT count(*) FROM audit_scan WHERE physical_asset_id=:id AND undone_at IS NULL")
+                        .param("id", cable)
+                        .query(Long.class)
+                        .single())
+                .isEqualTo(2);
+        assertThatThrownBy(() -> jdbc.sql("UPDATE container_audit SET final_container_code=NULL WHERE id=:id")
+                        .param("id", audit)
+                        .update())
+                .isInstanceOf(DataAccessException.class);
+    }
+
+    @Test
+    void phase10ResolutionEnforcesTenantActionAndCycleBoundaries() {
+        Fixture f = fixture(), other = fixture();
+        UUID model = createSerializedModel(f, "Review destinations", true);
+        UUID root = createAsset(f, model, "Root"), child = createAsset(f, model, "Child");
+        UUID foreign = createAsset(other, createSerializedModel(other, "Other case", true), "Other");
+        place(f, child, root);
+        returnedContainers(f, List.of(root));
+        UUID audit = startAudit(f, child);
+        ResponseEntity<String> result = exchange(
+                f.owner(),
+                HttpMethod.POST,
+                "/api/v1/audits/" + audit + "/findings",
+                Map.of("operationId", UUID.randomUUID(), "type", "UNEXPECTED", "assetId", root));
+        UUID finding = UUID.fromString(
+                json(result.getBody()).path("findings").get(0).path("id").asText());
+        assertThat(completeForReview(f, audit, child, false, false).getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        String path = "/api/v1/findings/" + finding + "/resolutions";
+        assertThat(exchange(other.owner(), HttpMethod.GET, "/api/v1/findings/" + finding, null)
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(exchange(
+                                f.session(OrganizationRole.OPERATOR_AUDITOR),
+                                HttpMethod.POST,
+                                path,
+                                Map.of("operationId", UUID.randomUUID(), "action", "DISMISS", "note", "operator"))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(resolveForReview(f, finding, "MARK_LOST", Map.of()).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(resolveForReview(f, finding, "REASSIGN_CURRENT_CONTAINER", Map.of("targetContainerAssetId", foreign))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(resolveForReview(f, finding, "REASSIGN_CURRENT_CONTAINER", Map.of("targetContainerAssetId", child))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(jdbc.sql("SELECT count(*) FROM audit_finding_resolution WHERE audit_finding_id=:id")
+                        .param("id", finding)
+                        .query(Long.class)
+                        .single())
+                .isZero();
+    }
+
+    private void scanForReview(Fixture f, UUID audit, UUID asset) {
+        ResponseEntity<String> result = exchange(
+                f.owner(),
+                HttpMethod.POST,
+                "/api/v1/audits/" + audit + "/scans",
+                Map.of("operationId", UUID.randomUUID(), "code", publicCode(asset)));
+        assertThat(result.getStatusCode()).withFailMessage(result.getBody()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    void phase10OneOpenRepairConcurrencyAndFutureReservationsRespectAssetModelAndStockSourceAvailability()
+            throws Exception {
+        Fixture f = fixture();
+        UUID cableModel = createSerializedModel(f, "Repair capacity", false);
+        UUID cable = createAsset(f, cableModel, "Cable");
+        UUID cases = createSerializedModel(f, "Repair source cases", true);
+        UUID box = createAsset(f, cases, "Source case");
+        UUID stockModel = createQuantityModel(f, "Repair source tape");
+        UUID stockId = receive(f, stockModel, box, "10");
+        UUID future = createBooking(f, "Future exact", LocalDate.of(2027, 7, 1), LocalDate.of(2027, 7, 2));
+        addAssetLine(f.owner(), future, bookingVersion(f.owner(), future), cable);
+        assertThat(reserve(f.owner(), future, bookingVersion(f.owner(), future)).getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        String path = "/api/v1/assets/" + cable + "/repairs";
+        ResponseEntity<String>[] results = runTogether(
+                () -> exchange(f.owner(), HttpMethod.POST, path, Map.of("referenceOrDescription", "Repair A")),
+                () -> exchange(f.deputy(), HttpMethod.POST, path, Map.of("referenceOrDescription", "Repair B")));
+        assertThat(List.of(results[0].getStatusCode(), results[1].getStatusCode()))
+                .containsExactlyInAnyOrder(HttpStatus.CREATED, HttpStatus.CONFLICT);
+        assertReservationStatus(f, future, "ATTENTION_REQUIRED");
+        UUID capacity = capacityBooking(f, cases, cableModel, LocalDate.of(2027, 8, 1), LocalDate.of(2027, 8, 2));
+        assertConflict(preview(f.owner(), capacity), "MODEL_CAPACITY");
+        UUID sourceBooking = createBooking(f, "Stock source", LocalDate.of(2027, 9, 1), LocalDate.of(2027, 9, 2));
+        addConsumableLine(f.owner(), sourceBooking, bookingVersion(f.owner(), sourceBooking), stockId, "2");
+        assertThat(reserve(f.owner(), sourceBooking, bookingVersion(f.owner(), sourceBooking))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        ResponseEntity<String> sourceRepair = exchange(
+                f.owner(),
+                HttpMethod.POST,
+                "/api/v1/assets/" + box + "/repairs",
+                Map.of("referenceOrDescription", "Replace case latch"));
+        assertThat(sourceRepair.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertReservationStatus(f, sourceBooking, "ATTENTION_REQUIRED");
+        assertConflict(preview(f.owner(), sourceBooking), "SOURCE_CONTAINER_UNAVAILABLE");
+        assertThat(checkout(f, sourceBooking, List.of()).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        UUID repair = jdbc.sql("SELECT id FROM asset_repair WHERE asset_id=:id")
+                .param("id", cable)
+                .query(UUID.class)
+                .single();
+        assertThat(exchange(
+                                f.owner(),
+                                HttpMethod.POST,
+                                "/api/v1/repairs/" + repair + "/close",
+                                Map.of("resultingCondition", "GOOD"))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertReservationStatus(f, future, "CONFIRMED");
+        UUID sourceRepairId =
+                UUID.fromString(json(sourceRepair.getBody()).path("id").asText());
+        assertThat(exchange(
+                                f.owner(),
+                                HttpMethod.POST,
+                                "/api/v1/repairs/" + sourceRepairId + "/close",
+                                Map.of("resultingCondition", "GOOD"))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertReservationStatus(f, sourceBooking, "CONFIRMED");
+    }
+
+    @Test
+    void phase10LostRestorationRecordsPhysicalReturnAndDestroyedLifecycleIsTerminal() {
+        Fixture f = fixture();
+        UUID box = createAsset(f, createSerializedModel(f, "Restore case", true), "Case");
+        UUID asset = createAsset(f, "Found asset");
+        addExactRequirement(f, box, asset);
+        place(f, asset, box);
+        UUID booking = returnedContainers(f, List.of(box));
+        UUID audit = startAudit(f, box);
+        ResponseEntity<String> result = completeForReview(f, audit, box, true, false);
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        UUID finding = UUID.fromString(
+                json(result.getBody()).path("findings").get(0).path("id").asText());
+        jdbc.sql("UPDATE physical_asset SET lifecycle_state='LOST' WHERE id=:id")
+                .param("id", asset)
+                .update();
+        assertThat(resolveForReview(f, finding, "FOUND_AND_RETURNED", Map.of()).getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertThat(jdbc.sql("SELECT lifecycle_state FROM physical_asset WHERE id=:id")
+                        .param("id", asset)
+                        .query(String.class)
+                        .single())
+                .isEqualTo("ACTIVE");
+        assertThat(jdbc.sql(
+                                "SELECT count(*) FROM asset_state_history WHERE asset_id=:id AND previous_value='LOST' AND new_value='ACTIVE'")
+                        .param("id", asset)
+                        .query(Long.class)
+                        .single())
+                .isEqualTo(1);
+        // A manifest discrepancy creates a second immutable observation. Reviewing it clears the event.
+        JsonNode remaining = json(
+                exchange(f.owner(), HttpMethod.GET, "/api/v1/findings", null).getBody());
+        for (JsonNode item : remaining) {
+            if (item.path("assetId").asText().equals(asset.toString()))
+                assertThat(resolveForReview(
+                                        f, UUID.fromString(item.path("id").asText()), "FOUND_AND_RETURNED", Map.of())
+                                .getStatusCode())
+                        .isEqualTo(HttpStatus.OK);
+        }
+        assertThat(json(exchange(f.owner(), HttpMethod.GET, "/api/v1/bookings/" + booking, null)
+                                .getBody())
+                        .path("status")
+                        .asText())
+                .isEqualTo("COMPLETED");
+        assertThat(exchange(
+                                f.owner(),
+                                HttpMethod.PUT,
+                                "/api/v1/assets/" + asset + "/lifecycle",
+                                Map.of("lifecycleState", "DESTROYED", "reason", "Beyond repair"))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertThat(exchange(
+                                f.owner(),
+                                HttpMethod.PUT,
+                                "/api/v1/assets/" + asset + "/lifecycle",
+                                Map.of("lifecycleState", "LOST", "reason", "Attempt to escape terminal state"))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(exchange(
+                                f.owner(),
+                                HttpMethod.PUT,
+                                "/api/v1/assets/" + asset + "/lifecycle",
+                                Map.of("lifecycleState", "ACTIVE", "reason", "Attempt to restore"))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    private ResponseEntity<String> completeForReview(Fixture f, UUID audit, UUID box, boolean missing, boolean sealed) {
+        return exchange(
+                f.owner(),
+                HttpMethod.POST,
+                "/api/v1/audits/" + audit + "/complete",
+                Map.of(
+                        "operationId",
+                        UUID.randomUUID(),
+                        "containerCode",
+                        publicCode(box),
+                        "confirmMissing",
+                        missing,
+                        "sealConfirmed",
+                        sealed));
+    }
+
+    private ResponseEntity<String> resolveForReview(Fixture f, UUID finding, String action, Map<String, Object> extra) {
+        Map<String, Object> body = new java.util.HashMap<>(extra);
+        body.put("operationId", UUID.randomUUID());
+        body.put("action", action);
+        return exchange(f.owner(), HttpMethod.POST, "/api/v1/findings/" + finding + "/resolutions", body);
+    }
+
     private UUID returnedContainers(Fixture f, List<UUID> containers) {
         UUID booking = createBooking(f, "Audit return", LocalDate.of(2027, 5, 1), LocalDate.of(2027, 5, 2));
         for (UUID container : containers)

@@ -9,6 +9,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface ContainerAuditRepository extends JpaRepository<ContainerAudit, UUID> {
     Optional<ContainerAudit> findByOrganizationIdAndAuditTaskId(UUID organizationId, UUID auditTaskId);
 
+    Optional<ContainerAudit> findByOrganizationIdAndAuditTaskIdAndCurrentAttemptTrue(
+            UUID organizationId, UUID auditTaskId);
+
+    List<ContainerAudit> findAllByOrganizationIdAndAuditTaskIdOrderByAttemptNumberAsc(
+            UUID organizationId, UUID auditTaskId);
+
     Optional<ContainerAudit> findByOrganizationIdAndId(UUID organizationId, UUID id);
 
     List<ContainerAudit> findAllByOrganizationIdAndAuditBatchIdOrderById(UUID organizationId, UUID batchId);

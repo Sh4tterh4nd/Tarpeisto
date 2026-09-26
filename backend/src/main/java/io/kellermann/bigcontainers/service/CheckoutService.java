@@ -23,6 +23,7 @@ import io.kellermann.bigcontainers.model.CheckoutManifestOverride;
 import io.kellermann.bigcontainers.model.CheckoutReturnOperation;
 import io.kellermann.bigcontainers.model.OrganizationRole;
 import io.kellermann.bigcontainers.repository.AssetModelRepository;
+import io.kellermann.bigcontainers.repository.AssetRepairRepository;
 import io.kellermann.bigcontainers.repository.AssetRepository;
 import io.kellermann.bigcontainers.repository.AuditBatchRepository;
 import io.kellermann.bigcontainers.repository.AuditTaskDependencyRepository;
@@ -70,6 +71,7 @@ public class CheckoutService {
     private final CheckoutManifestConsumableRepository manifestConsumables;
     private final CheckoutManifestOverrideRepository overrides;
     private final AssetRepository assets;
+    private final AssetRepairRepository repairs;
     private final AssetModelRepository models;
     private final OrganizationRepository organizations;
     private final AuditBatchRepository batches;
@@ -86,6 +88,7 @@ public class CheckoutService {
     private final ConsumableStockRepository stockBalances;
     private final LocationRepository locations;
     private final ContainerAuditRepository audits;
+    private final BookingReturnStateService returnStates;
 
     public CheckoutService(
             BookingRepository bookings,
@@ -95,6 +98,7 @@ public class CheckoutService {
             CheckoutManifestConsumableRepository manifestConsumables,
             CheckoutManifestOverrideRepository overrides,
             AssetRepository assets,
+            AssetRepairRepository repairs,
             AssetModelRepository models,
             OrganizationRepository organizations,
             AuditBatchRepository batches,
@@ -110,7 +114,8 @@ public class CheckoutService {
             BookingLineRepository bookingLines,
             ConsumableStockRepository stockBalances,
             LocationRepository locations,
-            ContainerAuditRepository audits) {
+            ContainerAuditRepository audits,
+            BookingReturnStateService returnStates) {
         this.bookings = bookings;
         this.claims = claims;
         this.manifests = manifests;
@@ -118,6 +123,7 @@ public class CheckoutService {
         this.manifestConsumables = manifestConsumables;
         this.overrides = overrides;
         this.assets = assets;
+        this.repairs = repairs;
         this.models = models;
         this.organizations = organizations;
         this.batches = batches;
@@ -134,6 +140,7 @@ public class CheckoutService {
         this.stockBalances = stockBalances;
         this.locations = locations;
         this.audits = audits;
+        this.returnStates = returnStates;
     }
 
     @Transactional(readOnly = true)
@@ -245,6 +252,9 @@ public class CheckoutService {
                     placeSelectedAsset(principal, asset, claim.getContainerId(), now);
                 }
                 if (!asset.isActive()
+                        || repairs.existsByOrganizationIdAndAssetIdAndClosedAtIsNull(
+                                principal.organizationId(), asset.getId())
+                        || tasks.hasPendingAudit(principal.organizationId(), asset.getId())
                         || manifestAssets.existsByOrganizationIdAndAssetIdAndAuditReleasedAtIsNull(
                                 principal.organizationId(), asset.getId()))
                     throw new ValidationFailedException("A reserved asset is not available for checkout.");
@@ -281,6 +291,10 @@ public class CheckoutService {
                     stock.issueForCheckout(principal, claim.getConsumableStockId(), claim.getQuantity(), bookingId);
             } else if (claim.getClaimType() == BookingClaimType.MODEL_CAPACITY) {
                 for (Asset asset : selectedByClaim.getOrDefault(claim.getId(), List.of())) {
+                    if (tasks.hasPendingAudit(principal.organizationId(), asset.getId())
+                            || repairs.existsByOrganizationIdAndAssetIdAndClosedAtIsNull(
+                                    principal.organizationId(), asset.getId()))
+                        throw new ValidationFailedException("An asset with an open repair cannot be checked out.");
                     placeSelectedAsset(principal, asset, claim.getContainerId(), now);
                     manifestAssets.save(new CheckoutManifestAsset(
                             UUID.randomUUID(),
@@ -333,7 +347,7 @@ public class CheckoutService {
                     principal.organizationId(), manifest.getId());
             java.util.Set<UUID> descendants = subtree(all, assetId);
             for (CheckoutManifestAsset returned : all)
-                if (descendants.contains(returned.getAssetId())) {
+                if (descendants.contains(returned.getAssetId()) && returned.getAuditReleasedAt() == null) {
                     returned.markReturned(principal.userId(), mutationId, clock.instant());
                     if (!returned.isContainer() && !hasContainerAncestor(all, returned))
                         returned.releaseAfterAudit(clock.instant());
@@ -404,7 +418,7 @@ public class CheckoutService {
         if (manifestAssets
                 .findAllByOrganizationIdAndManifestIdOrderById(principal.organizationId(), manifest.getId())
                 .stream()
-                .anyMatch(a -> a.getReturnedAt() == null))
+                .anyMatch(a -> a.getReturnedAt() == null && a.getAuditReleasedAt() == null))
             throw new ValidationFailedException(
                     "All physical assets must be returned before completing return accounting.");
         for (CheckoutManifestConsumable line : manifestConsumables.findAllByOrganizationIdAndManifestIdOrderById(
@@ -519,6 +533,13 @@ public class CheckoutService {
     }
 
     private void updateReturnedState(BigContainersPrincipal principal, UUID bookingId, CheckoutManifest manifest) {
+        var effectiveBatch = batches.findByOrganizationIdAndBookingId(principal.organizationId(), bookingId);
+        if (effectiveBatch.isPresent()) {
+            returnStates.recalculateForBatch(
+                    principal.organizationId(), effectiveBatch.get().getId());
+            bookings.flush();
+            return;
+        }
         if (manifestAssets
                 .findAllByOrganizationIdAndManifestIdOrderById(principal.organizationId(), manifest.getId())
                 .stream()
@@ -631,6 +652,9 @@ public class CheckoutService {
         map.put("assetCode", a.getPublicCode());
         map.put("individualName", a.getIndividualName());
         map.put("unitNumber", a.getUnitNumber());
+        map.put("sealable", a.isSealable());
+        map.put("sealState", a.getSealState().name());
+        map.put("sealVerifiedAt", a.getSealVerifiedAt());
         map.put(
                 "isContainer",
                 models.findByIdAndOrganizationId(a.getAssetModelId(), a.getOrganizationId())

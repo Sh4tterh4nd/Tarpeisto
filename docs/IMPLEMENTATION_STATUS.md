@@ -1,6 +1,6 @@
 # BigContainers Implementation Status
 
-Status: Living record of what exists, as of 2026-09-26
+Status: Living record of what exists, as of 2026-09-27
 
 Purpose: This document records **what is actually built and verified**, so that a contributor (human
 or agent) can continue the work without rediscovering it.
@@ -26,7 +26,7 @@ Read it together with [`DEVELOPMENT_POLICIES.md`](DEVELOPMENT_POLICIES.md) and t
 | 7       | Events, reservations, recursive expansion and conflict calculation              | Complete, verified                                                                                  |
 | 8       | Checkout manifests, custody, consumable issue/return, PDF, return task creation | Complete, verified                                                                                  |
 | 9.1     | Online return-audit execution and baseline reconciliation                       | Complete, verified                                                                                   |
-| 10      | Finding review, lifecycle, repairs and seal administration                      | Not started                                                                                         |
+| 10      | Finding review, lifecycle, repairs and seal administration                      | Complete, verified                                                                                   |
 | 11      | Container packing sheets                                                        | Not started                                                                                         |
 | 9.2-9.3 | Persistent scan outbox and queued audit photographs                             | Explicitly deferred until after Phases 10 and 11                                                    |
 | 12-14   | Temporary access, search, hardening                                             | Not started                                                                                         |
@@ -47,6 +47,17 @@ Verified at the Phase 9.1 checkpoint:
   `lint`, `typecheck` and production `build` clean. Four Playwright checks pass across the asset
   scanner and online audit journeys on desktop and mobile; `jibBuildTar` succeeds with the matching
   frontend embedded.
+
+Verified at the Phase 10 checkpoint:
+
+- Backend: **413 tests, 0 failures**, against PostgreSQL. The Phase 10 coverage includes append-only
+  resolution idempotency/conflicts, formal loss accounting, tenant and role boundaries, repair
+  concurrency and availability, replacement identity, seal history, verification invalidation,
+  reviewed-child unlocking and fresh audit attempts.
+- Frontend: **152 tests, 0 failures** (134 web, 11 api-client, 7 shared-ui), with `format:check`,
+  `lint`, `typecheck` and production `build` clean. Six Playwright journeys pass across scanner,
+  online audit and finding-review flows on desktop and mobile; `jibBuildTar` succeeds with the
+  matching frontend embedded.
 
 ## 2. How to verify this yourself
 
@@ -107,6 +118,7 @@ Migrations (Flyway owns all schema; applied migrations are immutable):
 | `V11`     | Events, booking lines, immutable reservation revisions/claims and event history                     |
 | `V12`     | Immutable checkout manifests, custody/return operations and audit-task dependency foundation        |
 | `V13`     | Online container-audit facts, frozen expectations, scans, observations, findings and operation IDs  |
+| `V14`     | Append-only finding resolutions, repair/seal/verification history, formal manifest accounting and audit-attempt projection |
 
 API surface is under `/api/v1`. The OpenAPI document at `/v3/api-docs` (enabled only under the `dev`
 profile) is the machine-readable contract; treat it as authoritative over any list here. Broadly:
@@ -123,8 +135,8 @@ pinned items, and can evaluate consumable amounts from a direct balance or an ep
 Actual and template requirement changes retain immutable before/after JSON snapshots, including
 referenced names and codes. Tracking-mode changes are blocked by current or archived actual/template
 requirements and their history. Phase 8 locks packing mutations while a container or ancestor is in
-checkout custody. Seal-state invalidation remains part of Phase 10 because seal state does not exist
-yet.
+checkout custody. Phase 10 invalidates the applicable seal and verification assertions after packing
+or verified-content changes.
 
 Phase 6 adds generated PDF asset labels for both specified A4 stocks, calibration sheets, UTF-8
 P-touch CSV, and raw-code QR round-trip verification. Phase 7 adds timestamped Draft/Reserved/
@@ -151,6 +163,16 @@ Deputies can submit a balance-changing observed amount through the immutable sto
 Completion requires a matching closing container scan, preserves completed observations, updates direct
 verified placement, and unlocks parents bottom-up. Persistent IndexedDB queueing, retry/backoff and
 photo recovery remain Phase 9.2/9.3 work, not implemented behavior.
+
+Phase 10 adds a strictly additive V14 migration: completed audit findings, scans and manifests remain
+immutable while one final idempotent resolution is appended per finding. Owner/Deputy review can
+record safe placement, lifecycle, repair, label and dismissal outcomes; formal loss/destruction
+accounting releases custody without fabricating a physical return. Repairs are retained as history,
+block reservation and checkout while open, and close with a resulting condition. Individual
+containers expose sealability plus append-only applied, verified, broken and invalidated history.
+Breaking a seal invalidates verification, preserves the completed attempt, creates a numbered fresh
+attempt and reblocks dependent parents. Effective audit and event state is recalculated after review,
+repair and seal actions, and replacement assets always receive a new identity and public code.
 
 Authorization is enforced in the **service** layer, not by URL matchers. Owner administers users and
 identities; Owner or Deputy administers the catalog, assets, media, locations, containment, stock and
@@ -200,6 +222,13 @@ retain their operation UUID for explicit retry, and cross-audit ownership confli
 live `dev` backend after V13 migrated a clean PostgreSQL database; the feature wrapper now uses the
 shared generated client and types.
 
+Phase 10 adds an Owner/Deputy review queue with frozen event, audit-task, container and finding
+context, server-defined applicable decisions, deliberate confirmation for permanent outcomes and
+payload-stable retry IDs. Asset detail exposes repair history and open/close actions, current seal and
+verification state, seal controls, replacement lineage and replacement creation. Event and audit
+views link directly into review. The updated OpenAPI snapshot and generated client were captured from
+a live `dev` backend after V14 migrated a clean PostgreSQL database.
+
 API types are **generated** from the backend's OpenAPI document into
 `packages/api-client/src/generated/`. Hand-written duplicates of generated request/response shapes
 are forbidden by policy. Regenerate with the package's `generate` script against a running backend.
@@ -221,11 +250,10 @@ environment; the reasoning is recorded in the workflow itself.
 These are **not** oversights. Each is deferred because the table or phase it depends on does not
 exist yet, and each is documented at its call site in code.
 
-| Deferred                                         | Where it plugs in                                                                                                                                   |
-| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Seal invalidation                                | Integrate at the organization-locked packing service mutation boundary when Phase 10 adds seal state. Checkout custody guards are already enforced. |
-| Automatic email linking toggle                   | A static environment variable, not a runtime Owner-toggled setting, because no settings store exists yet.                                           |
-| Cross-model "metadata incomplete" dashboard view | Per-asset and per-model visibility exists; the organization-wide operational view belongs to Phase 13.                                              |
+| Deferred                                          | Where it plugs in                                                                                                      |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Automatic email linking toggle                    | A static environment variable, not a runtime Owner-toggled setting, because no settings store exists yet.              |
+| Cross-model "metadata incomplete" dashboard view | Per-asset and per-model visibility exists; the organization-wide operational view belongs to Phase 13.                 |
 
 ## 6. Known characteristics worth knowing before changing things
 
@@ -304,9 +332,8 @@ what was verified. Treat the history as a readable grouping, not a bisectable ti
 ## 9. Suggested next steps
 
 1. Review Phases 6 and 7, including physical label-stock/mobile/P-touch acceptance.
-2. **Phase 10** - finding review, lifecycle decisions, repairs and seal administration.
-3. **Phase 11** - printable container packing sheets.
-4. **Phases 9.2 and 9.3** - persistent scan outbox and queued audit photographs.
+2. **Phase 11** - printable container packing sheets.
+3. **Phases 9.2 and 9.3** - persistent scan outbox and queued audit photographs.
 
 Phase 9.1 is implemented end to end for online operation: audits freeze direct expectations at start,
 enforce bottom-up execution, match exact requirements before model quantities, retain corrections,

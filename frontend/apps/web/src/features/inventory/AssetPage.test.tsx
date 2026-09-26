@@ -15,6 +15,7 @@ vi.mock("./inventoryApi", () => ({ ...api, errorMessage: (error: Error) => error
 vi.mock("./AssetPlacementPanel", () => ({ AssetPlacementPanel: () => null }));
 vi.mock("./MediaPanel", () => ({ MediaPanel: () => null }));
 vi.mock("./PackingPanel", () => ({ PackingPanel: () => null }));
+vi.mock("./AssetReviewPanel", () => ({ AssetReviewPanel: () => null }));
 vi.mock("./AssetLabelExportDialog", () => ({
   AssetLabelExportDialog: ({ assetIds }: { assetIds: string[] }) => (
     <div role="dialog" aria-label="Export asset labels">
