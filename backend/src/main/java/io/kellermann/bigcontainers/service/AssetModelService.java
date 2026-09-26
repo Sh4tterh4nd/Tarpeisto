@@ -10,6 +10,9 @@ import io.kellermann.bigcontainers.repository.AssetRepository;
 import io.kellermann.bigcontainers.repository.ConsumableStockRepository;
 import io.kellermann.bigcontainers.repository.ModelCustomFieldRepository;
 import io.kellermann.bigcontainers.repository.OrganizationRepository;
+import io.kellermann.bigcontainers.repository.PackingRequirementHistoryRepository;
+import io.kellermann.bigcontainers.repository.PackingRequirementRepository;
+import io.kellermann.bigcontainers.repository.PackingTemplateRequirementRepository;
 import io.kellermann.bigcontainers.security.BigContainersPrincipal;
 import java.math.BigDecimal;
 import java.net.URI;
@@ -41,18 +44,12 @@ import org.springframework.transaction.annotation.Transactional;
  *       V4__create_catalog_schema.sql} remains the authoritative backstop.
  *   <li>Changing tracking mode once dependent data exists (assets, stock balances, packing
  *       requirements, bookings, or history - specification section 6.2) is only partly enforceable
- *       so far: {@link #requireNoTrackingModeDependencyBlocksChange} covers physical assets (Phase
- *       2b part 1, backed by the {@code tr_asset_model_reject_quantity_mode_with_assets} trigger in
- *       {@code V5__create_asset_schema.sql}) and consumable stock balances (Phase 2b part 2, backed
- *       by {@code tr_asset_model_reject_non_quantity_mode_with_stock_balances} in {@code
- *       V6__create_consumable_stock_schema.sql}), on top of the model custom field check that
- *       already existed. Packing requirements, bookings, and history remain a later phase's
- *       extension of this same seam.
- *   <li>Disabling container capability while units currently contain assets or have active packing
- *       requirements (specification section 6.3) still cannot be enforced: {@code physical_asset}
- *       exists as of Phase 2b, but the containment relationship itself (a nullable parent-container
- *       column on {@code physical_asset}) is Phase 4's subject, and {@code packing_requirement} is
- *       Phase 5's. This is called out here and in the task report rather than silently skipped.
+ *       so far: physical assets, stock balances, custom fields, and actual/template packing rows
+ *       (including archived rows and their immutable history) are checked. Booking dependencies
+ *       extend this seam when the booking lifecycle exists.
+ *   <li>Disabling container capability while units contain assets, consumable stock, or active
+ *       packing requirements is rejected under the same organization lock used for placement and
+ *       packing mutations.
  * </ul>
  */
 @Service
@@ -62,6 +59,9 @@ public class AssetModelService {
     private final ModelCustomFieldRepository modelCustomFieldRepository;
     private final AssetRepository assetRepository;
     private final ConsumableStockRepository consumableStockRepository;
+    private final PackingRequirementRepository packingRequirementRepository;
+    private final PackingTemplateRequirementRepository packingTemplateRequirementRepository;
+    private final PackingRequirementHistoryRepository packingRequirementHistoryRepository;
     private final CategoryService categoryService;
     private final OrganizationRepository organizationRepository;
     private final ActivityLogService activityLogService;
@@ -72,6 +72,9 @@ public class AssetModelService {
             ModelCustomFieldRepository modelCustomFieldRepository,
             AssetRepository assetRepository,
             ConsumableStockRepository consumableStockRepository,
+            PackingRequirementRepository packingRequirementRepository,
+            PackingTemplateRequirementRepository packingTemplateRequirementRepository,
+            PackingRequirementHistoryRepository packingRequirementHistoryRepository,
             CategoryService categoryService,
             OrganizationRepository organizationRepository,
             ActivityLogService activityLogService,
@@ -80,6 +83,9 @@ public class AssetModelService {
         this.modelCustomFieldRepository = modelCustomFieldRepository;
         this.assetRepository = assetRepository;
         this.consumableStockRepository = consumableStockRepository;
+        this.packingRequirementRepository = packingRequirementRepository;
+        this.packingTemplateRequirementRepository = packingTemplateRequirementRepository;
+        this.packingRequirementHistoryRepository = packingRequirementHistoryRepository;
         this.categoryService = categoryService;
         this.organizationRepository = organizationRepository;
         this.activityLogService = activityLogService;
@@ -209,6 +215,7 @@ public class AssetModelService {
             String stockUnitLabel,
             BigDecimal lowStockThreshold) {
         requireOwnerOrDeputy(principal);
+        lockOrganization(principal.organizationId());
         AssetModel assetModel = requireAssetModel(principal.organizationId(), assetModelId);
         if (assetModel.getTrackingMode() != newTrackingMode) {
             requireNoTrackingModeDependencyBlocksChange(assetModel);
@@ -246,10 +253,13 @@ public class AssetModelService {
             throw new ValidationFailedException(
                     "Containment cannot be disabled while one of this model's assets holds consumable stock.");
         }
-        // Specification section 6.3: disabling containment is prohibited while any unit of the
-        // model currently contains assets or has active packing requirements. Neither
-        // physical_asset nor packing_requirement exists yet (Phase 2b); once they do, the guard
-        // belongs here, mirroring requireNoTrackingModeDependencyBlocksChange below.
+        if (assetModel.isCanContainAssets()
+                && !canContainAssets
+                && assetRepository.hasActivePackingRequirementsForContainerModel(
+                        principal.organizationId(), assetModelId)) {
+            throw new ValidationFailedException(
+                    "Containment cannot be disabled while one of this model's assets has packing requirements.");
+        }
         try {
             assetModel.setCanContainAssets(canContainAssets, clock.instant());
         } catch (IllegalArgumentException invalid) {
@@ -359,6 +369,15 @@ public class AssetModelService {
         if (consumableStockRepository.existsByOrganizationIdAndAssetModelId(
                 assetModel.getOrganizationId(), assetModel.getId())) {
             throw new ValidationFailedException("Cannot change tracking mode while this model has stock balances.");
+        }
+        if (packingRequirementRepository.existsByOrganizationIdAndAssetModelId(
+                        assetModel.getOrganizationId(), assetModel.getId())
+                || packingTemplateRequirementRepository.existsByOrganizationIdAndAssetModelId(
+                        assetModel.getOrganizationId(), assetModel.getId())
+                || packingRequirementHistoryRepository.hasAssetModelHistory(
+                        assetModel.getOrganizationId(), assetModel.getId())) {
+            throw new ValidationFailedException(
+                    "Cannot change tracking mode while this model has packing requirements or their history.");
         }
     }
 

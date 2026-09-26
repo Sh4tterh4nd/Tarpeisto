@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
 import List from "@mui/material/List";
@@ -39,53 +39,64 @@ export function AssetPlacementPanel({
   const [locationId, setLocationId] = useState("");
   const [parentContainerAssetId, setParentContainerAssetId] = useState("");
   const [error, setError] = useState<string>();
-  async function load() {
-    const [placementResult, locationsResult, modelsResult, contentsResult, stockResult] =
-      await Promise.all([
-        getAssetPlacement(assetId),
-        listLocations(),
-        listAssetModels(),
-        listContainerContents(assetId),
-        listContainerStock(assetId),
-      ]);
-    if (placementResult.kind === "error") {
-      setError(errorMessage(placementResult.error));
-      return;
-    }
-    if (locationsResult.kind === "error") {
-      setError(errorMessage(locationsResult.error));
-      return;
-    }
-    if (modelsResult.kind === "error") {
-      setError(errorMessage(modelsResult.error));
-      return;
-    }
-    const resultLists = await Promise.all(
-      modelsResult.data
-        .filter((model) => model.canContainAssets && !model.archived)
-        .map((model) => listAssets(model.id, false)),
-    );
-    const failed = resultLists.find((result) => result.kind === "error");
-    if (failed?.kind === "error") {
-      setError(errorMessage(failed.error));
-      return;
-    }
-    setPlacement(placementResult.data);
-    setLocations(locationsResult.data);
-    setContainers(
-      resultLists
-        .flatMap((result) => (result.kind === "ok" ? result.data : []))
-        .filter((asset) => asset.id !== assetId),
-    );
-    if (contentsResult.kind === "ok") setContents(contentsResult.data);
-    if (stockResult.kind === "ok") setStock(stockResult.data);
-    setLocationId(placementResult.data.directLocationId ?? "");
-    setParentContainerAssetId(placementResult.data.parentContainerAssetId ?? "");
-    setError(undefined);
-  }
+  const load = useCallback(
+    async (isCurrent: () => boolean = () => true) => {
+      const [placementResult, locationsResult, modelsResult, contentsResult, stockResult] =
+        await Promise.all([
+          getAssetPlacement(assetId),
+          listLocations(),
+          listAssetModels(),
+          listContainerContents(assetId),
+          listContainerStock(assetId),
+        ]);
+      if (!isCurrent()) return;
+      if (placementResult.kind === "error") {
+        setError(errorMessage(placementResult.error));
+        return;
+      }
+      if (locationsResult.kind === "error") {
+        setError(errorMessage(locationsResult.error));
+        return;
+      }
+      if (modelsResult.kind === "error") {
+        setError(errorMessage(modelsResult.error));
+        return;
+      }
+      const resultLists = await Promise.all(
+        modelsResult.data
+          .filter((model) => model.canContainAssets && !model.archived)
+          .map((model) => listAssets(model.id, false)),
+      );
+      if (!isCurrent()) return;
+      const failed = resultLists.find((result) => result.kind === "error");
+      if (failed?.kind === "error") {
+        setError(errorMessage(failed.error));
+        return;
+      }
+      setPlacement(placementResult.data);
+      setLocations(locationsResult.data);
+      setContainers(
+        resultLists
+          .flatMap((result) => (result.kind === "ok" ? result.data : []))
+          .filter((asset) => asset.id !== assetId),
+      );
+      if (contentsResult.kind === "ok") setContents(contentsResult.data);
+      if (stockResult.kind === "ok") setStock(stockResult.data);
+      setLocationId(placementResult.data.directLocationId ?? "");
+      setParentContainerAssetId(placementResult.data.parentContainerAssetId ?? "");
+      setError(undefined);
+    },
+    [assetId],
+  );
   useEffect(() => {
-    void load();
-  }, [assetId]);
+    let stale = false;
+    void (async () => {
+      await load(() => !stale);
+    })();
+    return () => {
+      stale = true;
+    };
+  }, [load]);
   async function save() {
     if (!placement) return;
     const result = await moveAsset(assetId, {

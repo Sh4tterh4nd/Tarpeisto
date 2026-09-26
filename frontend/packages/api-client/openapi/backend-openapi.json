@@ -75,6 +75,123 @@
         }
       }
     },
+    "/api/v1/packing-templates/{templateId}": {
+      "put": {
+        "tags": ["packing-requirement-controller"],
+        "operationId": "updateTemplate",
+        "parameters": [
+          {
+            "name": "templateId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PackingTemplateMutationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackingTemplateResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/packing-template-requirements/{id}": {
+      "put": {
+        "tags": ["packing-requirement-controller"],
+        "operationId": "updateTemplateRequirement",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PackingRequirementMutationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackingTemplateResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/packing-requirements/{id}": {
+      "put": {
+        "tags": ["packing-requirement-controller"],
+        "operationId": "update",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PackingRequirementMutationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackingRequirementResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/media/{mediaId}/layout": {
       "put": {
         "tags": ["media-controller"],
@@ -147,7 +264,7 @@
       },
       "put": {
         "tags": ["location-controller"],
-        "operationId": "update",
+        "operationId": "update_1",
         "parameters": [
           {
             "name": "locationId",
@@ -1135,6 +1252,257 @@
         }
       }
     },
+    "/api/v1/packing-templates": {
+      "get": {
+        "tags": ["packing-requirement-controller"],
+        "operationId": "templates",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PackingTemplateResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["packing-requirement-controller"],
+        "operationId": "createTemplate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PackingTemplateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackingTemplateResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/packing-templates/{templateId}/{action}": {
+      "post": {
+        "tags": ["packing-requirement-controller"],
+        "operationId": "setTemplateArchived",
+        "parameters": [
+          {
+            "name": "templateId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "action",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocationVersionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackingTemplateResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/packing-templates/{templateId}/requirements": {
+      "post": {
+        "tags": ["packing-requirement-controller"],
+        "operationId": "addTemplateRequirement",
+        "parameters": [
+          {
+            "name": "templateId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PackingRequirementRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackingTemplateResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/packing-template-requirements/{id}/{action}": {
+      "post": {
+        "tags": ["packing-requirement-controller"],
+        "operationId": "setTemplateRequirementArchived",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "action",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocationVersionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackingTemplateResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/packing-requirements/{id}/restore": {
+      "post": {
+        "tags": ["packing-requirement-controller"],
+        "operationId": "restore",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocationVersionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackingRequirementResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/packing-requirements/{id}/archive": {
+      "post": {
+        "tags": ["packing-requirement-controller"],
+        "operationId": "archive",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocationVersionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/media/{mediaId}/cleanup": {
       "post": {
         "tags": ["media-controller"],
@@ -1207,7 +1575,7 @@
     "/api/v1/locations/{locationId}/restore": {
       "post": {
         "tags": ["location-controller"],
-        "operationId": "restore",
+        "operationId": "restore_1",
         "parameters": [
           {
             "name": "locationId",
@@ -1239,7 +1607,7 @@
     "/api/v1/locations/{locationId}/archive": {
       "post": {
         "tags": ["location-controller"],
-        "operationId": "archive",
+        "operationId": "archive_1",
         "parameters": [
           {
             "name": "locationId",
@@ -1318,7 +1686,7 @@
     "/api/v1/categories/{categoryId}/restore": {
       "post": {
         "tags": ["category-controller"],
-        "operationId": "restore_1",
+        "operationId": "restore_2",
         "parameters": [
           {
             "name": "categoryId",
@@ -1340,7 +1708,7 @@
     "/api/v1/categories/{categoryId}/archive": {
       "post": {
         "tags": ["category-controller"],
-        "operationId": "archive_1",
+        "operationId": "archive_2",
         "parameters": [
           {
             "name": "categoryId",
@@ -1359,10 +1727,158 @@
         }
       }
     },
+    "/api/v1/assets/{containerAssetId}/packing-templates/{templateId}/apply": {
+      "post": {
+        "tags": ["packing-requirement-controller"],
+        "operationId": "apply",
+        "parameters": [
+          {
+            "name": "containerAssetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "templateId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PackingRequirementResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{containerAssetId}/packing-requirements": {
+      "get": {
+        "tags": ["packing-requirement-controller"],
+        "operationId": "list_4",
+        "parameters": [
+          {
+            "name": "containerAssetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PackingRequirementResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["packing-requirement-controller"],
+        "operationId": "add",
+        "parameters": [
+          {
+            "name": "containerAssetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PackingRequirementRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackingRequirementResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{containerAssetId}/packing-preview": {
+      "post": {
+        "tags": ["packing-requirement-controller"],
+        "operationId": "preview",
+        "parameters": [
+          {
+            "name": "containerAssetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PackingPreviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackingPreviewResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/assets/{assetId}/restore": {
       "post": {
         "tags": ["asset-controller"],
-        "operationId": "restore_2",
+        "operationId": "restore_3",
         "parameters": [
           {
             "name": "assetId",
@@ -1539,7 +2055,7 @@
     "/api/v1/assets/{assetId}/archive": {
       "post": {
         "tags": ["asset-controller"],
-        "operationId": "archive_2",
+        "operationId": "archive_3",
         "parameters": [
           {
             "name": "assetId",
@@ -1561,7 +2077,7 @@
     "/api/v1/asset-models": {
       "get": {
         "tags": ["asset-model-controller"],
-        "operationId": "list_4",
+        "operationId": "list_5",
         "responses": {
           "200": {
             "description": "OK",
@@ -1608,7 +2124,7 @@
     "/api/v1/asset-models/{assetModelId}/restore": {
       "post": {
         "tags": ["asset-model-controller"],
-        "operationId": "restore_3",
+        "operationId": "restore_4",
         "parameters": [
           {
             "name": "assetModelId",
@@ -1702,7 +2218,7 @@
     "/api/v1/asset-models/{assetModelId}/custom-fields": {
       "get": {
         "tags": ["model-custom-field-controller"],
-        "operationId": "list_5",
+        "operationId": "list_6",
         "parameters": [
           {
             "name": "assetModelId",
@@ -1771,7 +2287,7 @@
     "/api/v1/asset-models/{assetModelId}/custom-fields/{fieldId}/restore": {
       "post": {
         "tags": ["model-custom-field-controller"],
-        "operationId": "restore_4",
+        "operationId": "restore_5",
         "parameters": [
           {
             "name": "assetModelId",
@@ -1802,7 +2318,7 @@
     "/api/v1/asset-models/{assetModelId}/custom-fields/{fieldId}/options": {
       "get": {
         "tags": ["model-custom-field-option-controller"],
-        "operationId": "list_6",
+        "operationId": "list_7",
         "parameters": [
           {
             "name": "assetModelId",
@@ -1889,7 +2405,7 @@
     "/api/v1/asset-models/{assetModelId}/custom-fields/{fieldId}/options/{optionId}/restore": {
       "post": {
         "tags": ["model-custom-field-option-controller"],
-        "operationId": "restore_5",
+        "operationId": "restore_6",
         "parameters": [
           {
             "name": "assetModelId",
@@ -1929,7 +2445,7 @@
     "/api/v1/asset-models/{assetModelId}/custom-fields/{fieldId}/options/{optionId}/archive": {
       "post": {
         "tags": ["model-custom-field-option-controller"],
-        "operationId": "archive_3",
+        "operationId": "archive_4",
         "parameters": [
           {
             "name": "assetModelId",
@@ -1969,7 +2485,7 @@
     "/api/v1/asset-models/{assetModelId}/custom-fields/{fieldId}/archive": {
       "post": {
         "tags": ["model-custom-field-controller"],
-        "operationId": "archive_4",
+        "operationId": "archive_5",
         "parameters": [
           {
             "name": "assetModelId",
@@ -2234,7 +2750,7 @@
     "/api/v1/asset-models/{assetModelId}/assets": {
       "get": {
         "tags": ["asset-controller"],
-        "operationId": "list_7",
+        "operationId": "list_8",
         "parameters": [
           {
             "name": "assetModelId",
@@ -2354,7 +2870,7 @@
     "/api/v1/asset-models/{assetModelId}/archive": {
       "post": {
         "tags": ["asset-model-controller"],
-        "operationId": "archive_5",
+        "operationId": "archive_6",
         "parameters": [
           {
             "name": "assetModelId",
@@ -2849,6 +3365,117 @@
           }
         },
         "required": ["enabled"]
+      },
+      "PackingTemplateMutationRequest": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": ["name"]
+      },
+      "PackingRequirementResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string"
+          },
+          "assetModelId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "specificAssetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requiredQuantity": {
+            "type": "number"
+          },
+          "displayOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "PackingTemplateResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "requirements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PackingRequirementResponse"
+            }
+          }
+        }
+      },
+      "PackingRequirementMutationRequest": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "requirement": {
+            "$ref": "#/components/schemas/PackingRequirementRequest"
+          }
+        },
+        "required": ["requirement"]
+      },
+      "PackingRequirementRequest": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["SPECIFIC_ASSET", "MODEL_QUANTITY", "CONSUMABLE_QUANTITY"]
+          },
+          "assetModelId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "specificAssetReference": {
+            "type": "string"
+          },
+          "requiredQuantity": {
+            "type": "number"
+          }
+        }
       },
       "UpdateLayoutMediaRequest": {
         "type": "object",
@@ -3554,6 +4181,19 @@
           }
         }
       },
+      "PackingTemplateRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": ["name"]
+      },
       "LocationVersionRequest": {
         "type": "object",
         "properties": {
@@ -3576,6 +4216,81 @@
           }
         },
         "required": ["color", "name"]
+      },
+      "PackingPreviewRequest": {
+        "type": "object",
+        "properties": {
+          "observedConsumableQuantities": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          }
+        }
+      },
+      "ConsumableStatus": {
+        "type": "object",
+        "properties": {
+          "requirementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetModelId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requiredQuantity": {
+            "type": "number"
+          },
+          "observedQuantity": {
+            "type": "number"
+          },
+          "satisfied": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PackingPreviewResponse": {
+        "type": "object",
+        "properties": {
+          "complete": {
+            "type": "boolean"
+          },
+          "satisfiedRequirementIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "missingRequirementIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "extraAssetIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "misplacedAssetIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "consumables": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConsumableStatus"
+            }
+          }
+        }
       },
       "CreateAssetModelRequest": {
         "type": "object",

@@ -493,6 +493,148 @@ export function listStockMovements(balanceId: string): Promise<ApiResult<StockMo
 
 export type StockAction = "receive" | "issue" | "return" | "consume";
 export type StockPlaceInput = { containerAssetId?: string; locationId?: string };
+export type PackingRequirementRecord = Required<
+  components["schemas"]["PackingRequirementResponse"]
+>;
+export type PackingTemplateRecord = Omit<
+  Required<components["schemas"]["PackingTemplateResponse"]>,
+  "requirements"
+> & { requirements: PackingRequirementRecord[] };
+export type PackingRequirementInput = components["schemas"]["PackingRequirementRequest"];
+export type PackingTemplateInput = components["schemas"]["PackingTemplateRequest"];
+export type ConsumablePackingStatus = Required<
+  NonNullable<components["schemas"]["PackingPreviewResponse"]["consumables"]>[number]
+>;
+export type PackingPreviewRecord = Omit<
+  Required<components["schemas"]["PackingPreviewResponse"]>,
+  "consumables"
+> & { consumables: ConsumablePackingStatus[] };
+export type PackingRequirementMutationInput =
+  components["schemas"]["PackingRequirementMutationRequest"];
+export type PackingTemplateMutationInput = components["schemas"]["PackingTemplateMutationRequest"];
+
+export function listPackingRequirements(
+  containerAssetId: string,
+): Promise<ApiResult<PackingRequirementRecord[]>> {
+  return read(() =>
+    apiClient.GET("/api/v1/assets/{containerAssetId}/packing-requirements", {
+      params: { path: { containerAssetId } },
+    }),
+  );
+}
+export function listPackingTemplates(): Promise<ApiResult<PackingTemplateRecord[]>> {
+  return read(() => apiClient.GET("/api/v1/packing-templates"));
+}
+
+export function addPackingRequirement(containerAssetId: string, input: PackingRequirementInput) {
+  return read<PackingRequirementRecord>(() =>
+    apiClient.POST("/api/v1/assets/{containerAssetId}/packing-requirements", {
+      params: { path: { containerAssetId } },
+      body: input,
+    }),
+  );
+}
+
+export function archivePackingRequirement(id: string, expectedVersion: number) {
+  return command(() =>
+    apiClient.POST("/api/v1/packing-requirements/{id}/archive", {
+      params: { path: { id } },
+      body: { expectedVersion },
+    }),
+  );
+}
+
+export function restorePackingRequirement(id: string, expectedVersion: number) {
+  return read<PackingRequirementRecord>(() =>
+    apiClient.POST("/api/v1/packing-requirements/{id}/restore", {
+      params: { path: { id } },
+      body: { expectedVersion },
+    }),
+  );
+}
+export function updatePackingRequirement(id: string, input: PackingRequirementMutationInput) {
+  return read<PackingRequirementRecord>(() =>
+    apiClient.PUT("/api/v1/packing-requirements/{id}", { params: { path: { id } }, body: input }),
+  );
+}
+
+export function createPackingTemplate(input: PackingTemplateInput) {
+  return read<PackingTemplateRecord>(() =>
+    apiClient.POST("/api/v1/packing-templates", { body: input }),
+  );
+}
+export function updatePackingTemplate(templateId: string, input: PackingTemplateMutationInput) {
+  return read<PackingTemplateRecord>(() =>
+    apiClient.PUT("/api/v1/packing-templates/{templateId}", {
+      params: { path: { templateId } },
+      body: input,
+    }),
+  );
+}
+export function setPackingTemplateArchived(
+  templateId: string,
+  expectedVersion: number,
+  action: "archive" | "restore",
+) {
+  return read<PackingTemplateRecord>(() =>
+    apiClient.POST("/api/v1/packing-templates/{templateId}/{action}", {
+      params: { path: { templateId, action } },
+      body: { expectedVersion },
+    }),
+  );
+}
+
+export function addPackingTemplateRequirement(templateId: string, input: PackingRequirementInput) {
+  return read<PackingTemplateRecord>(() =>
+    apiClient.POST("/api/v1/packing-templates/{templateId}/requirements", {
+      params: { path: { templateId } },
+      body: input,
+    }),
+  );
+}
+export function updatePackingTemplateRequirement(
+  id: string,
+  input: PackingRequirementMutationInput,
+) {
+  return read<PackingTemplateRecord>(() =>
+    apiClient.PUT("/api/v1/packing-template-requirements/{id}", {
+      params: { path: { id } },
+      body: input,
+    }),
+  );
+}
+export function setPackingTemplateRequirementArchived(
+  id: string,
+  expectedVersion: number,
+  action: "archive" | "restore",
+) {
+  return read<PackingTemplateRecord>(() =>
+    apiClient.POST("/api/v1/packing-template-requirements/{id}/{action}", {
+      params: { path: { id, action } },
+      body: { expectedVersion },
+    }),
+  );
+}
+
+export function applyPackingTemplate(containerAssetId: string, templateId: string) {
+  return read<PackingRequirementRecord[]>(() =>
+    apiClient.POST("/api/v1/assets/{containerAssetId}/packing-templates/{templateId}/apply", {
+      params: { path: { containerAssetId, templateId } },
+    }),
+  );
+}
+
+export function previewPacking(
+  containerAssetId: string,
+  observedConsumableQuantities: Record<string, number> = {},
+) {
+  return read<PackingPreviewRecord>(() =>
+    apiClient.POST("/api/v1/assets/{containerAssetId}/packing-preview", {
+      params: { path: { containerAssetId } },
+      body: { observedConsumableQuantities },
+    }),
+  );
+}
 
 export function changeStock(
   assetModelId: string,

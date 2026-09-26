@@ -61,8 +61,9 @@ export function LocationsPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [parentLocationId, setParentLocationId] = useState("");
-  const load = useCallback(async () => {
+  const load = useCallback(async (isCurrent: () => boolean = () => true) => {
     const result = await listLocations();
+    if (!isCurrent()) return;
     if (result.kind === "error") setError(errorMessage(result.error));
     else {
       setLocations(result.data);
@@ -70,7 +71,13 @@ export function LocationsPage() {
     }
   }, []);
   useEffect(() => {
-    void load();
+    let stale = false;
+    void (async () => {
+      await load(() => !stale);
+    })();
+    return () => {
+      stale = true;
+    };
   }, [load]);
   async function create(event: FormEvent) {
     event.preventDefault();

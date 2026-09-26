@@ -13,20 +13,21 @@ Read it together with [`DEVELOPMENT_POLICIES.md`](DEVELOPMENT_POLICIES.md) and t
 
 ## 1. Summary
 
-| Phase | Scope | State |
-|---|---|---|
-| 0 | Repository, build, CI, Compose, migrations, app skeleton | Complete, verified |
-| 1 | Identity, roles, organization context, local login, OIDC | Complete, verified |
-| 2a | Public asset-code library, categories, asset models, custom-field definitions | Complete end to end, verified |
-| 2b | Physical assets, custom-field values, consumable stock, movement ledger | Complete end to end, verified |
-| 3 | Media storage (S3-compatible) | Not started |
-| 4 | Hierarchical locations and physical containment | Not started |
-| 5-14 | Packing, labels, events, checkout, audits, findings, sheets, temporary access, search, hardening | Not started |
+| Phase | Scope                                                                                   | State                                                                                                              |
+| ----- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| 0     | Repository, build, CI, Compose, migrations, app skeleton                                | Complete, verified                                                                                                 |
+| 1     | Identity, roles, organization context, local login, OIDC                                | Complete, verified                                                                                                 |
+| 2a    | Public asset-code library, categories, asset models, custom-field definitions           | Complete end to end, verified                                                                                      |
+| 2b    | Physical assets, custom-field values, consumable stock, movement ledger                 | Complete end to end, verified                                                                                      |
+| 3     | Media storage (S3-compatible)                                                           | Complete, verified                                                                                                 |
+| 4     | Hierarchical locations and physical containment                                         | Complete, verified                                                                                                 |
+| 5     | Packing requirements and templates                                                      | Complete, verified                                                                                                 |
+| 6-14  | Labels, events, checkout, audits, findings, sheets, temporary access, search, hardening | Not started                                                                                                        |
 
-Verified test counts at the time of writing:
+Verified at the Phase 3-5 checkpoint:
 
-- Backend: **305 tests, 0 failures**, against real PostgreSQL 18.6 through Testcontainers.
-- Frontend: **102 tests, 0 failures** (84 web, 11 api-client, 7 shared-ui), plus `format:check`,
+- Backend: **333 tests, 0 failures**, against real PostgreSQL 18.6 through Testcontainers.
+- Frontend: **113 tests, 0 failures** (95 web, 11 api-client, 7 shared-ui), plus `format:check`,
   `lint`, `typecheck` and `build` clean. The focused desktop and mobile Playwright smoke suite has
   **2 passing tests**.
 
@@ -75,14 +76,17 @@ base image.
 
 Migrations (Flyway owns all schema; applied migrations are immutable):
 
-| Migration | Contents |
-|---|---|
-| `V1` | `organization` |
-| `V2` | Spring Session JDBC schema |
-| `V3` | `app_user`, `organization_membership`, `external_identity`, `activity_log` |
-| `V4` | `category`, `asset_model`, `model_custom_field`, `model_custom_field_option` |
-| `V5` | `physical_asset`, `asset_custom_field_value`, `asset_state_history`, `asset_model.next_unit_number` |
-| `V6` | `consumable_stock_balance`, `stock_movement` |
+| Migration | Contents                                                                                            |
+| --------- | --------------------------------------------------------------------------------------------------- |
+| `V1`      | `organization`                                                                                      |
+| `V2`      | Spring Session JDBC schema                                                                          |
+| `V3`      | `app_user`, `organization_membership`, `external_identity`, `activity_log`                          |
+| `V4`      | `category`, `asset_model`, `model_custom_field`, `model_custom_field_option`                        |
+| `V5`      | `physical_asset`, `asset_custom_field_value`, `asset_state_history`, `asset_model.next_unit_number` |
+| `V6`      | `consumable_stock_balance`, `stock_movement`                                                        |
+| `V7`-`V8` | S3-compatible media metadata, layout images and deferred-cleanup support                            |
+| `V9`      | Organization locations, physical containment and generalized stock places                           |
+| `V10`     | Packing templates, copy-on-apply requirements and immutable packing history                         |
 
 API surface is under `/api/v1`. The OpenAPI document at `/v3/api-docs` (enabled only under the `dev`
 profile) is the machine-readable contract; treat it as authoritative over any list here. Broadly:
@@ -90,10 +94,22 @@ session, users, external identities, categories, asset models, model custom fiel
 assets (including bulk creation and public-code lookup), and consumable stock with its movement
 ledger.
 
+Phases 3-5 add S3-only media uploads and safe same-origin streaming, organization-scoped location
+paths and direct containment, and packing requirements with a preview (not packing sheets).
+Packing requirements are versioned and archived;
+templates copy rows onto a named container rather than live-linking them. The preview evaluates only
+direct active contents, reserves exact assets before interchangeable pools, exposes extras/misplaced
+pinned items, and can evaluate consumable amounts from a direct balance or an ephemeral observation.
+Actual and template requirement changes retain immutable before/after JSON snapshots, including
+referenced names and codes. Tracking-mode changes are blocked by current or archived actual/template
+requirements and their history. Checkout, seal assertion and audit state do not exist yet: their
+future guards and invalidation must be integrated into the packing mutation transaction when those
+lifecycles are implemented; Phase 5 does not claim to enforce nonexistent state.
+
 Authorization is enforced in the **service** layer, not by URL matchers. Owner administers users and
-identities; Owner or Deputy administers the catalog, assets and stock; every authenticated role may
-read. Cross-organization records are reported as missing, never as forbidden, so existence does not
-leak.
+identities; Owner or Deputy administers the catalog, assets, media, locations, containment, stock and
+packing requirements; every authenticated role may read. Cross-organization records are reported as
+missing, never as forbidden, so existence does not leak.
 
 ### Frontend (`frontend/`)
 
@@ -109,7 +125,13 @@ color/editor/archive controls; model creation and guarded editing of tracking, q
 settings; custom fields and dropdown choices; individual and bulk serialized-asset creation; asset
 details, state history and manual code lookup; consumable balances and immutable movement-ledger
 actions. Route and lookup responses are guarded against stale asynchronous results, and client
-validation limits stock values to non-zero three-decimal quantities and bulk creation to 1–500 units.
+validation limits stock values to non-zero three-decimal quantities and bulk creation to 1-500 units.
+
+Phases 3-5 add ordered reference-photo management, location and nested-container placement, and a
+packing workbench. Owners and Deputies can manage exact, interchangeable-model and consumable
+requirements, maintain reusable copy-on-apply templates, enter non-persistent observed consumable
+amounts and inspect grouped complete, missing, extra and misplaced results. Archived rows remain
+visible and can be restored with optimistic-version checks.
 
 API types are **generated** from the backend's OpenAPI document into
 `packages/api-client/src/generated/`. Hand-written duplicates of generated request/response shapes
@@ -132,17 +154,13 @@ environment; the reasoning is recorded in the workflow itself.
 These are **not** oversights. Each is deferred because the table or phase it depends on does not
 exist yet, and each is documented at its call site in code.
 
-| Deferred | Where it plugs in |
-|---|---|
-| Asset direct location and parent container | Phase 4 adds the columns with the `location` table and cycle-safety rules. Deliberately not added early to avoid a dangling foreign key. |
-| `can_contain_assets` disable guard ("while units contain assets") | Not enforceable at all yet; needs containment. Documented in `AssetModelService.setCanContainAssets`. |
-| Tracking-mode change guard | Enforced for custom fields, physical assets and stock balances. Booking and packing dependencies arrive in Phases 5 and 7. |
-| Custom-field datatype change guard | Enforced once `asset_custom_field_value` rows exist. |
-| Location-based consumable stock places | `consumable_stock_balance` already carries `location_id`, constrained NULL until Phase 4. The migration header documents the exact four-step change: create `location`, add the composite foreign key, relax the temporary check, map the field and grow a sealed `StockPlace` hierarchy. No data migration. |
-| Stock movement event/audit references | Nullable columns exist without foreign keys; Phases 7 and 9 add the targets. |
-| Automatic email linking toggle | A static environment variable, not a runtime Owner-toggled setting, because no settings store exists yet. |
-| Cross-model "metadata incomplete" dashboard view | Per-asset and per-model visibility exists; the organization-wide operational view belongs to Phase 13. |
-| Archived-container gate for receiving stock | Not implemented; the specification does not explicitly require it. Worth revisiting when containment lands. |
+| Deferred                                                          | Where it plugs in                                                                                                                                                                                                                                                                                            |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Booking tracking-mode dependencies                                | Extend `AssetModelService.requireNoTrackingModeDependencyBlocksChange` and database backstops when Phase 7 adds booking state. Existing custom-field, asset, stock and packing dependencies are enforced now. |
+| Packing checkout guard and seal invalidation                       | Integrate at the organization-locked packing service mutation boundary when checkout and seal state exist. No substitute Phase 7/9 tables or flags are present. |
+| Stock movement event/audit references                             | Nullable columns exist without foreign keys; Phases 7 and 9 add the targets.                                                                                                                                                                                                                                 |
+| Automatic email linking toggle                                    | A static environment variable, not a runtime Owner-toggled setting, because no settings store exists yet.                                                                                                                                                                                                    |
+| Cross-model "metadata incomplete" dashboard view                  | Per-asset and per-model visibility exists; the organization-wide operational view belongs to Phase 13.                                                                                                                                                                                                       |
 
 ## 6. Known characteristics worth knowing before changing things
 
@@ -192,6 +210,10 @@ exercised against a running application and a real database.
   PostgreSQL: concurrent bulk asset creation never duplicates unit numbers, and of eight concurrent
   issues of an entire balance exactly one succeeds while the rest are refused, leaving the balance
   non-negative and consistent with its ledger.
+- **Packing acceptance.** Exact requirements are matched before interchangeable pools, externally
+  pinned assets are misplaced rather than reused, only direct active contents count, and observed
+  consumable amounts do not mutate stock. Concurrent exact pins produce one winner, template copies
+  are atomic and independent, and immutable history retains before/after JSON.
 
 ## 8. Commit history caveat
 
@@ -203,7 +225,6 @@ what was verified. Treat the history as a readable grouping, not a bisectable ti
 
 ## 9. Suggested next steps
 
-1. **Phase 3** - media storage against the S3 contract, now targeting Garage for self-hosting.
-2. **Phase 4** - locations and containment, which also unblocks several deferred guards in section 5.
+1. **Phase 6** - QR scanning and initial label output, after review and authorization to continue.
 
 Before starting, run the verification commands in section 2 to confirm the tree is still green.

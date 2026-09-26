@@ -64,6 +64,21 @@ public class ApplicationExceptionHandler {
         return problemDetail(HttpStatus.CONFLICT, "Stale Placement Version", exception);
     }
 
+    @ExceptionHandler(StalePackingRequirementVersionException.class)
+    public ProblemDetail handleStalePackingVersion(StalePackingRequirementVersionException exception) {
+        return problemDetail(HttpStatus.CONFLICT, "Stale Packing Version", exception);
+    }
+
+    @ExceptionHandler(PackingConflictException.class)
+    public ProblemDetail handlePackingConflict(PackingConflictException exception) {
+        return problemDetail(HttpStatus.CONFLICT, "Packing Conflict", exception);
+    }
+
+    @ExceptionHandler(StaleLocationVersionException.class)
+    public ProblemDetail handleStaleLocationVersion(StaleLocationVersionException exception) {
+        return problemDetail(HttpStatus.CONFLICT, "Stale Location Version", exception);
+    }
+
     private ProblemDetail problemDetail(HttpStatus status, String title, ApplicationException exception) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, exception.getMessage());
         problem.setTitle(title);

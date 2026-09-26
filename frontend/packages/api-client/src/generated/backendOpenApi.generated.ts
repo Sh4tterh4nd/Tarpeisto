@@ -36,6 +36,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/packing-templates/{templateId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["updateTemplate"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/packing-template-requirements/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["updateTemplateRequirement"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/packing-requirements/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/media/{mediaId}/layout": {
         parameters: {
             query?: never;
@@ -60,7 +108,7 @@ export interface paths {
             cookie?: never;
         };
         get: operations["get"];
-        put: operations["update"];
+        put: operations["update_1"];
         post?: never;
         delete?: never;
         options?: never;
@@ -388,6 +436,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/packing-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["templates"];
+        put?: never;
+        post: operations["createTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/packing-templates/{templateId}/{action}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["setTemplateArchived"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/packing-templates/{templateId}/requirements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["addTemplateRequirement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/packing-template-requirements/{id}/{action}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["setTemplateRequirementArchived"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/packing-requirements/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["restore"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/packing-requirements/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["archive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/media/{mediaId}/cleanup": {
         parameters: {
             query?: never;
@@ -429,7 +573,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["restore"];
+        post: operations["restore_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -445,7 +589,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["archive"];
+        post: operations["archive_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -477,7 +621,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["restore_1"];
+        post: operations["restore_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -493,7 +637,55 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["archive_1"];
+        post: operations["archive_2"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assets/{containerAssetId}/packing-templates/{templateId}/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["apply"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assets/{containerAssetId}/packing-requirements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_4"];
+        put?: never;
+        post: operations["add"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assets/{containerAssetId}/packing-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["preview"];
         delete?: never;
         options?: never;
         head?: never;
@@ -509,7 +701,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["restore_2"];
+        post: operations["restore_3"];
         delete?: never;
         options?: never;
         head?: never;
@@ -557,7 +749,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["archive_2"];
+        post: operations["archive_3"];
         delete?: never;
         options?: never;
         head?: never;
@@ -571,7 +763,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_4"];
+        get: operations["list_5"];
         put?: never;
         post: operations["create_4"];
         delete?: never;
@@ -589,7 +781,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["restore_3"];
+        post: operations["restore_4"];
         delete?: never;
         options?: never;
         head?: never;
@@ -619,7 +811,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_5"];
+        get: operations["list_6"];
         put?: never;
         post: operations["create_5"];
         delete?: never;
@@ -637,7 +829,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["restore_4"];
+        post: operations["restore_5"];
         delete?: never;
         options?: never;
         head?: never;
@@ -651,7 +843,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_6"];
+        get: operations["list_7"];
         put?: never;
         post: operations["create_6"];
         delete?: never;
@@ -669,7 +861,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["restore_5"];
+        post: operations["restore_6"];
         delete?: never;
         options?: never;
         head?: never;
@@ -685,7 +877,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["archive_3"];
+        post: operations["archive_4"];
         delete?: never;
         options?: never;
         head?: never;
@@ -701,7 +893,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["archive_4"];
+        post: operations["archive_5"];
         delete?: never;
         options?: never;
         head?: never;
@@ -811,7 +1003,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_7"];
+        get: operations["list_8"];
         put?: never;
         post: operations["create_7"];
         delete?: never;
@@ -845,7 +1037,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["archive_5"];
+        post: operations["archive_6"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1102,6 +1294,50 @@ export interface components {
         };
         SetEnabledRequest: {
             enabled: boolean;
+        };
+        PackingTemplateMutationRequest: {
+            /** Format: int64 */
+            expectedVersion?: number;
+            name: string;
+            description?: string;
+        };
+        PackingRequirementResponse: {
+            /** Format: uuid */
+            id?: string;
+            type?: string;
+            /** Format: uuid */
+            assetModelId?: string;
+            /** Format: uuid */
+            specificAssetId?: string;
+            requiredQuantity?: number;
+            /** Format: int32 */
+            displayOrder?: number;
+            archived?: boolean;
+            /** Format: int64 */
+            version?: number;
+        };
+        PackingTemplateResponse: {
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+            description?: string;
+            archived?: boolean;
+            /** Format: int64 */
+            version?: number;
+            requirements?: components["schemas"]["PackingRequirementResponse"][];
+        };
+        PackingRequirementMutationRequest: {
+            /** Format: int64 */
+            expectedVersion?: number;
+            requirement: components["schemas"]["PackingRequirementRequest"];
+        };
+        PackingRequirementRequest: {
+            /** @enum {string} */
+            type?: "SPECIFIC_ASSET" | "MODEL_QUANTITY" | "CONSUMABLE_QUANTITY";
+            /** Format: uuid */
+            assetModelId?: string;
+            specificAssetReference?: string;
+            requiredQuantity?: number;
         };
         UpdateLayoutMediaRequest: {
             caption?: string;
@@ -1383,6 +1619,10 @@ export interface components {
             /** @enum {string} */
             role?: "OWNER" | "DEPUTY" | "OPERATOR_AUDITOR" | "VIEWER";
         };
+        PackingTemplateRequest: {
+            name: string;
+            description?: string;
+        };
         LocationVersionRequest: {
             /** Format: int64 */
             expectedVersion?: number;
@@ -1390,6 +1630,28 @@ export interface components {
         CreateCategoryRequest: {
             name: string;
             color: string;
+        };
+        PackingPreviewRequest: {
+            observedConsumableQuantities?: {
+                [key: string]: number;
+            };
+        };
+        ConsumableStatus: {
+            /** Format: uuid */
+            requirementId?: string;
+            /** Format: uuid */
+            assetModelId?: string;
+            requiredQuantity?: number;
+            observedQuantity?: number;
+            satisfied?: boolean;
+        };
+        PackingPreviewResponse: {
+            complete?: boolean;
+            satisfiedRequirementIds?: string[];
+            missingRequirementIds?: string[];
+            extraAssetIds?: string[];
+            misplacedAssetIds?: string[];
+            consumables?: components["schemas"]["ConsumableStatus"][];
         };
         CreateAssetModelRequest: {
             name: string;
@@ -1618,6 +1880,84 @@ export interface operations {
             };
         };
     };
+    updateTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PackingTemplateMutationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PackingTemplateResponse"];
+                };
+            };
+        };
+    };
+    updateTemplateRequirement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PackingRequirementMutationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PackingTemplateResponse"];
+                };
+            };
+        };
+    };
+    update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PackingRequirementMutationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PackingRequirementResponse"];
+                };
+            };
+        };
+    };
     updateLayout: {
         parameters: {
             query?: never;
@@ -1666,7 +2006,7 @@ export interface operations {
             };
         };
     };
-    update: {
+    update_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -2339,6 +2679,180 @@ export interface operations {
             };
         };
     };
+    templates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PackingTemplateResponse"][];
+                };
+            };
+        };
+    };
+    createTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PackingTemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PackingTemplateResponse"];
+                };
+            };
+        };
+    };
+    setTemplateArchived: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                templateId: string;
+                action: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LocationVersionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PackingTemplateResponse"];
+                };
+            };
+        };
+    };
+    addTemplateRequirement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PackingRequirementRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PackingTemplateResponse"];
+                };
+            };
+        };
+    };
+    setTemplateRequirementArchived: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                action: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LocationVersionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PackingTemplateResponse"];
+                };
+            };
+        };
+    };
+    restore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LocationVersionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PackingRequirementResponse"];
+                };
+            };
+        };
+    };
+    archive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LocationVersionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     retryCleanup: {
         parameters: {
             query?: never;
@@ -2403,7 +2917,7 @@ export interface operations {
             };
         };
     };
-    restore: {
+    restore_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -2427,7 +2941,7 @@ export interface operations {
             };
         };
     };
-    archive: {
+    archive_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -2495,47 +3009,144 @@ export interface operations {
             };
         };
     };
-    restore_1: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                categoryId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    archive_1: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                categoryId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
     restore_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                categoryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    archive_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                categoryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    apply: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                containerAssetId: string;
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PackingRequirementResponse"][];
+                };
+            };
+        };
+    };
+    list_4: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                containerAssetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PackingRequirementResponse"][];
+                };
+            };
+        };
+    };
+    add: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                containerAssetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PackingRequirementRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PackingRequirementResponse"];
+                };
+            };
+        };
+    };
+    preview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                containerAssetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PackingPreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PackingPreviewResponse"];
+                };
+            };
+        };
+    };
+    restore_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -2659,7 +3270,7 @@ export interface operations {
             };
         };
     };
-    archive_2: {
+    archive_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -2679,7 +3290,7 @@ export interface operations {
             };
         };
     };
-    list_4: {
+    list_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -2723,7 +3334,7 @@ export interface operations {
             };
         };
     };
-    restore_3: {
+    restore_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -2794,7 +3405,7 @@ export interface operations {
             };
         };
     };
-    list_5: {
+    list_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -2842,7 +3453,7 @@ export interface operations {
             };
         };
     };
-    restore_4: {
+    restore_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -2863,7 +3474,7 @@ export interface operations {
             };
         };
     };
-    list_6: {
+    list_7: {
         parameters: {
             query?: never;
             header?: never;
@@ -2913,29 +3524,7 @@ export interface operations {
             };
         };
     };
-    restore_5: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                assetModelId: string;
-                fieldId: string;
-                optionId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    archive_3: {
+    restore_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -2958,6 +3547,28 @@ export interface operations {
         };
     };
     archive_4: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assetModelId: string;
+                fieldId: string;
+                optionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    archive_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -3134,7 +3745,7 @@ export interface operations {
             };
         };
     };
-    list_7: {
+    list_8: {
         parameters: {
             query?: {
                 includeInactive?: boolean;
@@ -3210,7 +3821,7 @@ export interface operations {
             };
         };
     };
-    archive_5: {
+    archive_6: {
         parameters: {
             query?: never;
             header?: never;

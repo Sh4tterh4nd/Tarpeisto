@@ -44,6 +44,7 @@ import {
 } from "./inventoryApi";
 import { MediaPanel } from "./MediaPanel";
 import { AssetPlacementPanel } from "./AssetPlacementPanel";
+import { PackingPanel } from "./PackingPanel";
 
 interface AssetDetailsDialogProps {
   asset: AssetRecord;
@@ -432,6 +433,9 @@ export function AssetPage() {
 
       <Stack spacing={3}>
         <AssetPlacementPanel assetId={asset.id} canManage={canManage} />
+        {containerCapable ? (
+          <PackingPanel containerAssetId={asset.id} canManage={canManage} />
+        ) : null}
         <MediaPanel
           assetId={asset.id}
           fallbackAssetModelId={asset.assetModelId}

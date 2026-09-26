@@ -1,0 +1,730 @@
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import AddIcon from "@mui/icons-material/Add";
+import ArchiveIcon from "@mui/icons-material/Archive";
+import EditIcon from "@mui/icons-material/Edit";
+import RestoreIcon from "@mui/icons-material/Restore";
+import Alert from "@mui/material/Alert";
+import Button from "@mui/material/Button";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
+import Divider from "@mui/material/Divider";
+import List from "@mui/material/List";
+import ListItem from "@mui/material/ListItem";
+import ListItemText from "@mui/material/ListItemText";
+import MenuItem from "@mui/material/MenuItem";
+import Paper from "@mui/material/Paper";
+import Stack from "@mui/material/Stack";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import {
+  addPackingRequirement,
+  addPackingTemplateRequirement,
+  applyPackingTemplate,
+  archivePackingRequirement,
+  createPackingTemplate,
+  errorMessage,
+  listAssetModels,
+  listPackingRequirements,
+  listPackingTemplates,
+  previewPacking,
+  restorePackingRequirement,
+  setPackingTemplateArchived,
+  setPackingTemplateRequirementArchived,
+  updatePackingRequirement,
+  updatePackingTemplate,
+  updatePackingTemplateRequirement,
+  type AssetModelRecord,
+  type PackingRequirementInput,
+  type PackingRequirementRecord,
+  type PackingTemplateRecord,
+  type PackingPreviewRecord,
+} from "./inventoryApi";
+
+const groups = ["SPECIFIC_ASSET", "MODEL_QUANTITY", "CONSUMABLE_QUANTITY"] as const;
+const labels = {
+  SPECIFIC_ASSET: "Exact assets",
+  MODEL_QUANTITY: "Interchangeable serialized",
+  CONSUMABLE_QUANTITY: "Consumables",
+};
+type RequirementEditor =
+  | { scope: "container"; requirement?: PackingRequirementRecord }
+  | { scope: "template"; templateId: string; requirement?: PackingRequirementRecord };
+
+function modelLabel(models: AssetModelRecord[], id?: string) {
+  return models.find((candidate) => candidate.id === id)?.name ?? id ?? "Unspecified model";
+}
+
+function requirementLabel(requirement: PackingRequirementRecord, models: AssetModelRecord[]) {
+  return requirement.type === "SPECIFIC_ASSET"
+    ? `Exact asset ${requirement.specificAssetId}`
+    : modelLabel(models, requirement.assetModelId);
+}
+
+function makeRequirementInput(
+  type: PackingRequirementInput["type"],
+  assetModelId: string,
+  specificAssetReference: string,
+  quantity: string,
+): PackingRequirementInput {
+  return {
+    type,
+    assetModelId: type === "SPECIFIC_ASSET" ? undefined : assetModelId || undefined,
+    specificAssetReference:
+      type === "SPECIFIC_ASSET" ? specificAssetReference.trim() || undefined : undefined,
+    // Exact requirements are always a single pinned asset, even after a form-kind change.
+    requiredQuantity: type === "SPECIFIC_ASSET" ? 1 : Number(quantity),
+  };
+}
+
+function observedConsumableQuantities(observations: Record<string, string>) {
+  return Object.fromEntries(
+    Object.entries(observations)
+      .filter(([, value]) => value.trim() !== "")
+      .map(([id, value]) => [id, Number(value)]),
+  );
+}
+
+export function PackingPanel({
+  containerAssetId,
+  canManage,
+}: {
+  containerAssetId: string;
+  canManage: boolean;
+}) {
+  const [requirements, setRequirements] = useState<PackingRequirementRecord[]>();
+  const [preview, setPreview] = useState<PackingPreviewRecord>();
+  const [templates, setTemplates] = useState<PackingTemplateRecord[]>([]);
+  const [models, setModels] = useState<AssetModelRecord[]>([]);
+  const [error, setError] = useState<string>();
+  const [busy, setBusy] = useState(false);
+  const [templateId, setTemplateId] = useState("");
+  const [observations, setObservations] = useState<Record<string, string>>({});
+  const observationsRef = useRef<Record<string, string>>({});
+  const [templateLibraryOpen, setTemplateLibraryOpen] = useState(false);
+  const [templateEditor, setTemplateEditor] = useState<PackingTemplateRecord | null>();
+  const [templateName, setTemplateName] = useState("");
+  const [templateDescription, setTemplateDescription] = useState("");
+  const [requirementEditor, setRequirementEditor] = useState<RequirementEditor>();
+  const [type, setType] = useState<PackingRequirementInput["type"]>("MODEL_QUANTITY");
+  const [assetModelId, setAssetModelId] = useState("");
+  const [specificAssetReference, setSpecificAssetReference] = useState("");
+  const [quantity, setQuantity] = useState("1");
+
+  const activeRequirements = requirements?.filter((requirement) => !requirement.archived) ?? [];
+  const archivedRequirements = requirements?.filter((requirement) => requirement.archived) ?? [];
+  const activeTemplates = templates.filter((template) => !template.archived);
+  const visibleModels = useMemo(
+    () =>
+      models.filter((model) =>
+        type === "CONSUMABLE_QUANTITY"
+          ? model.trackingMode === "QUANTITY_STOCK"
+          : model.trackingMode === "SERIALIZED_ASSET",
+      ),
+    [models, type],
+  );
+
+  const reload = useCallback(
+    async (isCurrent: () => boolean = () => true) => {
+      const [packed, templateResult, modelResult] = await Promise.all([
+        listPackingRequirements(containerAssetId),
+        listPackingTemplates(),
+        listAssetModels(),
+      ]);
+      if (!isCurrent()) return;
+      if (packed.kind === "error") {
+        setError(errorMessage(packed.error));
+        return;
+      }
+      const activeConsumableRequirementIds = new Set(
+        packed.data
+          .filter(
+            (requirement) => !requirement.archived && requirement.type === "CONSUMABLE_QUANTITY",
+          )
+          .map((requirement) => requirement.id),
+      );
+      const previousObservations = observationsRef.current;
+      const nextObservations = Object.fromEntries(
+        Object.entries(previousObservations).filter(([id]) =>
+          activeConsumableRequirementIds.has(id),
+        ),
+      );
+      const observationsChanged =
+        Object.keys(nextObservations).length !== Object.keys(previousObservations).length ||
+        Object.entries(nextObservations).some(([id, value]) => previousObservations[id] !== value);
+      observationsRef.current = nextObservations;
+      const previewResult = await previewPacking(
+        containerAssetId,
+        observedConsumableQuantities(nextObservations),
+      );
+      if (!isCurrent()) return;
+      if (observationsChanged) setObservations(nextObservations);
+      setRequirements(packed.data);
+      if (templateResult.kind === "ok") setTemplates(templateResult.data);
+      if (modelResult.kind === "ok") setModels(modelResult.data.filter((model) => !model.archived));
+      if (previewResult.kind === "ok") setPreview(previewResult.data);
+    },
+    [containerAssetId],
+  );
+
+  useEffect(() => {
+    let stale = false;
+    void (async () => {
+      await reload(() => !stale);
+    })();
+    return () => {
+      stale = true;
+    };
+  }, [reload]);
+
+  async function run(action: () => Promise<void>) {
+    if (busy) return;
+    setBusy(true);
+    setError(undefined);
+    try {
+      await action();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function openRequirementEditor(editor: RequirementEditor) {
+    const requirement = editor.requirement;
+    setRequirementEditor(editor);
+    setType((requirement?.type as PackingRequirementInput["type"]) ?? "MODEL_QUANTITY");
+    setAssetModelId(requirement?.assetModelId ?? "");
+    // The backend accepts either public code or UUID. Existing requirements expose the latter.
+    setSpecificAssetReference(requirement?.specificAssetId ?? "");
+    setQuantity(requirement?.requiredQuantity?.toString() ?? "1");
+  }
+
+  async function saveRequirement(event: FormEvent) {
+    event.preventDefault();
+    if (!requirementEditor) return;
+    await run(async () => {
+      const input = makeRequirementInput(type, assetModelId, specificAssetReference, quantity);
+      if (requirementEditor.scope === "container") {
+        const result = requirementEditor.requirement
+          ? await updatePackingRequirement(requirementEditor.requirement.id, {
+              expectedVersion: requirementEditor.requirement.version,
+              requirement: input,
+            })
+          : await addPackingRequirement(containerAssetId, input);
+        if (result.kind === "error") {
+          setError(errorMessage(result.error));
+          return;
+        }
+      } else {
+        const result = requirementEditor.requirement
+          ? await updatePackingTemplateRequirement(requirementEditor.requirement.id, {
+              expectedVersion: requirementEditor.requirement.version,
+              requirement: input,
+            })
+          : await addPackingTemplateRequirement(requirementEditor.templateId, input);
+        if (result.kind === "error") {
+          setError(errorMessage(result.error));
+          return;
+        }
+      }
+      setRequirementEditor(undefined);
+      await reload();
+    });
+  }
+
+  async function toggleContainerRequirement(requirement: PackingRequirementRecord) {
+    await run(async () => {
+      if (requirement.archived) {
+        const result = await restorePackingRequirement(requirement.id, requirement.version);
+        if (result.kind === "error") setError(errorMessage(result.error));
+      } else {
+        const failure = await archivePackingRequirement(requirement.id, requirement.version);
+        if (failure) setError(errorMessage(failure));
+      }
+      await reload();
+    });
+  }
+
+  async function toggleTemplateRequirement(requirement: PackingRequirementRecord) {
+    await run(async () => {
+      const result = await setPackingTemplateRequirementArchived(
+        requirement.id,
+        requirement.version,
+        requirement.archived ? "restore" : "archive",
+      );
+      if (result.kind === "error") setError(errorMessage(result.error));
+      await reload();
+    });
+  }
+
+  async function refreshPreview() {
+    await run(async () => {
+      const result = await previewPacking(
+        containerAssetId,
+        observedConsumableQuantities(observationsRef.current),
+      );
+      if (result.kind === "ok") setPreview(result.data);
+      else setError(errorMessage(result.error));
+    });
+  }
+
+  async function applyTemplate() {
+    if (!templateId) return;
+    await run(async () => {
+      const result = await applyPackingTemplate(containerAssetId, templateId);
+      if (result.kind === "error") setError(errorMessage(result.error));
+      else await reload();
+    });
+  }
+
+  function openTemplateEditor(template?: PackingTemplateRecord) {
+    setTemplateEditor(template ?? null);
+    setTemplateName(template?.name ?? "");
+    setTemplateDescription(template?.description ?? "");
+  }
+
+  async function saveTemplate(event: FormEvent) {
+    event.preventDefault();
+    if (!templateName.trim()) return;
+    await run(async () => {
+      const result = templateEditor
+        ? await updatePackingTemplate(templateEditor.id, {
+            expectedVersion: templateEditor.version,
+            name: templateName.trim(),
+            description: templateDescription.trim() || undefined,
+          })
+        : await createPackingTemplate({
+            name: templateName.trim(),
+            description: templateDescription.trim() || undefined,
+          });
+      if (result.kind === "error") {
+        setError(errorMessage(result.error));
+        return;
+      }
+      setTemplateId(result.data.id);
+      setTemplateEditor(undefined);
+      await reload();
+    });
+  }
+
+  async function toggleTemplate(template: PackingTemplateRecord) {
+    await run(async () => {
+      const result = await setPackingTemplateArchived(
+        template.id,
+        template.version,
+        template.archived ? "restore" : "archive",
+      );
+      if (result.kind === "error") setError(errorMessage(result.error));
+      await reload();
+    });
+  }
+
+  function requirementState(requirement: PackingRequirementRecord) {
+    if (!preview) return "Loading";
+    return preview.missingRequirementIds.includes(requirement.id) ? "Missing" : "Complete";
+  }
+
+  return (
+    <Paper variant="outlined" sx={{ p: 2 }}>
+      <Stack spacing={2}>
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={1}
+          sx={{ justifyContent: "space-between" }}
+        >
+          <div>
+            <Typography variant="h3">Packing sheet</Typography>
+            <Typography color="text.secondary">
+              This container keeps its own requirements. Templates are copied, never live-linked.
+            </Typography>
+          </div>
+          {canManage ? (
+            <Stack direction="row" spacing={1}>
+              <Button onClick={() => setTemplateLibraryOpen(true)}>Manage templates</Button>
+              <Button
+                startIcon={<AddIcon />}
+                onClick={() => openRequirementEditor({ scope: "container" })}
+              >
+                Add requirement
+              </Button>
+            </Stack>
+          ) : null}
+        </Stack>
+        {error ? <Alert severity="error">{error}</Alert> : null}
+        {preview ? (
+          <Alert severity={preview.complete ? "success" : "warning"}>
+            {preview.complete
+              ? "Packing is complete."
+              : `Packing needs attention: ${preview.missingRequirementIds.length} missing requirement${preview.missingRequirementIds.length === 1 ? "" : "s"}.`}
+            {preview.extraAssetIds.length ? ` Extra: ${preview.extraAssetIds.join(", ")}.` : ""}
+            {preview.misplacedAssetIds.length
+              ? ` Misplaced: ${preview.misplacedAssetIds.join(", ")}.`
+              : ""}
+          </Alert>
+        ) : null}
+        {canManage && activeTemplates.length ? (
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+            <TextField
+              select
+              label="Copy template onto this container"
+              value={templateId}
+              onChange={(event) => setTemplateId(event.target.value)}
+              sx={{ minWidth: 280 }}
+            >
+              <MenuItem value="">Select a template</MenuItem>
+              {activeTemplates.map((template) => (
+                <MenuItem key={template.id} value={template.id}>
+                  {template.name}
+                </MenuItem>
+              ))}
+            </TextField>
+            <Button onClick={() => void applyTemplate()} disabled={!templateId || busy}>
+              Copy requirements
+            </Button>
+          </Stack>
+        ) : null}
+        {!requirements ? (
+          <Typography color="text.secondary">Loading packing requirements.</Typography>
+        ) : (
+          <Stack spacing={1.5}>
+            {groups.map((group) => {
+              const inGroup = activeRequirements.filter(
+                (requirement) => requirement.type === group,
+              );
+              return (
+                <section key={group} aria-label={labels[group]}>
+                  <Typography variant="h4">{labels[group]}</Typography>
+                  {inGroup.length === 0 ? (
+                    <Typography color="text.secondary">No requirements.</Typography>
+                  ) : (
+                    <List dense disablePadding>
+                      {inGroup.map((requirement) => (
+                        <ListItem
+                          key={requirement.id}
+                          secondaryAction={
+                            canManage ? (
+                              <Stack direction="row" spacing={0.5}>
+                                <Button
+                                  size="small"
+                                  startIcon={<EditIcon />}
+                                  disabled={busy}
+                                  onClick={() =>
+                                    openRequirementEditor({ scope: "container", requirement })
+                                  }
+                                >
+                                  Edit
+                                </Button>
+                                <Button
+                                  size="small"
+                                  color="warning"
+                                  startIcon={<ArchiveIcon />}
+                                  disabled={busy}
+                                  onClick={() => void toggleContainerRequirement(requirement)}
+                                >
+                                  Archive
+                                </Button>
+                              </Stack>
+                            ) : undefined
+                          }
+                        >
+                          <ListItemText
+                            primary={requirementLabel(requirement, models)}
+                            secondary={`Required: ${requirement.requiredQuantity} · ${requirementState(requirement)}`}
+                          />
+                        </ListItem>
+                      ))}
+                    </List>
+                  )}
+                </section>
+              );
+            })}
+            {preview?.consumables.length ? (
+              <section aria-label="Observed consumables">
+                <Typography variant="h4">Observed consumables</Typography>
+                <Stack spacing={1} sx={{ mt: 1 }}>
+                  {preview.consumables.map((status) => (
+                    <TextField
+                      key={status.requirementId}
+                      label={`Observed ${modelLabel(models, status.assetModelId)}`}
+                      type="number"
+                      value={observations[status.requirementId] ?? status.observedQuantity}
+                      onChange={(event) => {
+                        const nextObservations = {
+                          ...observationsRef.current,
+                          [status.requirementId]: event.target.value,
+                        };
+                        observationsRef.current = nextObservations;
+                        setObservations(nextObservations);
+                      }}
+                      helperText={`Required ${status.requiredQuantity} · ${status.satisfied ? "Complete" : "Missing"}`}
+                      slotProps={{ htmlInput: { min: 0, step: 0.001 } }}
+                    />
+                  ))}
+                  <Button variant="outlined" onClick={() => void refreshPreview()} disabled={busy}>
+                    Refresh preview
+                  </Button>
+                </Stack>
+              </section>
+            ) : null}
+            {archivedRequirements.length ? (
+              <section aria-label="Archived requirements">
+                <Typography variant="h4">Archived requirements</Typography>
+                <List dense disablePadding>
+                  {archivedRequirements.map((requirement) => (
+                    <ListItem
+                      key={requirement.id}
+                      secondaryAction={
+                        canManage ? (
+                          <Button
+                            size="small"
+                            startIcon={<RestoreIcon />}
+                            disabled={busy}
+                            onClick={() => void toggleContainerRequirement(requirement)}
+                          >
+                            Restore
+                          </Button>
+                        ) : undefined
+                      }
+                    >
+                      <ListItemText
+                        primary={requirementLabel(requirement, models)}
+                        secondary="Archived"
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              </section>
+            ) : null}
+          </Stack>
+        )}
+      </Stack>
+
+      <Dialog
+        open={Boolean(requirementEditor)}
+        onClose={() => !busy && setRequirementEditor(undefined)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <form onSubmit={(event) => void saveRequirement(event)}>
+          <DialogTitle>
+            {requirementEditor?.requirement ? "Edit" : "Add"}{" "}
+            {requirementEditor?.scope === "template" ? "template " : ""}packing requirement
+          </DialogTitle>
+          <DialogContent>
+            <Stack spacing={2} sx={{ pt: 1 }}>
+              <TextField
+                select
+                required
+                label="Requirement kind"
+                value={type}
+                onChange={(event) => {
+                  setType(event.target.value as PackingRequirementInput["type"]);
+                  setAssetModelId("");
+                  setSpecificAssetReference("");
+                  setQuantity("1");
+                }}
+              >
+                <MenuItem value="MODEL_QUANTITY">Interchangeable serialized</MenuItem>
+                <MenuItem value="CONSUMABLE_QUANTITY">Consumable minimum</MenuItem>
+                <MenuItem value="SPECIFIC_ASSET">Exact asset</MenuItem>
+              </TextField>
+              {type === "SPECIFIC_ASSET" ? (
+                <TextField
+                  required
+                  label="Exact asset public code or UUID"
+                  value={specificAssetReference}
+                  onChange={(event) => setSpecificAssetReference(event.target.value)}
+                  helperText="Enter the printed public code or asset UUID. Exact requirements always need one asset."
+                />
+              ) : (
+                <TextField
+                  select
+                  required
+                  label="Model"
+                  value={assetModelId}
+                  onChange={(event) => setAssetModelId(event.target.value)}
+                >
+                  <MenuItem value="">Select model</MenuItem>
+                  {visibleModels.map((model) => (
+                    <MenuItem key={model.id} value={model.id}>
+                      {model.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
+              <TextField
+                required
+                label="Required quantity"
+                type="number"
+                value={type === "SPECIFIC_ASSET" ? "1" : quantity}
+                disabled={type === "SPECIFIC_ASSET"}
+                onChange={(event) => setQuantity(event.target.value)}
+                slotProps={{
+                  htmlInput: {
+                    min: type === "CONSUMABLE_QUANTITY" ? 0.001 : 1,
+                    step: type === "CONSUMABLE_QUANTITY" ? 0.001 : 1,
+                  },
+                }}
+              />
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setRequirementEditor(undefined)} disabled={busy}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={busy}>
+              Save
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
+
+      <Dialog
+        open={templateLibraryOpen}
+        onClose={() => !busy && setTemplateLibraryOpen(false)}
+        fullWidth
+        maxWidth="md"
+      >
+        <DialogTitle>Manage packing templates</DialogTitle>
+        <DialogContent>
+          <Typography color="text.secondary">
+            Applying a template copies its requirements. Later template edits never change existing
+            containers.
+          </Typography>
+          <Button sx={{ mt: 1 }} onClick={() => openTemplateEditor()}>
+            New template
+          </Button>
+          <Stack spacing={1.5} sx={{ mt: 1.5 }}>
+            {templates.map((template) => (
+              <Paper key={template.id} variant="outlined" sx={{ p: 1.5 }}>
+                <Stack spacing={1}>
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    sx={{ justifyContent: "space-between" }}
+                  >
+                    <div>
+                      <Typography sx={{ fontWeight: 700 }}>
+                        {template.name}
+                        {template.archived ? " (archived)" : ""}
+                      </Typography>
+                      {template.description ? (
+                        <Typography color="text.secondary">{template.description}</Typography>
+                      ) : null}
+                    </div>
+                    <Stack direction="row" spacing={0.5}>
+                      <Button
+                        size="small"
+                        disabled={busy}
+                        onClick={() => openTemplateEditor(template)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        size="small"
+                        disabled={busy}
+                        startIcon={template.archived ? <RestoreIcon /> : <ArchiveIcon />}
+                        onClick={() => void toggleTemplate(template)}
+                      >
+                        {template.archived ? "Restore" : "Archive"}
+                      </Button>
+                    </Stack>
+                  </Stack>
+                  <Divider />
+                  <List dense disablePadding>
+                    {(template.requirements ?? []).map((requirement) => (
+                      <ListItem
+                        key={requirement.id}
+                        secondaryAction={
+                          <Stack direction="row" spacing={0.5}>
+                            <Button
+                              size="small"
+                              disabled={busy}
+                              onClick={() =>
+                                openRequirementEditor({
+                                  scope: "template",
+                                  templateId: template.id,
+                                  requirement,
+                                })
+                              }
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              size="small"
+                              disabled={busy}
+                              onClick={() => void toggleTemplateRequirement(requirement)}
+                            >
+                              {requirement.archived ? "Restore" : "Archive"}
+                            </Button>
+                          </Stack>
+                        }
+                      >
+                        <ListItemText
+                          primary={requirementLabel(requirement, models)}
+                          secondary={`${requirement.archived ? "Archived · " : ""}Required: ${requirement.requiredQuantity}`}
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                  <Button
+                    size="small"
+                    sx={{ alignSelf: "flex-start" }}
+                    disabled={busy || template.archived}
+                    onClick={() =>
+                      openRequirementEditor({ scope: "template", templateId: template.id })
+                    }
+                  >
+                    Add template requirement
+                  </Button>
+                </Stack>
+              </Paper>
+            ))}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setTemplateLibraryOpen(false)} disabled={busy}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={templateEditor !== undefined}
+        onClose={() => !busy && setTemplateEditor(undefined)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <form onSubmit={(event) => void saveTemplate(event)}>
+          <DialogTitle>
+            {templateEditor?.id ? "Edit packing template" : "Create packing template"}
+          </DialogTitle>
+          <DialogContent>
+            <Stack spacing={2} sx={{ pt: 1 }}>
+              <TextField
+                required
+                label="Template name"
+                value={templateName}
+                onChange={(event) => setTemplateName(event.target.value)}
+              />
+              <TextField
+                multiline
+                minRows={2}
+                label="Description"
+                value={templateDescription}
+                onChange={(event) => setTemplateDescription(event.target.value)}
+              />
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setTemplateEditor(undefined)} disabled={busy}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={busy || !templateName.trim()}>
+              {templateEditor?.id ? "Save template" : "Create template"}
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
+    </Paper>
+  );
+}

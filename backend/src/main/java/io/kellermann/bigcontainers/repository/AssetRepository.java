@@ -47,6 +47,14 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
     boolean hasConsumableBalancesForContainerModel(
             @Param("organizationId") UUID organizationId, @Param("assetModelId") UUID assetModelId);
 
+    @Query("""
+            SELECT CASE WHEN COUNT(requirement) > 0 THEN true ELSE false END
+            FROM PackingRequirement requirement JOIN Asset container ON requirement.containerAssetId = container.id
+            WHERE container.organizationId = :organizationId AND container.assetModelId = :assetModelId AND requirement.archivedAt IS NULL
+            """)
+    boolean hasActivePackingRequirementsForContainerModel(
+            @Param("organizationId") UUID organizationId, @Param("assetModelId") UUID assetModelId);
+
     List<Asset> findAllByOrganizationIdAndAssetModelIdOrderByUnitNumberAsc(UUID organizationId, UUID assetModelId);
 
     /** "Normal" results only (specification section 8.4): active lifecycle, not archived. */
