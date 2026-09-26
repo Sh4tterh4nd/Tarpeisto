@@ -1,0 +1,195 @@
+# BigContainers self-hosted Compose stack.
+#
+# Starts the application, PostgreSQL, and (by default) Garage. See README.md
+# in this directory for first-start, bucket-creation, external-S3,
+# image-pinning, migration, and backup/restore procedures.
+#
+# Usage:
+#   cp .env.example .env   # then edit secrets
+#
+# On a FIRST start, bring up the data services before the application, because
+# Garage stays unhealthy until its one-time cluster layout is applied by hand
+# and `app` waits for it. Follow README.md "First start":
+#   docker compose ... up -d postgres garage   # then apply the Garage layout
+#   docker compose ... up -d                   # then start the application
+#
+# On subsequent starts the layout already exists, so a single command is fine:
+#   docker compose -f infrastructure/compose/docker-compose.yml --env-file infrastructure/compose/.env up -d
+#
+# Garage is started by default because .env.example sets
+# COMPOSE_PROFILES=garage. Clear COMPOSE_PROFILES in your .env (or export
+# COMPOSE_PROFILES=) to disable Garage entirely when BIGCONTAINERS_S3_ENDPOINT
+# points at an external S3-compatible service. See README.md "External S3 /
+# disabling Garage".
+name: bigcontainers
+
+services:
+  app:
+    image: ${BIGCONTAINERS_IMAGE:-ghcr.io/sh4tterh4nd/bigcontainers:latest}
+    restart: unless-stopped
+    ports:
+      - "${BIGCONTAINERS_APP_PORT:-8080}:8080"
+    environment:
+      # Standard Spring datasource properties (relaxed env-var binding). The
+      # application declares no spring.datasource.* keys of its own, so
+      # these three variables are the only source of the connection.
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-bigcontainers}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-bigcontainers}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+
+      # No Spring profile is active by default (production-oriented). Do not
+      # set this to "dev" in a real deployment: OpenAPI/Swagger UI are only
+      # enabled under the dev profile. Override in .env for local
+      # experimentation only.
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-}
+
+      # Trust the reverse proxy's forwarded scheme/host/port so absolute URLs
+      # (including OIDC redirect URIs, per ADR-0003) are generated correctly.
+      # The reverse proxy MUST overwrite/strip these headers from untrusted
+      # clients before they reach this container.
+      SERVER_FORWARD_HEADERS_STRATEGY: FRAMEWORK
+
+      BIGCONTAINERS_APPLICATION_DISPLAY_NAME: ${BIGCONTAINERS_APPLICATION_DISPLAY_NAME:-BigContainers}
+      BIGCONTAINERS_APPLICATION_PUBLIC_BASE_URL: ${BIGCONTAINERS_APPLICATION_PUBLIC_BASE_URL:-}
+
+      # S3-compatible object storage (Phase 3; not yet implemented by the
+      # backend - these are the contract Phase 3 will bind to). Points at the
+      # bundled Garage service by default; override BIGCONTAINERS_S3_* in
+      # .env to use an external S3-compatible endpoint instead (see
+      # README.md).
+      BIGCONTAINERS_S3_ENDPOINT: ${BIGCONTAINERS_S3_ENDPOINT:-http://garage:3900}
+      BIGCONTAINERS_S3_REGION: ${BIGCONTAINERS_S3_REGION:-garage}
+      BIGCONTAINERS_S3_BUCKET: ${BIGCONTAINERS_S3_BUCKET:-bigcontainers}
+      BIGCONTAINERS_S3_ACCESS_KEY: ${BIGCONTAINERS_S3_ACCESS_KEY:?BIGCONTAINERS_S3_ACCESS_KEY must be set}
+      BIGCONTAINERS_S3_SECRET_KEY: ${BIGCONTAINERS_S3_SECRET_KEY:?BIGCONTAINERS_S3_SECRET_KEY must be set}
+      BIGCONTAINERS_S3_PATH_STYLE_ACCESS: ${BIGCONTAINERS_S3_PATH_STYLE_ACCESS:-true}
+
+      # Local/OIDC authentication (ADR-0003). Defaults to local-only; set
+      # BIGCONTAINERS_AUTHENTICATION_MODE=LOCAL_AND_OIDC and the OIDC_*
+      # variables below to add single sign-on while keeping local Owner
+      # recovery enabled. The application refuses to start if
+      # LOCAL_AND_OIDC is selected without a usable OIDC provider
+      # configuration (issuer/client id/client secret).
+      BIGCONTAINERS_AUTHENTICATION_MODE: ${BIGCONTAINERS_AUTHENTICATION_MODE:-LOCAL_ONLY}
+
+      # Owner-approved/preconfigured linking is the safe default (ADR-0003).
+      # Only set this to true if you understand and accept automatic
+      # email-based account linking - see README.md "Authentication and
+      # first Owner login".
+      BIGCONTAINERS_AUTHENTICATION_AUTO_LINK_BY_EMAIL: ${BIGCONTAINERS_AUTHENTICATION_AUTO_LINK_BY_EMAIL:-false}
+
+      BIGCONTAINERS_OIDC_DISPLAY_NAME: ${BIGCONTAINERS_OIDC_DISPLAY_NAME:-}
+      BIGCONTAINERS_OIDC_ISSUER_URI: ${BIGCONTAINERS_OIDC_ISSUER_URI:-}
+      BIGCONTAINERS_OIDC_CLIENT_ID: ${BIGCONTAINERS_OIDC_CLIENT_ID:-}
+      BIGCONTAINERS_OIDC_CLIENT_SECRET: ${BIGCONTAINERS_OIDC_CLIENT_SECRET:-}
+      BIGCONTAINERS_OIDC_SCOPES: ${BIGCONTAINERS_OIDC_SCOPES:-openid,profile,email}
+
+      # Login rate limiting (ADR-0003). In-memory and per application
+      # instance - see README.md "Authentication and first Owner login" for
+      # what that means in a multi-instance deployment.
+      BIGCONTAINERS_SECURITY_LOGIN_RATE_LIMIT_MAX_ATTEMPTS: ${BIGCONTAINERS_SECURITY_LOGIN_RATE_LIMIT_MAX_ATTEMPTS:-5}
+      BIGCONTAINERS_SECURITY_LOGIN_RATE_LIMIT_WINDOW: ${BIGCONTAINERS_SECURITY_LOGIN_RATE_LIMIT_WINDOW:-PT15M}
+
+      # Seed data created on first migration/startup (see README.md
+      # "Migrations and first-run seeding"). No Owner account is created
+      # unless BOTH BIGCONTAINERS_SEED_OWNER_USERNAME and
+      # BIGCONTAINERS_SEED_OWNER_PASSWORD are set - without one, there is no
+      # way to log in on first start.
+      BIGCONTAINERS_SEED_DEFAULT_ORGANIZATION_NAME: ${BIGCONTAINERS_SEED_DEFAULT_ORGANIZATION_NAME:-Default Organization}
+      BIGCONTAINERS_SEED_OWNER_USERNAME: ${BIGCONTAINERS_SEED_OWNER_USERNAME:-}
+      BIGCONTAINERS_SEED_OWNER_PASSWORD: ${BIGCONTAINERS_SEED_OWNER_PASSWORD:-}
+      BIGCONTAINERS_SEED_OWNER_DISPLAY_NAME: ${BIGCONTAINERS_SEED_OWNER_DISPLAY_NAME:-Owner}
+      BIGCONTAINERS_SEED_OWNER_EMAIL: ${BIGCONTAINERS_SEED_OWNER_EMAIL:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      garage:
+        condition: service_healthy
+        required: false
+    healthcheck:
+      # Spring Boot actuator readiness endpoint (ADR-0004). Do not rely on an
+      # image-level Docker HEALTHCHECK instruction; this is the compose-level
+      # check ADR-0004 requires instead.
+      #
+      # The published runtime image (eclipse-temurin:25-jre, Ubuntu-based) has
+      # no curl and no wget - adoptium's Dockerfile removes the tools it used
+      # to fetch the JRE - and /bin/sh is dash, which does not support the
+      # /dev/tcp redirection used below, so bash is invoked explicitly.
+      # Verified directly against that base image: a real HTTP response
+      # containing {"status":"UP"} passes, a {"status":"DOWN"} body and a
+      # refused connection both fail, and plain `sh -c` with the same script
+      # fails outright (confirming bash is required, not optional).
+      test: ['CMD', 'bash', '-c', 'exec 3<>/dev/tcp/127.0.0.1/8080 && printf "GET /actuator/health/readiness HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3 && grep -q "\"status\":\"UP\"" <&3']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  postgres:
+    image: postgres:18.6
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-bigcontainers}
+      POSTGRES_USER: ${POSTGRES_USER:-bigcontainers}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+    volumes:
+      # PostgreSQL 18's official image changed its expected data volume
+      # mount point from /var/lib/postgresql/data (pre-18) to
+      # /var/lib/postgresql itself, to support pg_ctlcluster-style
+      # major-version-specific subdirectories. Mounting at .../data (the old
+      # convention) makes the 18.6 image refuse to start - verified live: it
+      # exits repeatedly with "these Docker images are configured to store
+      # database data in a format which is compatible with pg_ctlcluster...".
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bigcontainers} -d ${POSTGRES_DB:-bigcontainers}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  garage:
+    # dxflrs/garage, pinned to the v2.4.1 tag (published 2026-09-08). Pin by
+    # digest instead for stronger reproducibility:
+    #   image: dxflrs/garage@sha256:9c96caa2612d3411acc5b0e6701fb238dbfba33e533a6d7d3d811a4b12d0d020
+    # (that is the manifest-list digest for dxflrs/garage:v2.4.1, confirmed
+    # both via the Docker Hub API and a real `docker pull` + `docker inspect`
+    # against it.) MinIO was the original choice in ADR-0001 but was replaced
+    # here because its images are no longer anonymously pullable from Docker
+    # Hub or Quay.io - see README.md.
+    image: dxflrs/garage:v2.4.1
+    profiles:
+      - garage
+    restart: unless-stopped
+    volumes:
+      - ./garage.toml:/etc/garage.toml:ro
+      - garage-data:/var/lib/garage
+    environment:
+      # rpc_secret/admin_token are deliberately not in garage.toml; the
+      # `garage` binary reads these and uses them in place of the equivalent
+      # config-file keys, for both the server process and `garage` CLI admin
+      # commands run via `docker compose exec garage /garage ...` (exec
+      # sessions inherit the container's environment). Generate real values
+      # with `openssl rand -hex 32` / `openssl rand -base64 32` - see
+      # README.md "Creating the Garage bucket and access key".
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET:?GARAGE_RPC_SECRET must be set}
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:?GARAGE_ADMIN_TOKEN must be set}
+    ports:
+      - "${GARAGE_S3_API_PORT:-3900}:3900"
+      - "${GARAGE_ADMIN_PORT:-3903}:3903"
+    healthcheck:
+      # `garage health` is a dedicated CLI subcommand that exits non-zero
+      # when the node/cluster is not healthy; it needs no shell. Before the
+      # one-time cluster layout step (see README.md) this correctly reports
+      # unhealthy, which is why `app`'s dependency on `garage` is
+      # `required: false` rather than blocking startup forever on a step
+      # only an operator can complete.
+      test: ["CMD", "/garage", "health"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+volumes:
+  postgres-data:
+  garage-data:

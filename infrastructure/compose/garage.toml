@@ -1,0 +1,32 @@
+# Garage (S3-compatible object storage) configuration for the bundled
+# self-hosted service. Mounted read-only into the `garage` container at
+# /etc/garage.toml (the binary's default config path).
+#
+# Secrets are deliberately NOT in this file. `rpc_secret` and `admin_token`
+# are supplied at runtime via the GARAGE_RPC_SECRET and GARAGE_ADMIN_TOKEN
+# environment variables (see .env.example) - the `garage` binary reads these
+# and uses them in place of the equivalent config-file keys, for both the
+# server process and `garage` CLI admin commands run with
+# `docker compose exec garage /garage ...`. Generate real values with:
+#   openssl rand -hex 32     # GARAGE_RPC_SECRET
+#   openssl rand -base64 32  # GARAGE_ADMIN_TOKEN
+#
+# Single-node deployment: no replication, no peer nodes to announce an
+# address to, so rpc_public_addr is intentionally omitted.
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+db_engine = "lmdb"
+
+replication_factor = 1
+
+rpc_bind_addr = "[::]:3901"
+
+[s3_api]
+# Must match BIGCONTAINERS_S3_REGION in .env for the bundled Garage service.
+# If you change one, change the other and recreate the container.
+s3_region = "garage"
+api_bind_addr = "[::]:3900"
+root_domain = ".s3.garage.localhost"
+
+[admin]
+api_bind_addr = "[::]:3903"
