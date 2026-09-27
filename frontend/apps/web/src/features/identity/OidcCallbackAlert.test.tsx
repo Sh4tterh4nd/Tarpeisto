@@ -23,7 +23,7 @@ describe("OidcCallbackAlert", () => {
     renderAt("/?oidcError=AMBIGUOUS_EMAIL_MATCH");
 
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent(/more than one bigcontainers account matches/i);
+    expect(alert).toHaveTextContent(/more than one tarpeisto account matches/i);
   });
 
   it("falls back to a generic message for an unrecognized error code, never a stack trace", async () => {

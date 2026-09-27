@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { apiClient } from "@bigcontainers/api-client";
+import { apiClient } from "@tarpeisto/api-client";
 import { downloadPackingSheet } from "./packingSheetApi";
 
 describe("downloadPackingSheet", () => {

@@ -1,6 +1,0 @@
-package io.kellermann.bigcontainers.model;
-
-public enum CheckoutConsumableSemantics {
-    SEPARATELY_ISSUED,
-    CARRIED_IN_CONTAINER
-}

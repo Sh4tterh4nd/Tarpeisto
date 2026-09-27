@@ -6,8 +6,8 @@ import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import { apiClient } from "@bigcontainers/api-client";
-import type { components } from "@bigcontainers/api-client";
+import { apiClient } from "@tarpeisto/api-client";
+import type { components } from "@tarpeisto/api-client";
 
 type Repair = Required<components["schemas"]["RepairResponse"]>;
 type SealHistory = Required<components["schemas"]["SealHistoryView"]>;

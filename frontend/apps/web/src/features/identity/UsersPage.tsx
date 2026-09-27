@@ -15,8 +15,8 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Typography from "@mui/material/Typography";
 import BadgeIcon from "@mui/icons-material/Badge";
-import type { AppError } from "@bigcontainers/api-client";
-import { PageHeading } from "@bigcontainers/shared-ui";
+import type { AppError } from "@tarpeisto/api-client";
+import { PageHeading } from "@tarpeisto/shared-ui";
 import type { Role } from "./sessionApi";
 import { CreateUserDialog } from "./CreateUserDialog";
 import { ExternalIdentitiesDialog } from "./ExternalIdentitiesDialog";
@@ -121,7 +121,7 @@ export function UsersPage() {
     <>
       <PageHeading
         title="Users"
-        description="Owner-only administration for permanent BigContainers accounts."
+        description="Owner-only administration for permanent Tarpeisto accounts."
         actions={
           <Button variant="contained" onClick={() => setCreateOpen(true)}>
             Create user

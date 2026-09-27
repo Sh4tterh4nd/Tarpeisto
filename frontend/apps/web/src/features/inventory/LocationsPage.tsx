@@ -16,7 +16,7 @@ import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import { PageHeading } from "@bigcontainers/shared-ui";
+import { PageHeading } from "@tarpeisto/shared-ui";
 import { useSession } from "../identity/useSession";
 import {
   createLocation,

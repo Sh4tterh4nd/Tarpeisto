@@ -3,9 +3,9 @@
 # OpenAPI document / Swagger UI in SecurityConfiguration.
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/bigcontainers
-    username: bigcontainers
-    password: bigcontainers
+    url: jdbc:postgresql://localhost:5432/tarpeisto
+    username: tarpeisto
+    password: tarpeisto
 
 server:
   servlet:
@@ -14,13 +14,13 @@ server:
         # Plain HTTP localhost during development; production stays Secure (application.yml).
         secure: false
 
-bigcontainers:
+tarpeisto:
   seed:
     # Local-development-only bootstrap Owner so a fresh dev database is immediately usable.
-    # Never used in a real deployment: BIGCONTAINERS_SEED_OWNER_USERNAME/PASSWORD remain unset
+    # Never used in a real deployment: TARPEISTO_SEED_OWNER_USERNAME/PASSWORD remain unset
     # by default in application.yml, and this profile itself must be enabled explicitly.
-    owner-username: ${BIGCONTAINERS_SEED_OWNER_USERNAME:owner}
-    owner-password: ${BIGCONTAINERS_SEED_OWNER_PASSWORD:dev-owner-password}
+    owner-username: ${TARPEISTO_SEED_OWNER_USERNAME:owner}
+    owner-password: ${TARPEISTO_SEED_OWNER_PASSWORD:dev-owner-password}
 
 springdoc:
   api-docs:
@@ -30,4 +30,4 @@ springdoc:
 
 logging:
   level:
-    io.kellermann.bigcontainers: DEBUG
+    io.kellermann.tarpeisto: DEBUG

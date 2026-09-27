@@ -19,7 +19,7 @@ import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { Link as RouterLink, useParams } from "react-router-dom";
-import { PageHeading } from "@bigcontainers/shared-ui";
+import { PageHeading } from "@tarpeisto/shared-ui";
 import { useSession } from "../identity/useSession";
 import { ConsumableStockPanel } from "./ConsumableStockPanel";
 import {

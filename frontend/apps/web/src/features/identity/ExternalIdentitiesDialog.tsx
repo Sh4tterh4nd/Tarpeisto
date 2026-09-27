@@ -16,7 +16,7 @@ import TableRow from "@mui/material/TableRow";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import DeleteIcon from "@mui/icons-material/Delete";
-import type { AppError } from "@bigcontainers/api-client";
+import type { AppError } from "@tarpeisto/api-client";
 import {
   linkExternalIdentity,
   listExternalIdentities,

@@ -1,6 +1,6 @@
-# BigContainers
+# Tarpeisto
 
-BigContainers is a focused equipment, container, booking, checkout, return, and audit system for small event-technology teams.
+Tarpeisto is a focused equipment, container, booking, checkout, return, and audit system for small event-technology teams.
 
 Implementation is complete through Phase 11 and the post-Phase-11 inventory quality-of-life
 milestone. Identity, inventory, media, locations, containment, packing requirements, printable
@@ -13,6 +13,7 @@ built and tested. See the
 - [Detailed functional specification](docs/SPECIFICATION.md)
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
 - [Implementation status](docs/IMPLEMENTATION_STATUS.md)
+- [Upgrade guide](docs/UPGRADE_TO_TARPEISTO.md)
 
 ## Intended architecture
 

@@ -1,5 +1,5 @@
-import { AppError, apiClient, toAppError } from "@bigcontainers/api-client";
-import type { components, ProblemDetails } from "@bigcontainers/api-client";
+import { AppError, apiClient, toAppError } from "@tarpeisto/api-client";
+import type { components, ProblemDetails } from "@tarpeisto/api-client";
 
 export type BookingLineRecord = Required<components["schemas"]["BookingLineResponse"]>;
 export type BookingRecord = Omit<Required<components["schemas"]["BookingResponse"]>, "lines"> & {

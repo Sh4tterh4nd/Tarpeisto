@@ -1,4 +1,4 @@
-export { createBigContainersTheme } from "./theme/createBigContainersTheme";
+export { createTarpeistoTheme } from "./theme/createTarpeistoTheme";
 export {
   colorTokens,
   shapeTokens,

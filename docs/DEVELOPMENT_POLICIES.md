@@ -1,12 +1,12 @@
-# BigContainers Development Policies
+# Tarpeisto Development Policies
 
 Status: Initial mandatory policy
 
-Derived from: useful conventions in `C:\Users\Arieh\IdeaProjects\Leirly`, simplified for BigContainers
+Derived from: useful conventions in `C:\Users\Arieh\IdeaProjects\Leirly`, simplified for Tarpeisto
 
 ## 1. Purpose and precedence
 
-These rules define how BigContainers source code is organized and named. They apply to human and automated contributors.
+These rules define how Tarpeisto source code is organized and named. They apply to human and automated contributors.
 
 Read the project documents in this order before implementation:
 
@@ -20,7 +20,7 @@ Resolve documentation conflicts before writing code. The words **must** and **mu
 ## 2. Repository layout
 
 ```text
-BigContainers/
+Tarpeisto/
 |-- backend/                   # one Gradle/Spring Boot project
 |-- frontend/
 |   |-- apps/
@@ -38,7 +38,7 @@ BigContainers/
 - The backend is one Gradle project and one deployable Spring Boot application.
 - Spring Modulith is not part of the baseline.
 - The frontend is a pnpm workspace with the package-manager version pinned in `package.json`.
-- BigContainers has one frontend app. Permissions and route-level code splitting distinguish owner/deputy and volunteer experiences.
+- Tarpeisto has one frontend app. Permissions and route-level code splitting distinguish owner/deputy and volunteer experiences.
 - Create another frontend package only after code is genuinely shared or generated.
 - Do not create empty packages or directories for hypothetical future code.
 - Generic dumping grounds such as `common`, `misc`, or `util` are forbidden. A narrowly named helper close to its caller is preferred.
@@ -49,17 +49,17 @@ BigContainers/
 
 ### 3.1 Base package
 
-The Java base package is `io.kellermann.bigcontainers`. The entry point is:
+The Java base package is `io.kellermann.tarpeisto`. The entry point is:
 
 ```text
-io.kellermann.bigcontainers.BigContainersApplication
+io.kellermann.tarpeisto.TarpeistoApplication
 ```
 
 Production code starts with this structure:
 
 ```text
-backend/src/main/java/io/kellermann/bigcontainers/
-|-- BigContainersApplication.java
+backend/src/main/java/io/kellermann/tarpeisto/
+|-- TarpeistoApplication.java
 |-- config/
 |-- controller/
 |-- service/
@@ -132,7 +132,7 @@ Do this in response to actual size or coupling, not before implementation. Intro
 - Reserve a `*Event` suffix for completed facts such as `BookingCheckedOut` if application events are later needed.
 - Use `ContainerAudit` or `AuditTask` for equipment audits. Use `ActivityLog` for operator/security history.
 - Use `PackingRequirement` with explicit variants such as `ExactAssetRequirement`, `ModelQuantityRequirement`, and `ConsumableQuantityRequirement`.
-- Use `ExternalIdentity` for the `(issuer, subject)` mapping from an OIDC provider to a BigContainers `User`.
+- Use `ExternalIdentity` for the `(issuer, subject)` mapping from an OIDC provider to a Tarpeisto `User`.
 - Use qualified identifiers such as `organizationId`, `assetId`, `modelId`, `containerId`, and `bookingId`.
 - Treat initialisms as words in Java names: `QrCode`, `Url`, `Id`, and `S3MediaStorage`.
 
@@ -222,7 +222,7 @@ Additional rules:
 - TypeScript strict mode
 - Vite
 - React Router
-- Material UI behind BigContainers-owned wrappers and design tokens
+- Material UI behind Tarpeisto-owned wrappers and design tokens
 - pnpm workspaces
 - Generated OpenAPI types/client using `openapi-typescript` and `openapi-fetch` or an accepted equivalent
 - Vitest, React Testing Library, and Playwright
@@ -284,7 +284,7 @@ frontend/apps/web/src/
 Backend tests mirror the package they exercise:
 
 ```text
-backend/src/test/java/io/kellermann/bigcontainers/
+backend/src/test/java/io/kellermann/tarpeisto/
 |-- controller/AssetControllerIntegrationTests.java
 |-- service/AuditServiceTests.java
 |-- repository/AssetRepositoryIntegrationTests.java

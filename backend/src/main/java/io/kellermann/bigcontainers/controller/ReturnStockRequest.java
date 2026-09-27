@@ -1,9 +1,0 @@
-package io.kellermann.bigcontainers.controller;
-
-import jakarta.validation.constraints.NotNull;
-import java.math.BigDecimal;
-import java.util.UUID;
-
-/** Request body for {@code POST /api/v1/asset-models/{assetModelId}/consumable-stock/return}. */
-public record ReturnStockRequest(
-        UUID containerAssetId, UUID locationId, @NotNull BigDecimal quantity, String note, UUID eventReferenceId) {}

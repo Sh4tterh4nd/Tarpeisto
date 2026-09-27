@@ -56,7 +56,7 @@ test("an owner downloads a container packing sheet", async ({ page }) => {
     }
     if (path === "/api/v1/application") {
       await route.fulfill({
-        json: { applicationName: "BigContainers", version: "test", oidcConfigured: false },
+        json: { applicationName: "Tarpeisto", version: "test", oidcConfigured: false },
       });
       return;
     }

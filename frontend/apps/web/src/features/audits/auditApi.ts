@@ -1,5 +1,5 @@
-import { AppError, apiClient, toAppError } from "@bigcontainers/api-client";
-import type { components, ProblemDetails } from "@bigcontainers/api-client";
+import { AppError, apiClient, toAppError } from "@tarpeisto/api-client";
+import type { components, ProblemDetails } from "@tarpeisto/api-client";
 
 type GeneratedExpected = components["schemas"]["AuditExpectedRequirementResponse"];
 type GeneratedScan = components["schemas"]["AuditScanResponse"];

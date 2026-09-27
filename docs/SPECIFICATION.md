@@ -1,4 +1,4 @@
-# BigContainers Functional Specification
+# Tarpeisto Functional Specification
 
 Status: Initial approved product specification
 
@@ -6,11 +6,11 @@ Audience: Product owner, designers, implementers, and testers
 
 ## 1. Product summary
 
-BigContainers manages individually identified event-technology equipment, quantity-tracked consumable supplies, the physical containers in which they are stored, event reservations, check-out and return, packing verification, damage and loss review, repairs, labels, and inventory history.
+Tarpeisto manages individually identified event-technology equipment, quantity-tracked consumable supplies, the physical containers in which they are stored, event reservations, check-out and return, packing verification, damage and loss review, repairs, labels, and inventory history.
 
 The primary users are a small internal team and occasional volunteers. The product must therefore favor guided scanning workflows, photographs, plain language, and clear recovery from mistakes over dense warehouse-management interfaces.
 
-BigContainers is a responsive web application and installable Progressive Web App (PWA). A separate native Android or iOS application is not required.
+Tarpeisto is a responsive web application and installable Progressive Web App (PWA). A separate native Android or iOS application is not required.
 
 ### 1.1 Goals
 
@@ -130,12 +130,12 @@ BigContainers is a responsive web application and installable Progressive Web Ap
 - An installation may optionally enable one OpenID Connect (OIDC) provider through Spring Security's OAuth 2.0 client support. OIDC, rather than bare OAuth 2.0, supplies the authenticated user identity.
 - Supported initial modes are `LOCAL_ONLY` and `LOCAL_AND_OIDC`. An installation may require OIDC for ordinary permanent users only while at least one enabled local Owner recovery account remains usable.
 - Provider configuration includes a display name, issuer URI, client ID, client secret, and scopes. Discovery through the issuer URI is preferred; initial scopes are `openid profile email`.
-- The browser always receives the same BigContainers server-side session after either login method. Provider access/refresh tokens remain server-side and no bearer token is stored in browser storage.
+- The browser always receives the same Tarpeisto server-side session after either login method. Provider access/refresh tokens remain server-side and no bearer token is stored in browser storage.
 - An external identity is keyed by the immutable pair `(issuer, subject)` and linked to an internal user. Email addresses are profile and matching attributes, never the durable external identity key.
 - Automatic linking by email is disabled by default. If enabled by an Owner, it requires an OIDC `email_verified` claim and exactly one matching internal user. Otherwise an Owner must approve or create the link.
-- Just-in-time user creation and provider group/role mapping are not part of the initial release. Organization membership, role, disabled state, and authorization remain authoritative inside BigContainers.
+- Just-in-time user creation and provider group/role mapping are not part of the initial release. Organization membership, role, disabled state, and authorization remain authoritative inside Tarpeisto.
 - A permanent user may have local credentials, an external identity, or both. The system prevents removal of the last usable Owner authentication method.
-- Local logout always invalidates the BigContainers session. Provider-wide single logout is best effort and not required for correctness.
+- Local logout always invalidates the Tarpeisto session. Provider-wide single logout is best effort and not required for correctness.
 - Temporary volunteer QR access remains a separate authentication flow and is unaffected by OIDC configuration.
 - Provider secrets are supplied through environment variables or mounted secret files. Reverse-proxy deployments must preserve the public HTTPS scheme and host so redirect URIs are generated correctly.
 

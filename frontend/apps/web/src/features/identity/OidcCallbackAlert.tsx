@@ -16,15 +16,15 @@ const MESSAGES: Record<string, string> = {
   NO_ORGANIZATION_MEMBERSHIP:
     "This account has no organization membership. Contact an Owner for help.",
   AUTO_LINKING_NOT_APPLICABLE:
-    "No BigContainers account is linked to this sign-in yet. Contact an Owner to link it, or sign in locally.",
+    "No Tarpeisto account is linked to this sign-in yet. Contact an Owner to link it, or sign in locally.",
   EMAIL_MISSING:
     "The identity provider did not supply an email address, so this sign-in could not be matched automatically. Contact an Owner to link your account, or sign in locally.",
   EMAIL_NOT_VERIFIED:
     "The identity provider's email address is not verified, so this sign-in could not be matched automatically. Contact an Owner, or sign in locally.",
   NO_MATCHING_ACCOUNT:
-    "No BigContainers account matches this sign-in. Contact an Owner, or sign in locally.",
+    "No Tarpeisto account matches this sign-in. Contact an Owner, or sign in locally.",
   AMBIGUOUS_EMAIL_MATCH:
-    "More than one BigContainers account matches this sign-in's email address. Contact an Owner, or sign in locally.",
+    "More than one Tarpeisto account matches this sign-in's email address. Contact an Owner, or sign in locally.",
 };
 const DEFAULT_MESSAGE =
   "Single sign-on could not complete. Local username/password sign-in remains available.";

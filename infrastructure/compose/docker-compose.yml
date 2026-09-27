@@ -1,7 +1,7 @@
-# BigContainers Docker Swarm stack.
+# Tarpeisto Docker Swarm stack.
 #
 # Deploy with:
-#   docker stack deploy -c infrastructure/compose/docker-compose.yml bigcontainers
+#   docker stack deploy -c infrastructure/compose/docker-compose.yml tarpeisto
 #
 # This file intentionally has no .env interpolation. Create the external
 # Swarm secrets documented in README.md before deploying.
@@ -10,9 +10,9 @@ services:
   app:
     # Replace with the exact released version or, preferably, release digest
     # that you intend to deploy. Do not use a mutable tag in production.
-    image: ghcr.io/sh4tterh4nd/bigcontainers:latest
+    image: ghcr.io/sh4tterh4nd/tarpeisto:latest
     networks:
-      - bigcontainers
+      - tarpeisto
     ports:
       - target: 8080
         published: 8080
@@ -20,33 +20,33 @@ services:
         mode: ingress
     environment:
       SPRING_CONFIG_IMPORT: configtree:/run/secrets/
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/bigcontainers
-      SPRING_DATASOURCE_USERNAME: bigcontainers
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/tarpeisto
+      SPRING_DATASOURCE_USERNAME: tarpeisto
       SERVER_FORWARD_HEADERS_STRATEGY: FRAMEWORK
-      BIGCONTAINERS_APPLICATION_DISPLAY_NAME: BigContainers
-      BIGCONTAINERS_APPLICATION_PUBLIC_BASE_URL: https://bigcontainers.example.com
-      BIGCONTAINERS_S3_ENABLED: "true"
-      BIGCONTAINERS_S3_ENDPOINT: http://seaweedfs:8333
-      BIGCONTAINERS_S3_REGION: us-east-1
-      BIGCONTAINERS_S3_BUCKET: bigcontainers
-      BIGCONTAINERS_S3_PATH_STYLE_ACCESS: "true"
-      BIGCONTAINERS_AUTHENTICATION_MODE: LOCAL_ONLY
-      BIGCONTAINERS_AUTHENTICATION_AUTO_LINK_BY_EMAIL: "false"
-      BIGCONTAINERS_SECURITY_LOGIN_RATE_LIMIT_MAX_ATTEMPTS: "5"
-      BIGCONTAINERS_SECURITY_LOGIN_RATE_LIMIT_WINDOW: PT15M
-      BIGCONTAINERS_SEED_DEFAULT_ORGANIZATION_NAME: Default Organization
-      BIGCONTAINERS_SEED_OWNER_USERNAME: admin
-      BIGCONTAINERS_SEED_OWNER_DISPLAY_NAME: Owner
-      BIGCONTAINERS_SEED_OWNER_EMAIL: admin@example.com
+      TARPEISTO_APPLICATION_DISPLAY_NAME: Tarpeisto
+      TARPEISTO_APPLICATION_PUBLIC_BASE_URL: https://tarpeisto.example.com
+      TARPEISTO_S3_ENABLED: "true"
+      TARPEISTO_S3_ENDPOINT: http://seaweedfs:8333
+      TARPEISTO_S3_REGION: us-east-1
+      TARPEISTO_S3_BUCKET: tarpeisto
+      TARPEISTO_S3_PATH_STYLE_ACCESS: "true"
+      TARPEISTO_AUTHENTICATION_MODE: LOCAL_ONLY
+      TARPEISTO_AUTHENTICATION_AUTO_LINK_BY_EMAIL: "false"
+      TARPEISTO_SECURITY_LOGIN_RATE_LIMIT_MAX_ATTEMPTS: "5"
+      TARPEISTO_SECURITY_LOGIN_RATE_LIMIT_WINDOW: PT15M
+      TARPEISTO_SEED_DEFAULT_ORGANIZATION_NAME: Default Organization
+      TARPEISTO_SEED_OWNER_USERNAME: admin
+      TARPEISTO_SEED_OWNER_DISPLAY_NAME: Owner
+      TARPEISTO_SEED_OWNER_EMAIL: admin@example.com
     secrets:
       - source: postgres_password
         target: spring.datasource.password
       - source: s3_access_key
-        target: bigcontainers.s3.access-key
+        target: tarpeisto.s3.access-key
       - source: s3_secret_key
-        target: bigcontainers.s3.secret-key
+        target: tarpeisto.s3.secret-key
       - source: owner_password
-        target: bigcontainers.seed.owner-password
+        target: tarpeisto.seed.owner-password
     healthcheck:
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf \"GET /actuator/health/readiness HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n\" >&3 && grep -q \"\\\"status\\\":\\\"UP\\\"\" <&3"]
       interval: 10s
@@ -71,10 +71,10 @@ services:
   postgres:
     image: postgres:18.6
     networks:
-      - bigcontainers
+      - tarpeisto
     environment:
-      POSTGRES_DB: bigcontainers
-      POSTGRES_USER: bigcontainers
+      POSTGRES_DB: tarpeisto
+      POSTGRES_USER: tarpeisto
       POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
     secrets:
       - source: postgres_password
@@ -82,7 +82,7 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U bigcontainers -d bigcontainers"]
+      test: ["CMD-SHELL", "pg_isready -U tarpeisto -d tarpeisto"]
       interval: 5s
       timeout: 5s
       retries: 12
@@ -91,7 +91,7 @@ services:
       replicas: 1
       placement:
         constraints:
-          - node.labels.bigcontainers-data == primary
+          - node.labels.tarpeisto-data == primary
       restart_policy:
         condition: any
         delay: 5s
@@ -105,7 +105,7 @@ services:
   seaweedfs:
     image: chrislusf/seaweedfs:4.47
     networks:
-      - bigcontainers
+      - tarpeisto
     entrypoint:
       - /bin/sh
       - -ec
@@ -114,7 +114,7 @@ services:
         export AWS_SECRET_ACCESS_KEY="$$(cat /run/secrets/s3_secret_key)"
         exec /entrypoint.sh mini -dir=/data
     environment:
-      S3_BUCKET: bigcontainers
+      S3_BUCKET: tarpeisto
     secrets:
       - source: s3_access_key
         target: s3_access_key
@@ -132,7 +132,7 @@ services:
       replicas: 1
       placement:
         constraints:
-          - node.labels.bigcontainers-data == primary
+          - node.labels.tarpeisto-data == primary
       restart_policy:
         condition: any
         delay: 5s
@@ -150,20 +150,20 @@ volumes:
     driver: local
 
 networks:
-  bigcontainers:
+  tarpeisto:
     driver: overlay
     attachable: true
 
 secrets:
   postgres_password:
     external: true
-    name: bigcontainers_postgres_password
+    name: tarpeisto_postgres_password
   s3_access_key:
     external: true
-    name: bigcontainers_s3_access_key
+    name: tarpeisto_s3_access_key
   s3_secret_key:
     external: true
-    name: bigcontainers_s3_secret_key
+    name: tarpeisto_s3_secret_key
   owner_password:
     external: true
-    name: bigcontainers_owner_password
+    name: tarpeisto_owner_password

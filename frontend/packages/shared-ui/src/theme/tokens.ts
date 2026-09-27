@@ -1,7 +1,7 @@
 /**
- * BigContainers design tokens.
+ * Tarpeisto design tokens.
  *
- * These are the raw values behind `createBigContainersTheme`. Feature code should
+ * These are the raw values behind `createTarpeistoTheme`. Feature code should
  * consume the MUI theme (colors, spacing, typography) rather than importing these
  * tokens directly, so the theme factory remains the single place that assembles them.
  */

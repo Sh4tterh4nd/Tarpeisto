@@ -29,7 +29,7 @@ export function UpdatePrompt() {
       sx={{ borderRadius: 0 }}
     >
       <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-        A new version of BigContainers is available.
+        A new version of Tarpeisto is available.
       </Stack>
     </Alert>
   );

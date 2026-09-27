@@ -11,8 +11,8 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["icons/icon.svg"],
       manifest: {
-        name: "BigContainers",
-        short_name: "BigContainers",
+        name: "Tarpeisto",
+        short_name: "Tarpeisto",
         description: "Equipment, container, and event inventory management.",
         theme_color: "#0F5A46",
         background_color: "#F7F7F5",
@@ -51,7 +51,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/api": {
-        target: process.env["BIGCONTAINERS_BACKEND_ORIGIN"] ?? "http://localhost:8080",
+        target: process.env["TARPEISTO_BACKEND_ORIGIN"] ?? "http://localhost:8080",
         changeOrigin: true,
       },
     },

@@ -23,7 +23,7 @@ test("app shell loads and a valid public code resolves to an asset", async ({ pa
   );
   await page.route("**/api/v1/application", (route) =>
     route.fulfill({
-      json: { applicationName: "BigContainers", version: "test", oidcConfigured: false },
+      json: { applicationName: "Tarpeisto", version: "test", oidcConfigured: false },
     }),
   );
   await page.route("**/api/v1/assets/by-code/7K3MXY", (route) =>
@@ -70,7 +70,7 @@ test("app shell loads and a valid public code resolves to an asset", async ({ pa
 
   await page.goto("/");
 
-  await expect(page.getByRole("heading", { name: "BigContainers" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tarpeisto" })).toBeVisible();
   await expect(page.getByRole("status").first()).toBeVisible();
 
   if (!(await page.getByRole("link", { name: "Scan equipment" }).isVisible())) {

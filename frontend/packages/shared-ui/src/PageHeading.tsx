@@ -11,7 +11,7 @@ export interface PageHeadingProps {
 }
 
 /**
- * BigContainers-owned page-heading wrapper: a consistent `<h2>` title, optional
+ * Tarpeisto-owned page-heading wrapper: a consistent `<h2>` title, optional
  * supporting description, and an optional action area, used at the top of a
  * page's main content.
  */

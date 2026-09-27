@@ -1,4 +1,4 @@
-import { CSRF_HEADER_NAME, readCsrfCookie, type components } from "@bigcontainers/api-client";
+import { CSRF_HEADER_NAME, readCsrfCookie, type components } from "@tarpeisto/api-client";
 
 export type MediaRecord = Required<components["schemas"]["MediaResponse"]> & {
   primaryImage?: boolean;

@@ -25,7 +25,7 @@ describe("ApplicationInfoPage", () => {
   it("renders the application name, version, and OIDC status once loaded", async () => {
     vi.mocked(global.fetch).mockResolvedValue(
       jsonResponse({
-        applicationName: "BigContainers",
+        applicationName: "Tarpeisto",
         version: "0.1.0",
         oidcConfigured: true,
         oidcProvider: {
@@ -37,7 +37,7 @@ describe("ApplicationInfoPage", () => {
 
     render(<ApplicationInfoPage />);
 
-    expect(await screen.findByText("BigContainers")).toBeInTheDocument();
+    expect(await screen.findByText("Tarpeisto")).toBeInTheDocument();
     expect(screen.getByText("Version 0.1.0")).toBeInTheDocument();
     expect(screen.getByText("OIDC configured (Acme SSO)")).toBeInTheDocument();
   });

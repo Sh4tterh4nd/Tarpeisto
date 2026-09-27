@@ -21,7 +21,7 @@ describe("AppError.fromProblemDetails", () => {
 
   it("maps any other status to a generic problem error", () => {
     const problem: ProblemDetails = {
-      type: "https://bigcontainers.example/errors/validation",
+      type: "https://tarpeisto.example/errors/validation",
       title: "Validation failed",
       status: 422,
       detail: "Name is required",

@@ -6,7 +6,7 @@ import List from "@mui/material/List";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
 import { Link as RouterLink, useLocation } from "react-router-dom";
-import { AppShellLayout, createBigContainersTheme } from "@bigcontainers/shared-ui";
+import { AppShellLayout, createTarpeistoTheme } from "@tarpeisto/shared-ui";
 import { AppRoutes } from "./routes/AppRoutes";
 import { ConnectivityChip } from "./platform/web/ConnectivityChip";
 import { UpdatePrompt } from "./platform/web/UpdatePrompt";
@@ -56,17 +56,14 @@ function PrimaryNav() {
 
 export function App() {
   const prefersDark = useMediaQuery("(prefers-color-scheme: dark)");
-  const theme = useMemo(
-    () => createBigContainersTheme(prefersDark ? "dark" : "light"),
-    [prefersDark],
-  );
+  const theme = useMemo(() => createTarpeistoTheme(prefersDark ? "dark" : "light"), [prefersDark]);
 
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <SessionProvider>
         <AppShellLayout
-          title="BigContainers"
+          title="Tarpeisto"
           bannerSlot={
             <>
               <OidcCallbackAlert />

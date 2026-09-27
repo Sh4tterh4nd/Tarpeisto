@@ -1,5 +1,5 @@
 import Typography from "@mui/material/Typography";
-import { PageHeading } from "@bigcontainers/shared-ui";
+import { PageHeading } from "@tarpeisto/shared-ui";
 
 export function NotFoundPage() {
   return (

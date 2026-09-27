@@ -1,8 +1,8 @@
-# BigContainers Docker Swarm deployment
+# Tarpeisto Docker Swarm deployment
 
 `docker-compose.yml` is a Docker Swarm stack definition despite its conventional file name. It
 starts the application, PostgreSQL, and a single-node [SeaweedFS](https://github.com/seaweedfs/seaweedfs)
-`weed mini` S3 service. SeaweedFS creates the `bigcontainers` bucket on its first start.
+`weed mini` S3 service. SeaweedFS creates the `tarpeisto` bucket on its first start.
 
 The stack deliberately does not use a `.env` file. Non-secret settings are visible in the stack;
 credentials are external Docker Swarm secrets, mounted as files.
@@ -14,17 +14,17 @@ credentials are external Docker Swarm secrets, mounted as files.
    available storage. Do not give the `primary` value to another node while these volumes exist.
 
    ```bash
-   docker node update --label-add bigcontainers-data=primary <node-name>
+   docker node update --label-add tarpeisto-data=primary <node-name>
    ```
 
 2. Create the four external secrets. Use a generated PostgreSQL password, a SeaweedFS S3 access
    key/secret pair, and a strong first-Owner password. Do not put these values in the stack file.
 
    ```bash
-   printf '%s' '<postgres-password>' | docker secret create bigcontainers_postgres_password -
-   printf '%s' '<s3-access-key>' | docker secret create bigcontainers_s3_access_key -
-   printf '%s' '<s3-secret-key>' | docker secret create bigcontainers_s3_secret_key -
-   printf '%s' '<first-owner-password>' | docker secret create bigcontainers_owner_password -
+   printf '%s' '<postgres-password>' | docker secret create tarpeisto_postgres_password -
+   printf '%s' '<s3-access-key>' | docker secret create tarpeisto_s3_access_key -
+   printf '%s' '<s3-secret-key>' | docker secret create tarpeisto_s3_secret_key -
+   printf '%s' '<first-owner-password>' | docker secret create tarpeisto_owner_password -
    ```
 
 3. Edit the non-secret values in `docker-compose.yml`: the released application image (prefer a
@@ -34,8 +34,8 @@ credentials are external Docker Swarm secrets, mounted as files.
 4. Deploy the stack:
 
    ```bash
-   docker stack deploy -c infrastructure/compose/docker-compose.yml bigcontainers
-   docker service logs -f bigcontainers_app
+   docker stack deploy -c infrastructure/compose/docker-compose.yml tarpeisto
+   docker service logs -f tarpeisto_app
    ```
 
    PostgreSQL gates application startup, so Swarm retries the application until the database is
@@ -45,13 +45,13 @@ credentials are external Docker Swarm secrets, mounted as files.
 ## Secrets and configuration
 
 The application imports `/run/secrets/` as a Spring `configtree`. Secret target names are Spring
-property names, so `spring.datasource.password` and `bigcontainers.s3.secret-key` never appear as
+property names, so `spring.datasource.password` and `tarpeisto.s3.secret-key` never appear as
 environment variables. PostgreSQL reads its secret with `POSTGRES_PASSWORD_FILE`. SeaweedFS reads
 the same S3 credentials from secret files in its startup shell and receives no plaintext
 credential in the stack.
 
 For optional OIDC, create a separate external Swarm secret and add it to `app` with target
-`bigcontainers.authentication.oidc.client-secret`; then set the non-secret OIDC environment
+`tarpeisto.authentication.oidc.client-secret`; then set the non-secret OIDC environment
 settings in the stack. Do not substitute an OIDC client secret directly into YAML.
 
 Docker Swarm secrets are immutable. Rotate a secret by creating a new secret name, updating the
@@ -59,7 +59,7 @@ stack's external secret mapping, and redeploying. Remove the old secret only aft
 healthy.
 
 After the first Owner has signed in successfully, remove
-`BIGCONTAINERS_SEED_OWNER_USERNAME`, the `owner_password` secret mount, and the corresponding
+`TARPEISTO_SEED_OWNER_USERNAME`, the `owner_password` secret mount, and the corresponding
 top-level `owner_password` secret declaration from the stack before the next deployment. The
 external bootstrap secret can then be removed. This eliminates a credential that is needed only
 for first-run seeding.
@@ -83,53 +83,53 @@ proxy overwrites forwarded headers before they reach the app.
 
 ## Stateful data, backups, and upgrades
 
-PostgreSQL and SeaweedFS are intentionally constrained to the one `bigcontainers-data=primary`
+PostgreSQL and SeaweedFS are intentionally constrained to the one `tarpeisto-data=primary`
 node because their default `local` volumes do not move with a Swarm task. Do not remove the label
 or scale either service above one replica. For node failover or multi-node storage, use a tested
 shared-volume or managed database/object-store solution before changing the constraints.
 
-Run these commands on the primary node. Replace `bigcontainers` if you deploy with another stack
+Run these commands on the primary node. Replace `tarpeisto` if you deploy with another stack
 name, and keep the database and media backups from the same maintenance window.
 
 ### PostgreSQL backup and restore
 
 ```bash
-POSTGRES_CONTAINER="$(docker ps -q --filter label=com.docker.swarm.service.name=bigcontainers_postgres)"
-docker exec "$POSTGRES_CONTAINER" pg_dump -U bigcontainers -d bigcontainers --format=custom \
-  > bigcontainers-$(date +%Y%m%d-%H%M%S).dump
+POSTGRES_CONTAINER="$(docker ps -q --filter label=com.docker.swarm.service.name=tarpeisto_postgres)"
+docker exec "$POSTGRES_CONTAINER" pg_dump -U tarpeisto -d tarpeisto --format=custom \
+  > tarpeisto-$(date +%Y%m%d-%H%M%S).dump
 ```
 
 Restoring replaces database objects. Stop the app first, restore into PostgreSQL, then start the
 app so Flyway can validate the schema:
 
 ```bash
-docker service scale bigcontainers_app=0
-POSTGRES_CONTAINER="$(docker ps -q --filter label=com.docker.swarm.service.name=bigcontainers_postgres)"
-docker exec -i "$POSTGRES_CONTAINER" pg_restore -U bigcontainers -d bigcontainers \
-  --clean --if-exists < bigcontainers-20260927-120000.dump
-docker service scale bigcontainers_app=1
+docker service scale tarpeisto_app=0
+POSTGRES_CONTAINER="$(docker ps -q --filter label=com.docker.swarm.service.name=tarpeisto_postgres)"
+docker exec -i "$POSTGRES_CONTAINER" pg_restore -U tarpeisto -d tarpeisto \
+  --clean --if-exists < tarpeisto-20260927-120000.dump
+docker service scale tarpeisto_app=1
 ```
 
 ### SeaweedFS media backup and restore
 
 Use a one-off AWS CLI Swarm service so S3 credentials remain secret mounts. Create the host backup
-directory on the primary node first, for example `/srv/bigcontainers-backup/media`.
+directory on the primary node first, for example `/srv/tarpeisto-backup/media`.
 
 ```bash
-docker service create --name bigcontainers-s3-backup --restart-condition none \
-  --network bigcontainers_bigcontainers \
-  --constraint node.labels.bigcontainers-data==primary \
-  --secret source=bigcontainers_s3_access_key,target=s3_access_key \
-  --secret source=bigcontainers_s3_secret_key,target=s3_secret_key \
-  --mount type=bind,src=/srv/bigcontainers-backup,dst=/backup \
+docker service create --name tarpeisto-s3-backup --restart-condition none \
+  --network tarpeisto_tarpeisto \
+  --constraint node.labels.tarpeisto-data==primary \
+  --secret source=tarpeisto_s3_access_key,target=s3_access_key \
+  --secret source=tarpeisto_s3_secret_key,target=s3_secret_key \
+  --mount type=bind,src=/srv/tarpeisto-backup,dst=/backup \
   --entrypoint /bin/sh amazon/aws-cli:2 -ec \
-  'export AWS_ACCESS_KEY_ID="$(cat /run/secrets/s3_access_key)"; export AWS_SECRET_ACCESS_KEY="$(cat /run/secrets/s3_secret_key)"; export AWS_DEFAULT_REGION=us-east-1; aws --endpoint-url http://seaweedfs:8333 s3 sync s3://bigcontainers /backup/media'
-docker service logs -f bigcontainers-s3-backup
-docker service rm bigcontainers-s3-backup
+  'export AWS_ACCESS_KEY_ID="$(cat /run/secrets/s3_access_key)"; export AWS_SECRET_ACCESS_KEY="$(cat /run/secrets/s3_secret_key)"; export AWS_DEFAULT_REGION=us-east-1; aws --endpoint-url http://seaweedfs:8333 s3 sync s3://tarpeisto /backup/media'
+docker service logs -f tarpeisto-s3-backup
+docker service rm tarpeisto-s3-backup
 ```
 
 For restore, create the same temporary service but reverse the final sync arguments to
-`s3 sync /backup/media s3://bigcontainers`. Restore to an empty bucket or confirm the intended
+`s3 sync /backup/media s3://tarpeisto`. Restore to an empty bucket or confirm the intended
 overwrite behavior first. Do not add `--delete` unless the backup is the complete desired bucket
 state.
 

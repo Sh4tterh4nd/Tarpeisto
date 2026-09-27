@@ -10,7 +10,7 @@ import Divider from "@mui/material/Divider";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import { PageHeading } from "@bigcontainers/shared-ui";
+import { PageHeading } from "@tarpeisto/shared-ui";
 import { Link as RouterLink, useParams } from "react-router-dom";
 import { useSession } from "../identity/useSession";
 import {

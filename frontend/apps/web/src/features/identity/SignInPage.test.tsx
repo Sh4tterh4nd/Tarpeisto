@@ -51,7 +51,7 @@ describe("SignInPage", () => {
     vi.mocked(global.fetch).mockImplementation(async (input) => {
       if (urlOf(input).includes("/api/v1/application")) {
         return jsonResponse({
-          applicationName: "BigContainers",
+          applicationName: "Tarpeisto",
           version: "0.1.0",
           oidcConfigured: false,
         });
@@ -71,7 +71,7 @@ describe("SignInPage", () => {
     vi.mocked(global.fetch).mockImplementation(async (input) => {
       if (urlOf(input).includes("/api/v1/application")) {
         return jsonResponse({
-          applicationName: "BigContainers",
+          applicationName: "Tarpeisto",
           version: "0.1.0",
           oidcConfigured: true,
           oidcProvider: {
@@ -95,7 +95,7 @@ describe("SignInPage", () => {
       const method = input instanceof Request ? input.method : "GET";
       if (url.includes("/api/v1/application")) {
         return jsonResponse({
-          applicationName: "BigContainers",
+          applicationName: "Tarpeisto",
           version: "0.1.0",
           oidcConfigured: false,
         });
@@ -128,7 +128,7 @@ describe("SignInPage", () => {
       const method = input instanceof Request ? input.method : "GET";
       if (url.includes("/api/v1/application")) {
         return jsonResponse({
-          applicationName: "BigContainers",
+          applicationName: "Tarpeisto",
           version: "0.1.0",
           oidcConfigured: false,
         });
@@ -165,7 +165,7 @@ describe("SignInPage", () => {
       const method = input instanceof Request ? input.method : "GET";
       if (url.includes("/api/v1/application")) {
         return jsonResponse({
-          applicationName: "BigContainers",
+          applicationName: "Tarpeisto",
           version: "0.1.0",
           oidcConfigured: false,
         });
@@ -201,7 +201,7 @@ describe("SignInPage", () => {
       const method = input instanceof Request ? input.method : "GET";
       if (url.includes("/api/v1/application")) {
         return jsonResponse({
-          applicationName: "BigContainers",
+          applicationName: "Tarpeisto",
           version: "0.1.0",
           oidcConfigured: false,
         });

@@ -30,7 +30,7 @@ test("an online return audit starts, scans and completes", async ({ page }) => {
   );
   await page.route("**/api/v1/application", (route) =>
     route.fulfill({
-      json: { applicationName: "BigContainers", version: "test", oidcConfigured: false },
+      json: { applicationName: "Tarpeisto", version: "test", oidcConfigured: false },
     }),
   );
   await page.route("**/api/v1/audits/tasks/11111111-1111-1111-1111-111111111111", (route) =>

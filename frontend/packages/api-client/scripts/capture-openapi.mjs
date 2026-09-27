@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const outputPath = resolve(packageRoot, "openapi/backend-openapi.json");
-const sourceUrl = process.env.BIGCONTAINERS_OPENAPI_URL ?? "http://localhost:8080/v3/api-docs";
+const sourceUrl = process.env.TARPEISTO_OPENAPI_URL ?? "http://localhost:8080/v3/api-docs";
 
 const response = await fetch(sourceUrl, { headers: { accept: "application/json" } });
 if (!response.ok) {

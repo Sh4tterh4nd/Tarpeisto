@@ -1,1 +1,1 @@
-rootProject.name = "bigcontainers"
+rootProject.name = "tarpeisto"

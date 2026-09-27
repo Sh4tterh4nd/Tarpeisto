@@ -2,7 +2,7 @@ import { MemoryRouter } from "react-router-dom";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { AppError } from "@bigcontainers/api-client";
+import { AppError } from "@tarpeisto/api-client";
 import { ReviewPage } from "./ReviewPage";
 import * as reviewApi from "./reviewApi";
 import type { FindingReview } from "./reviewApi";

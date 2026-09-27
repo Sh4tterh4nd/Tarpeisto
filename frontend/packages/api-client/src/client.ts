@@ -55,7 +55,7 @@ function unauthenticatedMiddleware(onUnauthenticated?: () => void): Middleware {
 }
 
 /**
- * Creates the cross-cutting BigContainers API client: same-origin,
+ * Creates the cross-cutting Tarpeisto API client: same-origin,
  * cookie-based session credentials, automatic CSRF header propagation on
  * mutating requests, and a 401 hook for surfacing an unauthenticated state.
  * Error-body mapping is applied per-call with {@link toAppError}, since

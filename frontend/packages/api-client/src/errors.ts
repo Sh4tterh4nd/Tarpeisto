@@ -8,7 +8,7 @@
  * `ProblemDetails`/error schema, so `openapi-typescript` never emits one.
  * That is a gap in the backend's springdoc annotations, not a frontend
  * choice, and it is out of scope for this package (frontend-owned) to fix.
- * RFC 9457 itself is a stable external standard, not a BigContainers
+ * RFC 9457 itself is a stable external standard, not a Tarpeisto
  * request/response shape, so hand-maintaining its shape here — with the
  * `errorCode` extension documented in the specification — does not
  * duplicate generated code the way a hand-written `UserResponse` or

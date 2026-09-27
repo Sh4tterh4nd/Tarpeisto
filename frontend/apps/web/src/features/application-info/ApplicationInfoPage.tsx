@@ -5,9 +5,9 @@ import Chip from "@mui/material/Chip";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import { AppError, apiClient, toAppError } from "@bigcontainers/api-client";
-import type { components } from "@bigcontainers/api-client";
-import { PageHeading } from "@bigcontainers/shared-ui";
+import { AppError, apiClient, toAppError } from "@tarpeisto/api-client";
+import type { components } from "@tarpeisto/api-client";
+import { PageHeading } from "@tarpeisto/shared-ui";
 
 type ApplicationInfo = components["schemas"]["ApplicationInfoResponse"];
 
@@ -18,7 +18,7 @@ type LoadState =
 
 /**
  * Demonstrates the full Phase 0 plumbing end to end: routing, the shared
- * theme, and a real call through `@bigcontainers/api-client` to
+ * theme, and a real call through `@tarpeisto/api-client` to
  * `GET /api/v1/application`, including a clear error state.
  */
 export function ApplicationInfoPage() {
@@ -65,7 +65,7 @@ export function ApplicationInfoPage() {
     <>
       <PageHeading
         title="Application status"
-        description="Confirms the browser can reach the BigContainers API."
+        description="Confirms the browser can reach the Tarpeisto API."
       />
       <Paper variant="outlined" sx={{ p: 3 }}>
         {state.status === "loading" ? (
@@ -78,7 +78,7 @@ export function ApplicationInfoPage() {
         {state.status === "loaded" ? (
           <Stack spacing={1.5}>
             <Typography variant="h3" component="p">
-              {state.info.applicationName ?? "BigContainers"}
+              {state.info.applicationName ?? "Tarpeisto"}
             </Typography>
             <Typography color="text.secondary">
               Version {state.info.version ?? "unknown"}

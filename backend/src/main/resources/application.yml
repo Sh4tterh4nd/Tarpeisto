@@ -1,6 +1,6 @@
 spring:
   application:
-    name: bigcontainers
+    name: tarpeisto
   jpa:
     open-in-view: false
     hibernate:
@@ -64,44 +64,44 @@ springdoc:
   swagger-ui:
     enabled: false
 
-bigcontainers:
+tarpeisto:
   application:
-    display-name: ${BIGCONTAINERS_APPLICATION_DISPLAY_NAME:BigContainers}
+    display-name: ${TARPEISTO_APPLICATION_DISPLAY_NAME:Tarpeisto}
   seed:
-    default-organization-name: ${BIGCONTAINERS_SEED_DEFAULT_ORGANIZATION_NAME:Default Organization}
+    default-organization-name: ${TARPEISTO_SEED_DEFAULT_ORGANIZATION_NAME:Default Organization}
     # Bootstrap credentials for the first-run Owner (OwnerSeeder). Both must be set to create an
     # Owner; if either is blank (the default), no Owner is created automatically. Never logged.
-    owner-username: ${BIGCONTAINERS_SEED_OWNER_USERNAME:}
-    owner-password: ${BIGCONTAINERS_SEED_OWNER_PASSWORD:}
-    owner-display-name: ${BIGCONTAINERS_SEED_OWNER_DISPLAY_NAME:Owner}
-    owner-email: ${BIGCONTAINERS_SEED_OWNER_EMAIL:}
+    owner-username: ${TARPEISTO_SEED_OWNER_USERNAME:}
+    owner-password: ${TARPEISTO_SEED_OWNER_PASSWORD:}
+    owner-display-name: ${TARPEISTO_SEED_OWNER_DISPLAY_NAME:Owner}
+    owner-email: ${TARPEISTO_SEED_OWNER_EMAIL:}
   security:
     login-rate-limit:
-      max-attempts: ${BIGCONTAINERS_SECURITY_LOGIN_RATE_LIMIT_MAX_ATTEMPTS:5}
-      window: ${BIGCONTAINERS_SECURITY_LOGIN_RATE_LIMIT_WINDOW:PT15M}
+      max-attempts: ${TARPEISTO_SECURITY_LOGIN_RATE_LIMIT_MAX_ATTEMPTS:5}
+      window: ${TARPEISTO_SECURITY_LOGIN_RATE_LIMIT_WINDOW:PT15M}
   authentication:
     # LOCAL_ONLY (the default) or LOCAL_AND_OIDC. Selecting LOCAL_AND_OIDC without a usable
     # oidc.* configuration below fails application startup (AuthenticationProperties) rather
     # than starting half-configured (ADR-0003). Local login is always available in both modes.
-    mode: ${BIGCONTAINERS_AUTHENTICATION_MODE:LOCAL_ONLY}
+    mode: ${TARPEISTO_AUTHENTICATION_MODE:LOCAL_ONLY}
     # Automatic verified-email linking is disabled by default (ADR-0003 "Linking policy": "Owner-
     # approved or preconfigured linking is the safe default"). An Owner opts in explicitly.
-    auto-link-by-email: ${BIGCONTAINERS_AUTHENTICATION_AUTO_LINK_BY_EMAIL:false}
+    auto-link-by-email: ${TARPEISTO_AUTHENTICATION_AUTO_LINK_BY_EMAIL:false}
     oidc:
       # All blank/unset by default (LOCAL_ONLY). Deployment values come from environment variables
       # or mounted secret files, never committed, per ADR-0003.
-      display-name: ${BIGCONTAINERS_OIDC_DISPLAY_NAME:}
-      issuer-uri: ${BIGCONTAINERS_OIDC_ISSUER_URI:}
-      client-id: ${BIGCONTAINERS_OIDC_CLIENT_ID:}
-      client-secret: ${BIGCONTAINERS_OIDC_CLIENT_SECRET:}
-      scopes: ${BIGCONTAINERS_OIDC_SCOPES:openid,profile,email}
+      display-name: ${TARPEISTO_OIDC_DISPLAY_NAME:}
+      issuer-uri: ${TARPEISTO_OIDC_ISSUER_URI:}
+      client-id: ${TARPEISTO_OIDC_CLIENT_ID:}
+      client-secret: ${TARPEISTO_OIDC_CLIENT_SECRET:}
+      scopes: ${TARPEISTO_OIDC_SCOPES:openid,profile,email}
   s3:
-    enabled: ${BIGCONTAINERS_S3_ENABLED:false}
-    endpoint: ${BIGCONTAINERS_S3_ENDPOINT:}
-    region: ${BIGCONTAINERS_S3_REGION:}
-    bucket: ${BIGCONTAINERS_S3_BUCKET:}
-    access-key: ${BIGCONTAINERS_S3_ACCESS_KEY:}
-    secret-key: ${BIGCONTAINERS_S3_SECRET_KEY:}
-    path-style-access: ${BIGCONTAINERS_S3_PATH_STYLE_ACCESS:true}
-    server-side-encryption: ${BIGCONTAINERS_S3_SERVER_SIDE_ENCRYPTION:}
-    max-upload-bytes: ${BIGCONTAINERS_S3_MAX_UPLOAD_BYTES:10485760}
+    enabled: ${TARPEISTO_S3_ENABLED:false}
+    endpoint: ${TARPEISTO_S3_ENDPOINT:}
+    region: ${TARPEISTO_S3_REGION:}
+    bucket: ${TARPEISTO_S3_BUCKET:}
+    access-key: ${TARPEISTO_S3_ACCESS_KEY:}
+    secret-key: ${TARPEISTO_S3_SECRET_KEY:}
+    path-style-access: ${TARPEISTO_S3_PATH_STYLE_ACCESS:true}
+    server-side-encryption: ${TARPEISTO_S3_SERVER_SIDE_ENCRYPTION:}
+    max-upload-bytes: ${TARPEISTO_S3_MAX_UPLOAD_BYTES:10485760}

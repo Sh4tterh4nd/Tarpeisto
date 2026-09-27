@@ -7,7 +7,7 @@ import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import { PageHeading } from "@bigcontainers/shared-ui";
+import { PageHeading } from "@tarpeisto/shared-ui";
 import { useNavigate } from "react-router-dom";
 import type { QrScannerCapability } from "../../platform/capabilities/QrScannerCapability";
 import { webQrScannerCapability } from "../../platform/web/WebQrScannerCapability";
@@ -20,7 +20,7 @@ const VALIDATION_MESSAGES: Record<Exclude<AssetCodeValidation, { valid: true }>[
     empty: "Enter the public asset code from the label.",
     "invalid-length": "That code is the wrong length. Public asset codes have six characters.",
     "invalid-symbol":
-      "That code contains a character that never appears in a BigContainers asset code.",
+      "That code contains a character that never appears in a Tarpeisto asset code.",
     "checksum-mismatch":
       "That code does not check out. Re-read the label; this looks like a transcription error.",
   };

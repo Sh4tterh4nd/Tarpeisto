@@ -6,9 +6,9 @@ import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import { Navigate, useLocation } from "react-router-dom";
-import { apiClient } from "@bigcontainers/api-client";
-import type { AppError } from "@bigcontainers/api-client";
-import { PageHeading } from "@bigcontainers/shared-ui";
+import { apiClient } from "@tarpeisto/api-client";
+import type { AppError } from "@tarpeisto/api-client";
+import { PageHeading } from "@tarpeisto/shared-ui";
 import { useSession } from "./useSession";
 
 type OidcAvailability =
@@ -107,7 +107,7 @@ export function SignInPage() {
 
   return (
     <>
-      <PageHeading title="Sign in" description="Sign in with your BigContainers account." />
+      <PageHeading title="Sign in" description="Sign in with your Tarpeisto account." />
       <Paper variant="outlined" sx={{ p: 3, maxWidth: 400 }}>
         <Stack component="form" spacing={2} onSubmit={handleSubmit} noValidate>
           <TextField

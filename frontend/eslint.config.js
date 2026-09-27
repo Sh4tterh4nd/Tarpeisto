@@ -8,8 +8,8 @@ import eslintConfigPrettier from "eslint-config-prettier";
 
 /**
  * Boundary rules (policy 6.2):
- * - `apps/web` may only import the public entry point of `@bigcontainers/api-client`
- *   and `@bigcontainers/shared-ui`, never their internal file paths.
+ * - `apps/web` may only import the public entry point of `@tarpeisto/api-client`
+ *   and `@tarpeisto/shared-ui`, never their internal file paths.
  * - Only the data/outbox layer may import `dexie` directly; ordinary feature/UI code
  *   must not touch IndexedDB directly. No such layer exists yet in Phase 0, so the
  *   restriction currently applies everywhere it could be imported from.
@@ -21,12 +21,12 @@ const boundaryRestrictedImports = {
       {
         patterns: [
           {
-            group: ["@bigcontainers/api-client/*", "!@bigcontainers/api-client"],
-            message: "Import only the @bigcontainers/api-client package entry point.",
+            group: ["@tarpeisto/api-client/*", "!@tarpeisto/api-client"],
+            message: "Import only the @tarpeisto/api-client package entry point.",
           },
           {
-            group: ["@bigcontainers/shared-ui/*", "!@bigcontainers/shared-ui"],
-            message: "Import only the @bigcontainers/shared-ui package entry point.",
+            group: ["@tarpeisto/shared-ui/*", "!@tarpeisto/shared-ui"],
+            message: "Import only the @tarpeisto/shared-ui package entry point.",
           },
           {
             group: ["dexie", "dexie/*"],

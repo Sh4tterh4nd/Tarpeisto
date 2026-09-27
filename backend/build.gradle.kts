@@ -11,7 +11,7 @@ plugins {
 
 group = "io.kellermann"
 version = "0.1.0-SNAPSHOT"
-description = "BigContainers equipment and inventory management application"
+description = "Tarpeisto equipment and inventory management application"
 
 java {
     toolchain {
@@ -26,7 +26,7 @@ repositories {
 // ---------------------------------------------------------------------------
 // Frontend integration (contract with the frontend workspace)
 // ---------------------------------------------------------------------------
-// The pnpm workspace root is <repo>/frontend. The web package is @bigcontainers/web
+// The pnpm workspace root is <repo>/frontend. The web package is @tarpeisto/web
 // at frontend/apps/web and its production build output is frontend/apps/web/dist.
 // `-PskipFrontend=true` lets backend-only local iteration (test, check) skip it.
 // jib/jibBuildTar must never assemble an image without the matching frontend
@@ -58,11 +58,11 @@ val pnpmInstall = tasks.register<Exec>("pnpmInstall") {
 }
 
 val frontendBuild = tasks.register<Exec>("frontendBuild") {
-    description = "Builds the @bigcontainers/web production bundle."
+    description = "Builds the @tarpeisto/web production bundle."
     group = "frontend"
     dependsOn(pnpmInstall)
     workingDir = frontendDir
-    commandLine(pnpmExecutable, "--filter", "@bigcontainers/web", "build")
+    commandLine(pnpmExecutable, "--filter", "@tarpeisto/web", "build")
     inputs.dir(File(frontendWebDir, "src")).optional()
     inputs.file(File(frontendWebDir, "package.json")).optional()
     inputs.file(File(frontendWebDir, "vite.config.ts")).optional()
@@ -242,7 +242,7 @@ val gitRevision: String = try {
 }
 
 val ghcrOwner: String = (findProperty("ghcrOwner") as String? ?: "sh4tterh4nd").lowercase()
-val ghcrImageName: String = (findProperty("imageName") as String?) ?: "ghcr.io/$ghcrOwner/bigcontainers"
+val ghcrImageName: String = (findProperty("imageName") as String?) ?: "ghcr.io/$ghcrOwner/tarpeisto"
 val ghcrImageTag: String = (findProperty("imageTag") as String?) ?: "latest"
 
 jib {
@@ -263,11 +263,11 @@ jib {
         creationTime.set("USE_CURRENT_TIMESTAMP")
         labels.set(
             mapOf(
-                "org.opencontainers.image.source" to "https://github.com/$ghcrOwner/BigContainers",
+                "org.opencontainers.image.source" to "https://github.com/$ghcrOwner/Tarpeisto",
                 "org.opencontainers.image.revision" to gitRevision,
                 "org.opencontainers.image.version" to project.version.toString(),
                 "org.opencontainers.image.description" to
-                    "BigContainers equipment, container, and inventory management application"
+                    "Tarpeisto equipment, container, and inventory management application"
             )
         )
     }

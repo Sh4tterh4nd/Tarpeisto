@@ -11,7 +11,7 @@ import MenuItem from "@mui/material/MenuItem";
 import Select from "@mui/material/Select";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
-import type { AppError } from "@bigcontainers/api-client";
+import type { AppError } from "@tarpeisto/api-client";
 import type { Role } from "./sessionApi";
 import type { CreateUserInput } from "./usersApi";
 import { ROLE_LABELS, ROLE_OPTIONS } from "./roles";

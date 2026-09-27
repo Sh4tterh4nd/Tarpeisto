@@ -1,5 +1,5 @@
 import { createContext } from "react";
-import type { AppError } from "@bigcontainers/api-client";
+import type { AppError } from "@tarpeisto/api-client";
 import type { LoginCredentials, Role, SessionPrincipal } from "./sessionApi";
 
 export type SessionStatus = "loading" | "authenticated" | "anonymous";

@@ -1,5 +1,5 @@
-import { AppError, apiClient, toAppError } from "@bigcontainers/api-client";
-import type { components } from "@bigcontainers/api-client";
+import { AppError, apiClient, toAppError } from "@tarpeisto/api-client";
+import type { components } from "@tarpeisto/api-client";
 import type { Role } from "./sessionApi";
 
 /**

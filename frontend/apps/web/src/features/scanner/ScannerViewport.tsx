@@ -46,7 +46,7 @@ function problemStatus(
 const STATUS_COPY: Record<ViewportStatus, string> = {
   ready: "Camera is ready when you are.",
   starting: "Requesting camera access.",
-  running: "Looking continuously for a BigContainers QR code.",
+  running: "Looking continuously for a Tarpeisto QR code.",
   paused: "Camera paused. Resume when the label is in view.",
   "permission-denied":
     "Camera permission was denied. Allow camera access in your browser, or use manual entry.",

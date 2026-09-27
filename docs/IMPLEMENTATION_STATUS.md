@@ -1,4 +1,4 @@
-# BigContainers Implementation Status
+# Tarpeisto Implementation Status
 
 Status: Living record of what exists, as of 2026-09-27
 
@@ -211,7 +211,7 @@ missing, never as forbidden, so existence does not leak.
 
 ### Frontend (`frontend/`)
 
-pnpm workspace: `@bigcontainers/web`, `@bigcontainers/api-client`, `@bigcontainers/shared-ui`.
+pnpm workspace: `@tarpeisto/web`, `@tarpeisto/api-client`, `@tarpeisto/shared-ui`.
 React 19, Vite 8, TypeScript 6.0.3 (**not** 7.x — `typescript-eslint` declares `<6.1.0`), MUI 9
 behind owned wrappers and design tokens, `vite-plugin-pwa`/Workbox, React Router 7.
 

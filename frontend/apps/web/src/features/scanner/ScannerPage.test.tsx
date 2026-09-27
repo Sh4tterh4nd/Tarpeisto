@@ -134,7 +134,7 @@ describe("ScannerPage", () => {
     await waitFor(() => expect(scanner.capability.start).toHaveBeenCalled());
 
     scanner.emit("7K3MXY");
-    scanner.emit("not a BigContainers code");
+    scanner.emit("not a Tarpeisto code");
     resolveLookup({ kind: "ok", data: asset });
 
     await Promise.resolve();

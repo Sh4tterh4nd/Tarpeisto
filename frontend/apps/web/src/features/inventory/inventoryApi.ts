@@ -1,5 +1,5 @@
-import { AppError, apiClient, toAppError } from "@bigcontainers/api-client";
-import type { components, paths, ProblemDetails } from "@bigcontainers/api-client";
+import { AppError, apiClient, toAppError } from "@tarpeisto/api-client";
+import type { components, paths, ProblemDetails } from "@tarpeisto/api-client";
 
 // The generated OpenAPI marks response members optional because Springdoc does not emit
 // `required` for Java record accessors. These endpoints always serialize their declared response

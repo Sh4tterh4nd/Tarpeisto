@@ -23,7 +23,7 @@ export interface AppShellLayoutProps {
 }
 
 /**
- * BigContainers-owned page shell with a desktop navigation rail, mobile
+ * Tarpeisto-owned page shell with a desktop navigation rail, mobile
  * drawer, status/account strip, and constrained content area.
  */
 export function AppShellLayout({

@@ -1,5 +1,5 @@
-import { AppError, apiClient, toAppError } from "@bigcontainers/api-client";
-import type { components } from "@bigcontainers/api-client";
+import { AppError, apiClient, toAppError } from "@tarpeisto/api-client";
+import type { components } from "@tarpeisto/api-client";
 
 export type AssetLabelPdfInput = components["schemas"]["CreateAssetLabelPdfRequest"];
 export type AssetLabelCalibrationInput =

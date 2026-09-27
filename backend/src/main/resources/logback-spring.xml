@@ -4,7 +4,7 @@
 
     <!--
       Human-readable console output for local development, including the request/trace ID
-      correlation set by io.kellermann.bigcontainers.config.RequestCorrelationFilter.
+      correlation set by io.kellermann.tarpeisto.config.RequestCorrelationFilter.
     -->
     <springProfile name="dev">
         <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">

@@ -10,7 +10,7 @@ import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { Link as RouterLink } from "react-router-dom";
-import { PageHeading } from "@bigcontainers/shared-ui";
+import { PageHeading } from "@tarpeisto/shared-ui";
 import { useParams } from "react-router-dom";
 import { ScannerViewport } from "../scanner/ScannerViewport";
 import { useSession } from "../identity/useSession";

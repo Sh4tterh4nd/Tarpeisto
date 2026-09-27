@@ -6,7 +6,7 @@ Date: 2026-09-25
 
 ## Context
 
-BigContainers is a self-hostable equipment-management application for a small event-technology team. Its most demanding interactions are mobile QR scanning, camera uploads, short-outage resilience, exact transactional booking/audit rules, and deterministic PDF/label output. It does not need public-page SEO, server-side rendering, independent services, or native mobile applications.
+Tarpeisto is a self-hostable equipment-management application for a small event-technology team. Its most demanding interactions are mobile QR scanning, camera uploads, short-outage resilience, exact transactional booking/audit rules, and deterministic PDF/label output. It does not need public-page SEO, server-side rendering, independent services, or native mobile applications.
 
 The production topology should remain understandable to a small operator: one application, PostgreSQL, and S3-compatible object storage.
 
@@ -25,7 +25,7 @@ The application is primarily transactional CRUD and file transfer. A servlet app
 
 ### Backend source organization
 
-- Conventional layered packages under `io.kellermann.bigcontainers`
+- Conventional layered packages under `io.kellermann.tarpeisto`
 - Global `controller`, `service`, `repository`, and `model` packages
 - Narrow technical packages such as `config`, `security`, `storage`, `document`, and `exception`
 - Dependency direction `controller -> service -> repository/model`
@@ -63,7 +63,7 @@ Use a React single-page application with:
 - TypeScript in strict mode
 - Vite
 - React Router
-- Material UI behind BigContainers-owned components and design tokens
+- Material UI behind Tarpeisto-owned components and design tokens
 - A pnpm workspace with the package-manager version pinned in `package.json`
 - `vite-plugin-pwa` backed by Workbox
 - Dexie/IndexedDB for the explicit idempotent scan and pending-upload queue
@@ -73,9 +73,9 @@ Use a React single-page application with:
 
 ### Why React
 
-The existing Leirly project already establishes a working React/TypeScript/Vite/pnpm/MUI/OpenAPI/Vitest/Playwright/Workbox toolchain and feature-oriented source conventions. Reusing that experience, dependency knowledge, testing approach, and shared mental model is more valuable than introducing Vue for this project. Vue would offer somewhat more concise component syntax, but it provides no meaningful QR, camera, PWA, offline-storage, or accessibility advantage for BigContainers. BigContainers does not need Next.js or another server-rendering framework.
+The existing Leirly project already establishes a working React/TypeScript/Vite/pnpm/MUI/OpenAPI/Vitest/Playwright/Workbox toolchain and feature-oriented source conventions. Reusing that experience, dependency knowledge, testing approach, and shared mental model is more valuable than introducing Vue for this project. Vue would offer somewhat more concise component syntax, but it provides no meaningful QR, camera, PWA, offline-storage, or accessibility advantage for Tarpeisto. Tarpeisto does not need Next.js or another server-rendering framework.
 
-BigContainers uses one frontend application rather than copying Leirly's organizer/participant split. Owners, deputies, operators, and temporary volunteers use the same installed PWA, and their server-enforced permissions determine available routes and actions. Route-level code splitting can keep volunteer scanner flows small without creating a second deployable application.
+Tarpeisto uses one frontend application rather than copying Leirly's organizer/participant split. Owners, deputies, operators, and temporary volunteers use the same installed PWA, and their server-enforced permissions determine available routes and actions. Route-level code splitting can keep volunteer scanner flows small without creating a second deployable application.
 
 ## Application integration
 
@@ -142,7 +142,7 @@ The originally accepted self-hosted object store was MinIO. It is replaced by
 ### Reason
 
 MinIO's container images are no longer available to anonymous pulls, so a clean checkout could not
-satisfy the specification's requirement that BigContainers be straightforward to self-host.
+satisfy the specification's requirement that Tarpeisto be straightforward to self-host.
 Verified on 2026-09-25:
 
 - `docker.io/minio/minio` returns `denied: requested access to the resource is denied` for every
@@ -211,3 +211,14 @@ without a committed `.env` file or plaintext credentials in stack YAML.
   services beyond one replica without shared storage.
 - Object-store conformance tests exercise the same S3 contract and need no application behavior
   change solely because the bundled server changed.
+
+## Amendment 2026-09-27: canonical application identity
+
+The canonical product identity is **Tarpeisto**. The Java root package is
+`io.kellermann.tarpeisto`; Spring configuration uses `tarpeisto.*`; environment variables use the
+`TARPEISTO_*` prefix; workspace packages use `@tarpeisto/*`; and the default OCI image name is
+`tarpeisto`. These are replacements, not compatibility aliases.
+
+The persisted schema and object-storage object keys remain unchanged. A follow-on Flyway migration
+invalidates existing JDBC sessions because serialized security principals include their Java class
+name.

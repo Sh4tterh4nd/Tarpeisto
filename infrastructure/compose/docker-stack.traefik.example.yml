@@ -14,39 +14,39 @@ services:
   app:
     # Kept as :main to match the supplied deployment. Pin this to an immutable
     # release version or digest before a production rollout.
-    image: ghcr.io/sh4tterh4nd/bigcontainers:main
+    image: ghcr.io/sh4tterh4nd/tarpeisto:main
     networks:
       - traefik
       - tarpeisto
     environment:
       SPRING_CONFIG_IMPORT: configtree:/run/secrets/
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/bigcontainers
-      SPRING_DATASOURCE_USERNAME: bigcontainers
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/tarpeisto
+      SPRING_DATASOURCE_USERNAME: tarpeisto
       SERVER_FORWARD_HEADERS_STRATEGY: FRAMEWORK
-      BIGCONTAINERS_APPLICATION_DISPLAY_NAME: Tarpeisto
-      BIGCONTAINERS_APPLICATION_PUBLIC_BASE_URL: https://tarpeisto.kellermann.io
-      BIGCONTAINERS_S3_ENABLED: "true"
-      BIGCONTAINERS_S3_ENDPOINT: http://seaweedfs:8333
-      BIGCONTAINERS_S3_REGION: us-east-1
-      BIGCONTAINERS_S3_BUCKET: bigcontainers
-      BIGCONTAINERS_S3_PATH_STYLE_ACCESS: "true"
-      BIGCONTAINERS_AUTHENTICATION_MODE: LOCAL_ONLY
-      BIGCONTAINERS_AUTHENTICATION_AUTO_LINK_BY_EMAIL: "false"
-      BIGCONTAINERS_SECURITY_LOGIN_RATE_LIMIT_MAX_ATTEMPTS: "5"
-      BIGCONTAINERS_SECURITY_LOGIN_RATE_LIMIT_WINDOW: PT15M
-      BIGCONTAINERS_SEED_DEFAULT_ORGANIZATION_NAME: Default Organization
-      BIGCONTAINERS_SEED_OWNER_USERNAME: admin
-      BIGCONTAINERS_SEED_OWNER_DISPLAY_NAME: Owner
-      BIGCONTAINERS_SEED_OWNER_EMAIL: arieh.kellermann@gmail.com
+      TARPEISTO_APPLICATION_DISPLAY_NAME: Tarpeisto
+      TARPEISTO_APPLICATION_PUBLIC_BASE_URL: https://tarpeisto.kellermann.io
+      TARPEISTO_S3_ENABLED: "true"
+      TARPEISTO_S3_ENDPOINT: http://seaweedfs:8333
+      TARPEISTO_S3_REGION: us-east-1
+      TARPEISTO_S3_BUCKET: tarpeisto
+      TARPEISTO_S3_PATH_STYLE_ACCESS: "true"
+      TARPEISTO_AUTHENTICATION_MODE: LOCAL_ONLY
+      TARPEISTO_AUTHENTICATION_AUTO_LINK_BY_EMAIL: "false"
+      TARPEISTO_SECURITY_LOGIN_RATE_LIMIT_MAX_ATTEMPTS: "5"
+      TARPEISTO_SECURITY_LOGIN_RATE_LIMIT_WINDOW: PT15M
+      TARPEISTO_SEED_DEFAULT_ORGANIZATION_NAME: Default Organization
+      TARPEISTO_SEED_OWNER_USERNAME: admin
+      TARPEISTO_SEED_OWNER_DISPLAY_NAME: Owner
+      TARPEISTO_SEED_OWNER_EMAIL: arieh.kellermann@gmail.com
     secrets:
       - source: postgres_password
         target: spring.datasource.password
       - source: s3_access_key
-        target: bigcontainers.s3.access-key
+        target: tarpeisto.s3.access-key
       - source: s3_secret_key
-        target: bigcontainers.s3.secret-key
+        target: tarpeisto.s3.secret-key
       - source: owner_password
-        target: bigcontainers.seed.owner-password
+        target: tarpeisto.seed.owner-password
     healthcheck:
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf \"GET /actuator/health/readiness HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n\" >&3 && grep -q \"\\\"status\\\":\\\"UP\\\"\" <&3"]
       interval: 10s
@@ -81,8 +81,8 @@ services:
     networks:
       - tarpeisto
     environment:
-      POSTGRES_DB: bigcontainers
-      POSTGRES_USER: bigcontainers
+      POSTGRES_DB: tarpeisto
+      POSTGRES_USER: tarpeisto
       POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
     secrets:
       - source: postgres_password
@@ -90,7 +90,7 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U bigcontainers -d bigcontainers"]
+      test: ["CMD-SHELL", "pg_isready -U tarpeisto -d tarpeisto"]
       interval: 5s
       timeout: 5s
       retries: 12
@@ -99,7 +99,7 @@ services:
       replicas: 1
       placement:
         constraints:
-          - node.labels.bigcontainers-data == primary
+          - node.labels.tarpeisto-data == primary
       restart_policy:
         condition: any
         delay: 5s
@@ -122,7 +122,7 @@ services:
         export AWS_SECRET_ACCESS_KEY="$$(cat /run/secrets/s3_secret_key)"
         exec /entrypoint.sh mini -dir=/data
     environment:
-      S3_BUCKET: bigcontainers
+      S3_BUCKET: tarpeisto
     secrets:
       - source: s3_access_key
         target: s3_access_key
@@ -140,7 +140,7 @@ services:
       replicas: 1
       placement:
         constraints:
-          - node.labels.bigcontainers-data == primary
+          - node.labels.tarpeisto-data == primary
       restart_policy:
         condition: any
         delay: 5s

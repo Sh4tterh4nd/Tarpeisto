@@ -68,7 +68,7 @@ jobs:
           set -euo pipefail
 
           owner_lower="$(printf '%s' "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
-          image="ghcr.io/${owner_lower}/bigcontainers"
+          image="ghcr.io/${owner_lower}/tarpeisto"
           sha_tag="sha-$(printf '%s' "${{ github.sha }}" | cut -c1-12)"
 
           if [ "${{ github.ref_type }}" = "tag" ]; then

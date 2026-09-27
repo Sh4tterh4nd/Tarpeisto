@@ -6,7 +6,7 @@ Date: 2026-09-25
 
 ## Context
 
-BigContainers has one Spring Boot backend and one React PWA. Production should expose one application origin and should not require a Node.js server, a separate frontend container, or a hand-maintained Dockerfile. The project will use GitHub Actions and GitHub Container Registry (GHCR) for continuous integration and image distribution.
+Tarpeisto has one Spring Boot backend and one React PWA. Production should expose one application origin and should not require a Node.js server, a separate frontend container, or a hand-maintained Dockerfile. The project will use GitHub Actions and GitHub Container Registry (GHCR) for continuous integration and image distribution.
 
 "One container" in this decision means one **application container**. PostgreSQL and the object store (SeaweedFS, or an external S3-compatible service), remain separate runtime services so that their data, lifecycle, upgrades, and backups are independent from the application image.
 
@@ -67,7 +67,7 @@ Third-party GitHub Actions must be pinned to full commit SHAs. A personal access
 
 ### Registry and tags
 
-- The canonical image name is `ghcr.io/<lowercase-owner>/bigcontainers`.
+- The canonical image name is `ghcr.io/<lowercase-owner>/tarpeisto`.
 - A default-branch build publishes:
   - `main`
   - `sha-<12-character-commit-prefix>`

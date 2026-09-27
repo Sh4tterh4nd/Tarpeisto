@@ -1,5 +1,5 @@
 {
-  "name": "bigcontainers-frontend",
+  "name": "tarpeisto-frontend",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.21.0",
@@ -12,8 +12,8 @@
     "lint": "eslint .",
     "typecheck": "pnpm -r --if-present run typecheck",
     "test": "pnpm -r --if-present run test",
-    "build": "pnpm --filter @bigcontainers/web run build",
-    "test:e2e": "pnpm --filter @bigcontainers/web run test:e2e"
+    "build": "pnpm --filter @tarpeisto/web run build",
+    "test:e2e": "pnpm --filter @tarpeisto/web run test:e2e"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

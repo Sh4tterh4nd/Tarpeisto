@@ -1,5 +1,5 @@
-import { AppError, apiClient, toAppError } from "@bigcontainers/api-client";
-import type { components, ProblemDetails } from "@bigcontainers/api-client";
+import { AppError, apiClient, toAppError } from "@tarpeisto/api-client";
+import type { components, ProblemDetails } from "@tarpeisto/api-client";
 
 export type FindingReview = Required<components["schemas"]["FindingReviewResponse"]>;
 export type ResolutionAction = components["schemas"]["ResolveFindingRequest"]["action"];

@@ -1,4 +1,4 @@
-# BigContainers Implementation Plan
+# Tarpeisto Implementation Plan
 
 Status: Phase 9.1 online audit execution complete; persistent queue and photo recovery explicitly deferred.
 
@@ -6,7 +6,7 @@ Depends on: [Functional specification](SPECIFICATION.md)
 
 ## 1. Delivery approach
 
-Build BigContainers as a conventional layered Spring Boot application with one web/PWA frontend, one backend, and PostgreSQL. Start with the simplest controller-service-repository structure that keeps transport, business logic, and persistence separate. Do not introduce Spring Modulith, multiple backend projects, or separately deployed services unless later complexity provides a concrete reason.
+Build Tarpeisto as a conventional layered Spring Boot application with one web/PWA frontend, one backend, and PostgreSQL. Start with the simplest controller-service-repository structure that keeps transport, business logic, and persistence separate. Do not introduce Spring Modulith, multiple backend projects, or separately deployed services unless later complexity provides a concrete reason.
 
 Implementation should proceed in vertical slices. Each milestone must leave the application demonstrable and tested rather than creating all database tables first and postponing usable workflows until the end.
 
@@ -46,7 +46,7 @@ Accepted frontend choices:
 
 - React with TypeScript and Vite
 - React Router for client-side navigation
-- Material UI behind BigContainers-owned shared components and design tokens
+- Material UI behind Tarpeisto-owned shared components and design tokens
 - A pnpm workspace with exactly pinned dependency versions
 - `vite-plugin-pwa`/Workbox for the application manifest, service worker, and static asset cache
 - IndexedDB through Dexie for the short-outage scan and upload queue
@@ -67,7 +67,7 @@ ADR-0001 also proposes the data-access, session, API, PDF, QR, and test tooling.
 Preserve these responsibilities. The concrete layout follows the established Leirly conventions while keeping only the pieces this smaller application needs:
 
 ```text
-BigContainers/
+Tarpeisto/
 |-- AGENTS.md
 |-- README.md
 |-- backend/                   # one Gradle/Spring Boot project
@@ -92,7 +92,7 @@ BigContainers/
 
 The production build copies the compiled `frontend/apps/web/` output into the backend's static resources; it remains one deployable application. Do not create a second frontend app or another shared package until a real boundary requires it.
 
-Backend production code starts under `io.kellermann.bigcontainers` with global `controller`, `service`, `repository`, and `model` packages, plus narrowly scoped technical packages such as `config`, `security`, `storage`, `document`, and `exception`. The dependency direction is `controller -> service -> repository/model`; controllers do not call repositories directly.
+Backend production code starts under `io.kellermann.tarpeisto` with global `controller`, `service`, `repository`, and `model` packages, plus narrowly scoped technical packages such as `config`, `security`, `storage`, `document`, and `exception`. The dependency direction is `controller -> service -> repository/model`; controllers do not call repositories directly.
 
 ### 2.3 Foundation deliverables
 
@@ -101,7 +101,7 @@ Backend production code starts under `io.kellermann.bigcontainers` with global `
 - Gradle frontend resource integration so every production backend/image build includes the matching React build
 - Jib configuration with a digest-pinned Java 25 runtime base image, non-root runtime user, port, and OCI labels
 - Pull-request image assembly validation with `jibBuildTar`, without registry publication
-- Default-branch and version-tag GitHub Actions publication to `ghcr.io/<owner>/bigcontainers` using `GITHUB_TOKEN`
+- Default-branch and version-tag GitHub Actions publication to `ghcr.io/<owner>/tarpeisto` using `GITHUB_TOKEN`
 - Local development configuration
 - Docker Swarm-compatible stack with application, PostgreSQL, and SeaweedFS
 - Configuration that replaces SeaweedFS with an external S3-compatible endpoint

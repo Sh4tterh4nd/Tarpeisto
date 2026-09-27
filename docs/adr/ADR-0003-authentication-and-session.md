@@ -6,7 +6,7 @@ Date: 2026-09-25
 
 ## Context
 
-BigContainers is primarily self-hosted by small organizations. It needs a simple local login that works without external infrastructure, while some installations already have a third-party identity provider and should not have to maintain another password for every permanent user.
+Tarpeisto is primarily self-hosted by small organizations. It needs a simple local login that works without external infrastructure, while some installations already have a third-party identity provider and should not have to maintain another password for every permanent user.
 
 Authentication must fit the same-origin React/Spring architecture from ADR-0001, preserve server-side organization and role enforcement, support temporary volunteer QR access, and avoid locking an Owner out after an OIDC provider outage or configuration mistake.
 
@@ -32,7 +32,7 @@ An installation may enforce OIDC for ordinary permanent users, but it must retai
 
 ### Internal identity and authorization
 
-`User` remains the internal principal. Organization memberships, roles, account-disabled state, and authorization decisions remain in BigContainers.
+`User` remains the internal principal. Organization memberships, roles, account-disabled state, and authorization decisions remain in Tarpeisto.
 
 Add `ExternalIdentity` with:
 
@@ -45,7 +45,7 @@ Add `ExternalIdentity` with:
 
 The durable external key is the unique pair `(issuer, subject)`. Email is not a durable login identifier because it can change or be reassigned.
 
-Provider groups and claims do not assign BigContainers roles in the initial release. Just-in-time user provisioning is also deferred.
+Provider groups and claims do not assign Tarpeisto roles in the initial release. Just-in-time user provisioning is also deferred.
 
 ### Linking policy
 
@@ -75,9 +75,9 @@ Both local and OIDC authentication end in the same Spring Session JDBC-backed ap
 - CSRF protection on browser mutations
 - No bearer or provider token in `localStorage` or other JavaScript-readable persistent storage
 
-Provider access and refresh tokens, if retained at all, stay server-side and are encrypted or protected with deployment secrets. BigContainers does not require provider API access for initial login, so tokens should not be retained longer than Spring Security needs.
+Provider access and refresh tokens, if retained at all, stay server-side and are encrypted or protected with deployment secrets. Tarpeisto does not require provider API access for initial login, so tokens should not be retained longer than Spring Security needs.
 
-Local logout invalidates the BigContainers session. Provider-wide logout is best effort because not every provider supports a uniform end-session flow.
+Local logout invalidates the Tarpeisto session. Provider-wide logout is best effort because not every provider supports a uniform end-session flow.
 
 ### Temporary access
 

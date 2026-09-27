@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { onUnauthenticatedResponse } from "@bigcontainers/api-client";
+import { onUnauthenticatedResponse } from "@tarpeisto/api-client";
 import { SessionContext, type SessionContextValue, type SessionStatus } from "./SessionContext";
 import {
   fetchCurrentSession,

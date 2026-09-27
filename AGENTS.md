@@ -1,4 +1,4 @@
-# BigContainers contributor instructions
+# Tarpeisto contributor instructions
 
 Before changing application code, read these documents in order:
 
@@ -9,7 +9,7 @@ Before changing application code, read these documents in order:
 
 The specification defines behavior, accepted ADRs define architecture, and the development policies define mandatory package and naming conventions. Resolve conflicts in the documents before writing code.
 
-Implementation must preserve the documented controller-service-repository dependency direction under `io.kellermann.bigcontainers`, organization ownership on every tenant-owned record, server-side authorization, idempotent scanner mutations, and immutable completed manifests/audit observations.
+Implementation must preserve the documented controller-service-repository dependency direction under `io.kellermann.tarpeisto`, organization ownership on every tenant-owned record, server-side authorization, idempotent scanner mutations, and immutable completed manifests/audit observations.
 
 Use the global `controller`, `service`, `repository`, and `model` packages defined in the development policies. Do not add empty packages or generic dumping grounds such as `common`, `misc`, or `util` in anticipation of future code.
 

@@ -37,7 +37,7 @@ test("an owner confirms a permanent review decision before resolving it", async 
   );
   await page.route("**/api/v1/application", (route) =>
     route.fulfill({
-      json: { applicationName: "BigContainers", version: "test", oidcConfigured: false },
+      json: { applicationName: "Tarpeisto", version: "test", oidcConfigured: false },
     }),
   );
   await page.route("**/api/v1/findings?*", (route) => route.fulfill({ json: [finding] }));

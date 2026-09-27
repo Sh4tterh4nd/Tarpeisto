@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { apiClient } from "@bigcontainers/api-client";
-import type { AppError } from "@bigcontainers/api-client";
+import { apiClient } from "@tarpeisto/api-client";
+import type { AppError } from "@tarpeisto/api-client";
 import { SessionProvider } from "./SessionProvider";
 import { useSession } from "./useSession";
 

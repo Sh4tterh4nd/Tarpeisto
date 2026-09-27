@@ -1,5 +1,5 @@
 {
-  "name": "@bigcontainers/web",
+  "name": "@tarpeisto/web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -12,8 +12,8 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@bigcontainers/api-client": "workspace:*",
-    "@bigcontainers/shared-ui": "workspace:*",
+    "@tarpeisto/api-client": "workspace:*",
+    "@tarpeisto/shared-ui": "workspace:*",
     "@emotion/react": "11.14.0",
     "@emotion/styled": "11.14.1",
     "@mui/icons-material": "9.4.0",

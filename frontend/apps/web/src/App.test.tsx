@@ -31,7 +31,7 @@ describe("App shell", () => {
           ? { items: [], nextCursor: undefined }
           : url.includes("/api/v1/categories")
             ? []
-            : { applicationName: "BigContainers", version: "0.1.0", oidcConfigured: false };
+            : { applicationName: "Tarpeisto", version: "0.1.0", oidcConfigured: false };
       return Promise.resolve(
         new Response(JSON.stringify(body), {
           status: 200,
@@ -52,9 +52,9 @@ describe("App shell", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole("heading", { name: "BigContainers" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Tarpeisto" })).toBeInTheDocument();
     expect(screen.getAllByRole("status").length).toBeGreaterThan(0);
-    expect(await screen.findByText("BigContainers", { selector: "p" })).toBeInTheDocument();
+    expect(await screen.findByText("Tarpeisto", { selector: "p" })).toBeInTheDocument();
   });
 
   it("navigates to the continuous scanner route", async () => {
