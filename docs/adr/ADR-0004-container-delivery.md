@@ -8,7 +8,7 @@ Date: 2026-09-25
 
 BigContainers has one Spring Boot backend and one React PWA. Production should expose one application origin and should not require a Node.js server, a separate frontend container, or a hand-maintained Dockerfile. The project will use GitHub Actions and GitHub Container Registry (GHCR) for continuous integration and image distribution.
 
-"One container" in this decision means one **application container**. PostgreSQL and the object store (Garage, or an external S3-compatible service), remain separate runtime services so that their data, lifecycle, upgrades, and backups are independent from the application image.
+"One container" in this decision means one **application container**. PostgreSQL and the object store (SeaweedFS, or an external S3-compatible service), remain separate runtime services so that their data, lifecycle, upgrades, and backups are independent from the application image.
 
 ## Decision
 
@@ -82,10 +82,10 @@ Third-party GitHub Actions must be pinned to full commit SHAs. A personal access
 
 ### Self-hosted deployment
 
-- The first-party Compose file references the GHCR application image and allows an explicit image tag or digest override.
-- Compose starts the application, PostgreSQL, and Garage by default. Garage can be omitted when an external S3-compatible endpoint is configured. Garage replaced MinIO on 2026-09-25; the reasoning is recorded in [ADR-0001](ADR-0001-application-stack.md#amendment-2026-09-25-self-hosted-object-store).
-- Runtime secrets and service endpoints are injected through environment variables or mounted secret files; they are never baked into the image.
-- Compose health checks use the Spring Boot readiness endpoint. The deployment does not depend on an image-level Docker `HEALTHCHECK` instruction.
+- The first-party Compose-named file is a Docker Swarm stack and references the GHCR application image. Operators replace its mutable example tag with an explicit image tag or digest before production deployment.
+- The stack starts the application, PostgreSQL, and SeaweedFS by default. SeaweedFS can be replaced when an external S3-compatible endpoint is configured. It supersedes Garage as recorded in [ADR-0001](ADR-0001-application-stack.md#amendment-2026-09-27-swarm-self-hosted-object-store).
+- Runtime secrets are external Docker Swarm secrets mounted as files; they are never baked into the image or committed to a `.env` file. Non-secret service endpoints are explicit stack configuration.
+- Stack health checks use the Spring Boot readiness endpoint. The deployment does not depend on an image-level Docker `HEALTHCHECK` instruction.
 
 ## Consequences
 

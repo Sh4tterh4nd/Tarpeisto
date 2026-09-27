@@ -869,7 +869,7 @@ Rules:
 ## 22. Photographs and media
 
 Media is stored through an S3-compatible provider. The application has no production filesystem
-media backend; self-hosting uses Garage or an external S3-compatible provider.
+media backend; self-hosting uses SeaweedFS or an external S3-compatible provider.
 
 Supported associations:
 
@@ -1080,7 +1080,7 @@ Exact dependency versions are pinned in build files and lockfiles. "Latest stabl
 - PostgreSQL
 - An S3-compatible object store when media features are enabled
 
-The object store may be externally managed AWS S3 or a self-hosted S3-compatible service. The first-party self-hosting configuration uses Garage. Application code talks only to the S3-compatible storage contract; it does not maintain a separate production filesystem-storage implementation.
+The object store may be externally managed AWS S3 or a self-hosted S3-compatible service. The first-party Docker Swarm configuration uses SeaweedFS `weed mini`, which creates its configured bucket automatically. Application code talks only to the S3-compatible storage contract; it does not maintain a separate production filesystem-storage implementation.
 
 Optional supporting services are:
 
@@ -1103,9 +1103,9 @@ GitHub Actions validates the frontend, backend, and complete image build. Accept
 ### 27.4 Self-hosting
 
 - Provide a maintained OCI application image in GitHub Container Registry.
-- Provide a first-party `docker-compose.yml` for application, PostgreSQL, and Garage.
+- Provide a first-party Docker Swarm-compatible `docker-compose.yml` for application, PostgreSQL, and SeaweedFS.
 - Allow the Compose application image to be pinned by semantic version or digest.
-- Allow Garage to be disabled when an external S3-compatible endpoint is configured.
+- Allow SeaweedFS to be replaced with an external S3-compatible endpoint.
 - Database migrations run through a documented, explicit deployment step.
 - Provide backup and restore documentation for PostgreSQL and media.
 - Secrets are injected through environment variables or mounted secret files and are not embedded in images.

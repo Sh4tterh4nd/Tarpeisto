@@ -178,3 +178,36 @@ procedure.
 - Operator documentation is longer, because Garage's initialization is not implicit.
 - Object-store conformance tests must run against Garage rather than MinIO, keeping the single
   storage contract that this ADR requires.
+
+## Amendment 2026-09-27: Swarm self-hosted object store
+
+Garage is replaced by [SeaweedFS](https://github.com/seaweedfs/seaweedfs) `weed mini` in the
+first-party self-hosted deployment. This supersedes the 2026-09-25 Garage amendment for the current
+deployment, while preserving it as the historical reason MinIO is not used.
+
+### Reason
+
+The intended production target is Docker Swarm, not local Docker Compose. SeaweedFS `weed mini`
+provides a single-node S3 endpoint and creates the configured bucket on startup, avoiding Garage's
+separate cluster layout, bucket, and access-key bootstrap. This keeps the self-hosted path usable
+without a committed `.env` file or plaintext credentials in stack YAML.
+
+### Scope of the change
+
+- The first-party `docker-compose.yml` is a Swarm-compatible stack with application, PostgreSQL,
+  and `chrislusf/seaweedfs:4.47`.
+- PostgreSQL and SeaweedFS use externally created Swarm secrets. Spring imports its secret mounts
+  as a configuration tree; SeaweedFS reads its S3 credentials from secret files at startup.
+- The two stateful services are one replica each and constrained to a labeled node because their
+  default named volumes are local, not highly available.
+- AWS S3 and other S3-compatible endpoints remain supported. The application storage interface and
+  S3 client remain unchanged.
+
+### Consequences
+
+- A new installation needs only external Swarm secrets and a data-node label; no manual bucket or
+  cluster-layout initialization is required.
+- Operators must back up PostgreSQL and the SeaweedFS bucket and must not scale the local-volume
+  services beyond one replica without shared storage.
+- Object-store conformance tests exercise the same S3 contract and need no application behavior
+  change solely because the bundled server changed.

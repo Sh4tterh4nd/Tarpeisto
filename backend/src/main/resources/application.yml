@@ -28,9 +28,8 @@ spring:
       enabled: true
 
 # spring.datasource.url / .username / .password are intentionally not set here. They come
-# entirely from the standard SPRING_DATASOURCE_URL / SPRING_DATASOURCE_USERNAME /
-# SPRING_DATASOURCE_PASSWORD environment variables (or a mounted secret file translated to
-# those variables); no credential or endpoint default belongs in a committed file. See
+# entirely from standard environment variables or mounted secret files imported as a Spring
+# config tree; no credential or endpoint default belongs in a committed file. See
 # application-dev.yml for a documented local-development-only convenience default.
 
 server:
@@ -89,9 +88,8 @@ bigcontainers:
     # approved or preconfigured linking is the safe default"). An Owner opts in explicitly.
     auto-link-by-email: ${BIGCONTAINERS_AUTHENTICATION_AUTO_LINK_BY_EMAIL:false}
     oidc:
-      # All blank/unset by default (LOCAL_ONLY). Every value below comes only from environment
-      # variables - never committed - per ADR-0003's "Provider secrets are supplied through
-      # environment variables or mounted secret files".
+      # All blank/unset by default (LOCAL_ONLY). Deployment values come from environment variables
+      # or mounted secret files, never committed, per ADR-0003.
       display-name: ${BIGCONTAINERS_OIDC_DISPLAY_NAME:}
       issuer-uri: ${BIGCONTAINERS_OIDC_ISSUER_URI:}
       client-id: ${BIGCONTAINERS_OIDC_CLIENT_ID:}

@@ -1,30 +1,30 @@
-# BigContainers Docker Swarm stack.
+# Tarpeisto Docker Swarm stack behind an existing Traefik overlay network.
 #
-# Deploy with:
-#   docker stack deploy -c infrastructure/compose/docker-compose.yml bigcontainers
+# Create the external secrets and label the stateful-data node as described in
+# README.md, then deploy with:
+#   docker stack deploy -c infrastructure/compose/docker-stack.traefik.example.yml tarpeisto
 #
-# This file intentionally has no .env interpolation. Create the external
-# Swarm secrets documented in README.md before deploying.
+# This stack uses its own secret names. Create them before deployment:
+#   printf '%s' '<postgres-password>' | docker secret create tarpeisto_postgres_password -
+#   printf '%s' '<s3-access-key>' | docker secret create tarpeisto_s3_access_key -
+#   printf '%s' '<s3-secret-key>' | docker secret create tarpeisto_s3_secret_key -
+#   printf '%s' '<first-owner-password>' | docker secret create tarpeisto_owner_password -
 
 services:
   app:
-    # Replace with the exact released version or, preferably, release digest
-    # that you intend to deploy. Do not use a mutable tag in production.
-    image: ghcr.io/sh4tterh4nd/bigcontainers:latest
+    # Kept as :main to match the supplied deployment. Pin this to an immutable
+    # release version or digest before a production rollout.
+    image: ghcr.io/sh4tterh4nd/bigcontainers:main
     networks:
-      - bigcontainers
-    ports:
-      - target: 8080
-        published: 8080
-        protocol: tcp
-        mode: ingress
+      - traefik
+      - tarpeisto
     environment:
       SPRING_CONFIG_IMPORT: configtree:/run/secrets/
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/bigcontainers
       SPRING_DATASOURCE_USERNAME: bigcontainers
       SERVER_FORWARD_HEADERS_STRATEGY: FRAMEWORK
-      BIGCONTAINERS_APPLICATION_DISPLAY_NAME: BigContainers
-      BIGCONTAINERS_APPLICATION_PUBLIC_BASE_URL: https://bigcontainers.example.com
+      BIGCONTAINERS_APPLICATION_DISPLAY_NAME: Tarpeisto
+      BIGCONTAINERS_APPLICATION_PUBLIC_BASE_URL: https://tarpeisto.kellermann.io
       BIGCONTAINERS_S3_ENABLED: "true"
       BIGCONTAINERS_S3_ENDPOINT: http://seaweedfs:8333
       BIGCONTAINERS_S3_REGION: us-east-1
@@ -37,7 +37,7 @@ services:
       BIGCONTAINERS_SEED_DEFAULT_ORGANIZATION_NAME: Default Organization
       BIGCONTAINERS_SEED_OWNER_USERNAME: admin
       BIGCONTAINERS_SEED_OWNER_DISPLAY_NAME: Owner
-      BIGCONTAINERS_SEED_OWNER_EMAIL: admin@example.com
+      BIGCONTAINERS_SEED_OWNER_EMAIL: arieh.kellermann@gmail.com
     secrets:
       - source: postgres_password
         target: spring.datasource.password
@@ -55,6 +55,14 @@ services:
       start_period: 30s
     deploy:
       replicas: 1
+      labels:
+        traefik.enable: "true"
+        traefik.swarm.network: traefik
+        traefik.http.routers.tarpeisto-secured.entrypoints: web-secured
+        traefik.http.routers.tarpeisto-secured.middlewares: default-https@file
+        traefik.http.routers.tarpeisto-secured.rule: Host(`tarpeisto.kellermann.io`)
+        traefik.http.routers.tarpeisto-secured.tls.certresolver: mychallenge
+        traefik.http.services.tarpeisto-secured.loadbalancer.server.port: "8080"
       restart_policy:
         condition: any
         delay: 5s
@@ -71,7 +79,7 @@ services:
   postgres:
     image: postgres:18.6
     networks:
-      - bigcontainers
+      - tarpeisto
     environment:
       POSTGRES_DB: bigcontainers
       POSTGRES_USER: bigcontainers
@@ -105,7 +113,7 @@ services:
   seaweedfs:
     image: chrislusf/seaweedfs:4.47
     networks:
-      - bigcontainers
+      - tarpeisto
     entrypoint:
       - /bin/sh
       - -ec
@@ -150,20 +158,23 @@ volumes:
     driver: local
 
 networks:
-  bigcontainers:
+  traefik:
+    external: true
+    name: traefik
+  tarpeisto:
     driver: overlay
     attachable: true
 
 secrets:
   postgres_password:
     external: true
-    name: bigcontainers_postgres_password
+    name: tarpeisto_postgres_password
   s3_access_key:
     external: true
-    name: bigcontainers_s3_access_key
+    name: tarpeisto_s3_access_key
   s3_secret_key:
     external: true
-    name: bigcontainers_s3_secret_key
+    name: tarpeisto_s3_secret_key
   owner_password:
     external: true
-    name: bigcontainers_owner_password
+    name: tarpeisto_owner_password

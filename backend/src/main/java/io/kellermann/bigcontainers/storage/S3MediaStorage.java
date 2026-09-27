@@ -9,7 +9,7 @@ import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
-/** AWS S3 SDK implementation shared by AWS S3 and Garage-compatible endpoints. */
+/** AWS S3 SDK implementation shared by AWS S3 and compatible providers. */
 public class S3MediaStorage implements MediaStorage {
     private final S3Client s3Client;
     private final String bucket;

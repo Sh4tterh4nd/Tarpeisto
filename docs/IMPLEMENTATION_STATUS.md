@@ -119,9 +119,9 @@ things.
 - [ADR-0002](adr/ADR-0002-public-asset-code-checksum.md) was **written during Phase 0** because the
   plan left the checksum construction undecided and Phase 2 could not proceed without it. It defines
   the GF(2^5) construction, normalization, validation order and authoritative test vectors.
-- ADR-0001 carries a dated **amendment replacing MinIO with Garage** as the first-party self-hosted
-  object store, because MinIO's images are no longer anonymously pullable from Docker Hub or Quay.
-  Application code is unaffected: it speaks only the S3 API behind a `MediaStorage` interface.
+- ADR-0001 carries a dated **amendment replacing Garage with SeaweedFS** as the first-party
+  self-hosted object store. The Swarm stack creates its bucket automatically and uses external
+  secrets; application code remains on the same S3 API behind a `MediaStorage` interface.
 
 ## 4. What exists, by area
 
@@ -273,10 +273,10 @@ are forbidden by policy. Regenerate with the package's `generate` script against
 
 ### Infrastructure (`infrastructure/`, `.github/`)
 
-Compose stack: application, PostgreSQL 18.6, and Garage behind a Compose profile so an external
-S3-compatible endpoint can replace it. Garage needs a documented one-time cluster-layout, bucket and
-key initialization before it serves traffic; `infrastructure/compose/README.md` has the exact
-commands, which were executed against a real container rather than transcribed.
+Docker Swarm stack: application, PostgreSQL 18.6, and SeaweedFS 4.47 with automatic bucket creation.
+It uses external Swarm secrets rather than a `.env` file and constrains local state volumes to a
+labeled node; `infrastructure/compose/README.md` documents the required setup and replacement with
+external S3-compatible storage.
 
 GitHub Actions: a reusable validation workflow shared by pull-request checks and the publish
 workflow, so publication cannot skip tests. All third-party actions are pinned to full commit SHAs.

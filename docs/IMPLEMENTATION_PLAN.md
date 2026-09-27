@@ -19,7 +19,7 @@ Implementation should proceed in vertical slices. Each milestone must leave the 
 - Scanner operations are idempotent.
 - The PWA remains usable during short network interruptions.
 - PDF and label output is visually rendered and physically calibrated as part of testing.
-- Media access uses one S3-compatible contract in every production environment; self-hosting uses Garage and may disable it when external object storage is configured.
+- Media access uses one S3-compatible contract in every production environment; self-hosting uses SeaweedFS and may replace it with external object storage.
 
 ## 2. Phase 0: architecture and repository foundation
 
@@ -38,7 +38,7 @@ Confirmed choices:
 - Spring Boot 4.1.1 and Spring MVC
 - Gradle 9.8.0 through the checked-in wrapper, using Kotlin DSL
 - PostgreSQL 18 (initial image baseline 18.6)
-- S3-compatible media storage, with AWS S3 and self-hosted Garage as the initial targets
+- S3-compatible media storage, with AWS S3 and self-hosted SeaweedFS as the initial targets
 - Google Jib Gradle plugin 3.5.4 for one Spring Boot plus compiled-frontend OCI image
 - GitHub Actions for CI and GitHub Container Registry for image publication
 
@@ -103,8 +103,8 @@ Backend production code starts under `io.kellermann.bigcontainers` with global `
 - Pull-request image assembly validation with `jibBuildTar`, without registry publication
 - Default-branch and version-tag GitHub Actions publication to `ghcr.io/<owner>/bigcontainers` using `GITHUB_TOKEN`
 - Local development configuration
-- Docker Compose with application, PostgreSQL, and Garage
-- Configuration that replaces Garage with an external S3-compatible endpoint
+- Docker Swarm-compatible stack with application, PostgreSQL, and SeaweedFS
+- Configuration that replaces SeaweedFS with an external S3-compatible endpoint
 - Environment-variable schema with startup validation
 - Health/readiness endpoint
 - Structured logging with request/trace IDs
@@ -259,7 +259,7 @@ Tests must include:
 
 ### 5.1 Storage abstraction
 
-Define one application-owned interface supporting S3-compatible storage (AWS S3 and Garage):
+Define one application-owned interface supporting S3-compatible storage (AWS S3 and SeaweedFS):
 
 - Organization-prefixed object keys
 - Streaming upload/download
@@ -281,7 +281,7 @@ Audit evidence uploads are implemented later on the same abstraction.
 
 ### 5.3 Exit criteria
 
-- The same application build works with Garage and external S3-compatible storage.
+- The same application build works with SeaweedFS and external S3-compatible storage.
 - Invalid file types and oversized uploads are rejected.
 - Container images can be captioned `Bottom layer` and `Top tray` and reordered.
 
@@ -832,8 +832,8 @@ This focused milestone improves established inventory workflows without changing
 
 - Versioned OCI application image produced by Jib and published to GitHub Container Registry
 - Immutable semantic-version and commit tags, release-only `latest`, and recorded image digest
-- Maintained application + PostgreSQL + Garage Compose file
-- Documented external S3-compatible storage configuration that disables the Garage service
+- Maintained application + PostgreSQL + SeaweedFS Docker Swarm stack
+- Documented external S3-compatible storage configuration that replaces the SeaweedFS service
 - Reverse-proxy/TLS example
 - SMTP configuration guide
 - Upgrade and migration guide
@@ -944,6 +944,6 @@ Phases 13-14. Search, dashboards, exports, archiving, hardening, deployment, bac
 2. Treat ADR-0001 as the accepted stack and structure baseline; update it only when a concrete implementation finding requires a change.
 3. Treat ADR-0002 as the accepted public-code checksum construction; its test vectors are authoritative for the backend and frontend implementations.
 4. Implement the accepted authentication/session design in ADR-0003, including optional OIDC and local Owner recovery.
-5. Initialize the Spring Boot and PWA sources, Gradle/Jib integration, GitHub Actions validation and GHCR publication, PostgreSQL/Garage Compose, and migration tooling.
+5. Initialize the Spring Boot and PWA sources, Gradle/Jib integration, GitHub Actions validation and GHCR publication, PostgreSQL/SeaweedFS Swarm deployment, and migration tooling.
 6. Implement the organization/user/membership skeleton.
 7. Implement categories, models, custom-field definitions, physical assets, consumable stock, and public-code generation as the first demonstrable vertical slice.

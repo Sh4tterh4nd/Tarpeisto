@@ -23,9 +23,10 @@ import org.springframework.transaction.annotation.Transactional;
  * First-run Owner creation (implementation plan section 3.2), building on {@link
  * OrganizationSeeder}'s idempotent default-organization seeding.
  *
- * <p>Bootstrap credentials are supplied only through {@code
- * BIGCONTAINERS_SEED_OWNER_USERNAME}/{@code BIGCONTAINERS_SEED_OWNER_PASSWORD}. Unlike {@link
- * OrganizationSeeder}, this deliberately does <strong>not</strong> generate and log a random
+ * <p>Bootstrap credentials are supplied through application configuration, environment variables,
+ * or mounted secret files as {@code BIGCONTAINERS_SEED_OWNER_USERNAME}/{@code
+ * BIGCONTAINERS_SEED_OWNER_PASSWORD}. Unlike {@link OrganizationSeeder}, this deliberately does
+ * <strong>not</strong> generate and log a random
  * password: passwords are never logged, per the mandatory security constraints, and this seeder
  * has no other private channel to hand a generated credential to the operator. If the variables
  * are absent, no Owner is created and the application starts with no permanent account - the
