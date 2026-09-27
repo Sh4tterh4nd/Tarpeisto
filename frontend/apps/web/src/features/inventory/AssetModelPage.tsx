@@ -330,10 +330,13 @@ export function AssetModelPage() {
       />
 
       <Stack spacing={3}>
-        <Stack
-          direction={{ xs: "column", md: "row" }}
-          spacing={3}
-          sx={{ alignItems: "flex-start" }}
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(2, minmax(0, 1fr))" },
+            gap: 3,
+            alignItems: "start",
+          }}
         >
           <Stack spacing={3} sx={{ flex: 1, minWidth: 0, width: "100%" }}>
             <Paper
@@ -388,10 +391,10 @@ export function AssetModelPage() {
               />
             ) : null}
           </Stack>
-          <Box sx={{ width: { xs: "100%", md: 360 }, flexShrink: 0 }}>
+          <Box sx={{ minWidth: 0, width: "100%" }}>
             <MediaPanel assetModelId={assetModelId} canManage={canManage} />
           </Box>
-        </Stack>
+        </Box>
         {model.trackingMode === "SERIALIZED_ASSET" ? (
           <>
             <SerializedAssetsPanel

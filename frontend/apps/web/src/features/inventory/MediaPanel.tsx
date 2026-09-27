@@ -1,11 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import DeleteIcon from "@mui/icons-material/Delete";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 import PhotoCameraOutlinedIcon from "@mui/icons-material/PhotoCameraOutlined";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import IconButton from "@mui/material/IconButton";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
@@ -19,13 +22,29 @@ import {
   type MediaRecord,
 } from "./mediaApi";
 
-function Photo({ media, alt }: { media: MediaRecord; alt: string }) {
+function LayoutPhoto({ media, alt }: { media: MediaRecord; alt: string }) {
   return (
     <Box
       component="img"
       src={media.thumbnailUrl}
       alt={alt}
       sx={{ width: "100%", height: 160, objectFit: "cover", display: "block" }}
+    />
+  );
+}
+
+function ReferencePhoto({ media }: { media: MediaRecord }) {
+  return (
+    <Box
+      component="img"
+      src={media.imageUrl}
+      alt="Reference"
+      sx={{
+        width: "100%",
+        height: { xs: 240, sm: 320, md: 360 },
+        objectFit: "contain",
+        display: "block",
+      }}
     />
   );
 }
@@ -55,6 +74,9 @@ export function MediaPanel({
   const referenceInput = useRef<HTMLInputElement>(null);
   const layoutInput = useRef<HTMLInputElement>(null);
   const [layoutCaption, setLayoutCaption] = useState("");
+  const [photoOptionsAnchor, setPhotoOptionsAnchor] = useState<HTMLElement>();
+  const photoOptionsButtonId = useId();
+  const photoOptionsMenuId = useId();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -157,6 +179,20 @@ export function MediaPanel({
     }
   }
 
+  function closePhotoOptions() {
+    setPhotoOptionsAnchor(undefined);
+  }
+
+  function replaceReferencePhoto() {
+    closePhotoOptions();
+    referenceInput.current?.click();
+  }
+
+  function removeReferencePhoto() {
+    closePhotoOptions();
+    if (reference) void remove(reference);
+  }
+
   return (
     <Paper variant="outlined" sx={{ overflow: "hidden" }}>
       <Stack spacing={2} sx={{ p: 2 }}>
@@ -170,7 +206,19 @@ export function MediaPanel({
               A clear image for identifying this {assetId ? "unit" : "model"}.
             </Typography>
           </Box>
-          {canManage ? (
+          {canManage && reference ? (
+            <IconButton
+              id={photoOptionsButtonId}
+              aria-label="Photo options"
+              aria-haspopup="menu"
+              aria-controls={photoOptionsAnchor ? photoOptionsMenuId : undefined}
+              aria-expanded={Boolean(photoOptionsAnchor)}
+              onClick={(event) => setPhotoOptionsAnchor(event.currentTarget)}
+              sx={{ minWidth: 44, minHeight: 44 }}
+            >
+              <MoreVertIcon />
+            </IconButton>
+          ) : canManage ? (
             <Button
               startIcon={<PhotoCameraOutlinedIcon />}
               onClick={() => referenceInput.current?.click()}
@@ -184,8 +232,23 @@ export function MediaPanel({
           hidden
           type="file"
           accept="image/jpeg,image/png"
-          onChange={(event) => void upload(event.target.files?.[0], false)}
+          onChange={(event) => {
+            void upload(event.target.files?.[0], false);
+            event.target.value = "";
+          }}
         />
+        <Menu
+          id={photoOptionsMenuId}
+          anchorEl={photoOptionsAnchor}
+          open={Boolean(photoOptionsAnchor)}
+          onClose={closePhotoOptions}
+          slotProps={{ list: { "aria-labelledby": photoOptionsButtonId } }}
+        >
+          <MenuItem onClick={replaceReferencePhoto}>Replace photo</MenuItem>
+          {!referenceInherited ? (
+            <MenuItem onClick={removeReferencePhoto}>Remove photo</MenuItem>
+          ) : null}
+        </Menu>
         {error ? (
           <Alert severity="error" onClose={() => setError(undefined)}>
             {error}
@@ -194,15 +257,11 @@ export function MediaPanel({
         {loading ? (
           <CircularProgress size={24} />
         ) : reference ? (
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ maxWidth: 560 }}>
-            <Box sx={{ width: { xs: "100%", sm: 240 }, overflow: "hidden", borderRadius: 1 }}>
-              <Photo media={reference} alt="Reference" />
+          <Stack spacing={2}>
+            <Box sx={{ width: "100%", overflow: "hidden", borderRadius: 1 }}>
+              <ReferencePhoto media={reference} />
             </Box>
-            {canManage && !referenceInherited ? (
-              <Button color="error" onClick={() => void remove(reference)}>
-                Remove photo
-              </Button>
-            ) : referenceInherited ? (
+            {referenceInherited ? (
               <Typography color="text.secondary">Using the model reference photo.</Typography>
             ) : null}
           </Stack>
@@ -247,7 +306,7 @@ export function MediaPanel({
                     variant="outlined"
                     sx={{ minWidth: 190, maxWidth: 220, overflow: "hidden" }}
                   >
-                    <Photo media={media} alt={media.caption || `Layout photo ${index + 1}`} />
+                    <LayoutPhoto media={media} alt={media.caption || `Layout photo ${index + 1}`} />
                     <Stack spacing={0.5} sx={{ p: 1 }}>
                       <Typography variant="body2" sx={{ fontWeight: 700 }}>
                         {index + 1}. {media.caption || "Uncaptioned"}

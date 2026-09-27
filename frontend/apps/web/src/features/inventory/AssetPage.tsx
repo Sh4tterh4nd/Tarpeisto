@@ -441,12 +441,15 @@ export function AssetPage() {
       ) : null}
 
       <Stack spacing={3}>
-        <Stack
-          direction={{ xs: "column", md: "row" }}
-          spacing={3}
-          sx={{ alignItems: "flex-start" }}
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(2, minmax(0, 1fr))" },
+            gap: 3,
+            alignItems: "start",
+          }}
         >
-          <Paper variant="outlined" sx={{ flex: 1, width: "100%" }}>
+          <Paper variant="outlined" sx={{ minWidth: 0, width: "100%" }}>
             {asset.values.length > 0 ? (
               <>
                 <Typography variant="h3" sx={{ p: 2 }}>
@@ -492,7 +495,7 @@ export function AssetPage() {
               </Typography>
             ) : null}
           </Paper>
-          <Box sx={{ width: { xs: "100%", md: 360 }, flexShrink: 0 }}>
+          <Box sx={{ minWidth: 0, width: "100%" }}>
             <MediaPanel
               assetId={asset.id}
               fallbackAssetModelId={asset.assetModelId}
@@ -500,7 +503,7 @@ export function AssetPage() {
               canManage={canManage}
             />
           </Box>
-        </Stack>
+        </Box>
         <Stack
           direction={{ xs: "column", md: "row" }}
           spacing={3}
