@@ -16,7 +16,7 @@ export function AccountNav() {
     return null;
   }
 
-  if (status === "anonymous") {
+  if (status === "anonymous" || status === "setup-required") {
     return (
       <Button component={RouterLink} to="/sign-in" color="inherit">
         Sign in

@@ -27,9 +27,10 @@ public class OrganizationService {
 
     /**
      * Returns the organization named {@code organizationName}, creating it if it does not yet
-     * exist. Safe to call repeatedly (for example on every application startup): a second call
-     * with the same name returns the already-seeded organization rather than creating a
-     * duplicate.
+     * exist. Safe to call repeatedly: a second call with the same name returns the existing
+     * organization rather than creating a duplicate. Production first-run creation is owned by
+     * {@link InitialSetupService}; this method also supports internal fixtures and future
+     * administration workflows.
      */
     @Transactional
     public Organization ensureOrganizationExists(String organizationName) {

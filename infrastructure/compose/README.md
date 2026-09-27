@@ -17,18 +17,17 @@ credentials are external Docker Swarm secrets, mounted as files.
    docker node update --label-add tarpeisto-data=primary <node-name>
    ```
 
-2. Create the four external secrets. Use a generated PostgreSQL password, a SeaweedFS S3 access
-   key/secret pair, and a strong first-Owner password. Do not put these values in the stack file.
+2. Create the three external secrets. Use a generated PostgreSQL password and a SeaweedFS S3
+   access key/secret pair. Do not put these values in the stack file.
 
    ```bash
    printf '%s' '<postgres-password>' | docker secret create tarpeisto_postgres_password -
    printf '%s' '<s3-access-key>' | docker secret create tarpeisto_s3_access_key -
    printf '%s' '<s3-secret-key>' | docker secret create tarpeisto_s3_secret_key -
-   printf '%s' '<first-owner-password>' | docker secret create tarpeisto_owner_password -
    ```
 
 3. Edit the non-secret values in `docker-compose.yml`: the released application image (prefer a
-   digest), public base URL, display name, and first Owner identity. Keep the SeaweedFS endpoint,
+   digest), public base URL, and display name. Keep the SeaweedFS endpoint,
    region, bucket, and path-style configuration together unless you intentionally use external S3.
 
 4. Deploy the stack:
@@ -40,7 +39,8 @@ credentials are external Docker Swarm secrets, mounted as files.
 
    PostgreSQL gates application startup, so Swarm retries the application until the database is
    reachable. SeaweedFS does not gate startup; media actions can be temporarily unavailable until
-   its health check is passing. Confirm application readiness through `/actuator/health/readiness`.
+   its health check is passing. Confirm application readiness through `/actuator/health/readiness`,
+   then open the site and complete the one-time organization and Owner setup page.
 
 ## Secrets and configuration
 
@@ -57,12 +57,6 @@ settings in the stack. Do not substitute an OIDC client secret directly into YAM
 Docker Swarm secrets are immutable. Rotate a secret by creating a new secret name, updating the
 stack's external secret mapping, and redeploying. Remove the old secret only after the rollout is
 healthy.
-
-After the first Owner has signed in successfully, remove
-`TARPEISTO_SEED_OWNER_USERNAME`, the `owner_password` secret mount, and the corresponding
-top-level `owner_password` secret declaration from the stack before the next deployment. The
-external bootstrap secret can then be removed. This eliminates a credential that is needed only
-for first-run seeding.
 
 ## Traefik deployment
 

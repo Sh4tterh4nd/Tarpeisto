@@ -29,6 +29,11 @@ public class ApplicationExceptionHandler {
         return problemDetail(HttpStatus.CONFLICT, "Audit mutation conflict", exception);
     }
 
+    @ExceptionHandler(SetupAlreadyCompletedException.class)
+    public ProblemDetail handleSetupAlreadyCompleted(SetupAlreadyCompletedException exception) {
+        return problemDetail(HttpStatus.CONFLICT, "Setup already completed", exception);
+    }
+
     private static final String PROBLEM_TYPE_PREFIX = "urn:tarpeisto:problem:";
 
     @ExceptionHandler(NotFoundException.class)

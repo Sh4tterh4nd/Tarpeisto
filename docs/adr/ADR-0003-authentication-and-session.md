@@ -28,6 +28,19 @@ Initial deployment modes are:
 - `LOCAL_ONLY`
 - `LOCAL_AND_OIDC`
 
+### Initial installation
+
+An installation with no Owner exposes a narrowly scoped, unauthenticated setup-status endpoint and
+one-time setup mutation. The SPA redirects to a dedicated setup page that collects the organization
+name and the first local Owner's username, password, display name, and optional email. The mutation
+creates the organization, user, and Owner membership in one transaction and records the completed
+setup in activity history.
+
+Setup is database-state driven, not configuration driven: it uses no seed environment variables or
+bootstrap password secret. A PostgreSQL transaction-scoped lock serializes concurrent submissions,
+and the mutation is permanently rejected once an Owner membership exists. A single organization
+left without an Owner by an earlier release may be adopted and renamed by this workflow.
+
 An installation may enforce OIDC for ordinary permanent users, but it must retain at least one enabled local Owner recovery account. Removing or disabling the final usable Owner authentication method is rejected.
 
 ### Internal identity and authorization

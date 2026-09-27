@@ -8,7 +8,6 @@
 #   printf '%s' '<postgres-password>' | docker secret create tarpeisto_postgres_password -
 #   printf '%s' '<s3-access-key>' | docker secret create tarpeisto_s3_access_key -
 #   printf '%s' '<s3-secret-key>' | docker secret create tarpeisto_s3_secret_key -
-#   printf '%s' '<first-owner-password>' | docker secret create tarpeisto_owner_password -
 
 services:
   app:
@@ -34,10 +33,6 @@ services:
       TARPEISTO_AUTHENTICATION_AUTO_LINK_BY_EMAIL: "false"
       TARPEISTO_SECURITY_LOGIN_RATE_LIMIT_MAX_ATTEMPTS: "5"
       TARPEISTO_SECURITY_LOGIN_RATE_LIMIT_WINDOW: PT15M
-      TARPEISTO_SEED_DEFAULT_ORGANIZATION_NAME: Default Organization
-      TARPEISTO_SEED_OWNER_USERNAME: admin
-      TARPEISTO_SEED_OWNER_DISPLAY_NAME: Owner
-      TARPEISTO_SEED_OWNER_EMAIL: arieh.kellermann@gmail.com
     secrets:
       - source: postgres_password
         target: spring.datasource.password
@@ -45,8 +40,6 @@ services:
         target: tarpeisto.s3.access-key
       - source: s3_secret_key
         target: tarpeisto.s3.secret-key
-      - source: owner_password
-        target: tarpeisto.seed.owner-password
     healthcheck:
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf \"GET /actuator/health/readiness HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n\" >&3 && grep -q \"\\\"status\\\":\\\"UP\\\"\" <&3"]
       interval: 10s
@@ -175,6 +168,3 @@ secrets:
   s3_secret_key:
     external: true
     name: tarpeisto_s3_secret_key
-  owner_password:
-    external: true
-    name: tarpeisto_owner_password

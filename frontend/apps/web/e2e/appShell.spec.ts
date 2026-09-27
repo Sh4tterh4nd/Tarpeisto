@@ -85,3 +85,52 @@ test("app shell loads and a valid public code resolves to an asset", async ({ pa
   await expect(page.getByRole("heading", { name: "UniFi AP-HD 3" })).toBeVisible();
   await expect(page.getByText("7K3MXY", { exact: true })).toBeVisible();
 });
+
+test("a fresh installation completes browser setup without bootstrap configuration", async ({
+  page,
+}) => {
+  let setupCompleted = false;
+  await page.route("**/api/v1/session", (route) => {
+    if (route.request().method() === "POST") {
+      return route.fulfill({
+        json: {
+          userId: "11111111-1111-1111-1111-111111111111",
+          username: "first-owner",
+          displayName: "First Owner",
+          organizationId: "22222222-2222-2222-2222-222222222222",
+          role: "OWNER",
+        },
+      });
+    }
+    return route.fulfill({
+      status: 401,
+      contentType: "application/problem+json",
+      body: JSON.stringify({ title: "Unauthorized", status: 401 }),
+    });
+  });
+  await page.route("**/api/v1/setup", (route) => {
+    if (route.request().method() === "POST") {
+      setupCompleted = true;
+      return route.fulfill({ status: 201 });
+    }
+    return route.fulfill({ json: { setupRequired: !setupCompleted } });
+  });
+  await page.route("**/api/v1/application", (route) =>
+    route.fulfill({
+      json: { applicationName: "Tarpeisto", version: "test", oidcConfigured: false },
+    }),
+  );
+
+  await page.goto("/inventory");
+
+  await expect(page).toHaveURL(/\/setup$/);
+  await expect(page.getByRole("heading", { name: "Set up your inventory home" })).toBeVisible();
+  await page.getByLabel("Owner display name").fill("First Owner");
+  await page.getByLabel("Owner username").fill("first-owner");
+  await page.getByLabel(/^Password/).fill("strong-password");
+  await page.getByLabel("Confirm password").fill("strong-password");
+  await page.getByRole("button", { name: "Create organization" }).click();
+
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
+});

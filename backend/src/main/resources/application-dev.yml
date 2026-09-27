@@ -14,14 +14,6 @@ server:
         # Plain HTTP localhost during development; production stays Secure (application.yml).
         secure: false
 
-tarpeisto:
-  seed:
-    # Local-development-only bootstrap Owner so a fresh dev database is immediately usable.
-    # Never used in a real deployment: TARPEISTO_SEED_OWNER_USERNAME/PASSWORD remain unset
-    # by default in application.yml, and this profile itself must be enabled explicitly.
-    owner-username: ${TARPEISTO_SEED_OWNER_USERNAME:owner}
-    owner-password: ${TARPEISTO_SEED_OWNER_PASSWORD:dev-owner-password}
-
 springdoc:
   api-docs:
     enabled: true

@@ -4,7 +4,6 @@ import io.kellermann.tarpeisto.config.ApplicationProperties;
 import io.kellermann.tarpeisto.config.AuthenticationProperties;
 import io.kellermann.tarpeisto.config.LoginRateLimitProperties;
 import io.kellermann.tarpeisto.config.S3Properties;
-import io.kellermann.tarpeisto.config.SeedProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -13,7 +12,6 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 @SpringBootApplication
 @EnableConfigurationProperties({
     ApplicationProperties.class,
-    SeedProperties.class,
     LoginRateLimitProperties.class,
     AuthenticationProperties.class,
     S3Properties.class

@@ -1,11 +1,13 @@
 import CssBaseline from "@mui/material/CssBaseline";
+import Box from "@mui/material/Box";
+import CircularProgress from "@mui/material/CircularProgress";
 import { ThemeProvider } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useMemo } from "react";
 import List from "@mui/material/List";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
-import { Link as RouterLink, useLocation } from "react-router-dom";
+import { Link as RouterLink, Navigate, useLocation } from "react-router-dom";
 import { AppShellLayout, createTarpeistoTheme } from "@tarpeisto/shared-ui";
 import { AppRoutes } from "./routes/AppRoutes";
 import { ConnectivityChip } from "./platform/web/ConnectivityChip";
@@ -15,6 +17,7 @@ import { OidcCallbackAlert } from "./features/identity/OidcCallbackAlert";
 import { SessionExpiredBanner } from "./features/identity/SessionExpiredBanner";
 import { SessionProvider } from "./features/identity/SessionProvider";
 import { useSession } from "./features/identity/useSession";
+import { InitialSetupPage } from "./features/setup/InitialSetupPage";
 
 function PrimaryNav() {
   const { status } = useSession();
@@ -54,6 +57,45 @@ function PrimaryNav() {
   );
 }
 
+function AppContent() {
+  const { status } = useSession();
+  const location = useLocation();
+
+  if (status === "loading") {
+    return (
+      <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
+        <CircularProgress aria-label="Loading application" />
+      </Box>
+    );
+  }
+
+  if (status === "setup-required") {
+    return location.pathname === "/setup" ? <InitialSetupPage /> : <Navigate to="/setup" replace />;
+  }
+
+  if (location.pathname === "/setup") {
+    return <Navigate to={status === "authenticated" ? "/" : "/sign-in"} replace />;
+  }
+
+  return (
+    <AppShellLayout
+      title="Tarpeisto"
+      bannerSlot={
+        <>
+          <OidcCallbackAlert />
+          <SessionExpiredBanner />
+          <UpdatePrompt />
+        </>
+      }
+      statusSlot={<ConnectivityChip />}
+      navSlot={<PrimaryNav />}
+      accountSlot={<AccountNav />}
+    >
+      <AppRoutes />
+    </AppShellLayout>
+  );
+}
+
 export function App() {
   const prefersDark = useMediaQuery("(prefers-color-scheme: dark)");
   const theme = useMemo(() => createTarpeistoTheme(prefersDark ? "dark" : "light"), [prefersDark]);
@@ -62,21 +104,7 @@ export function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <SessionProvider>
-        <AppShellLayout
-          title="Tarpeisto"
-          bannerSlot={
-            <>
-              <OidcCallbackAlert />
-              <SessionExpiredBanner />
-              <UpdatePrompt />
-            </>
-          }
-          statusSlot={<ConnectivityChip />}
-          navSlot={<PrimaryNav />}
-          accountSlot={<AccountNav />}
-        >
-          <AppRoutes />
-        </AppShellLayout>
+        <AppContent />
       </SessionProvider>
     </ThemeProvider>
   );

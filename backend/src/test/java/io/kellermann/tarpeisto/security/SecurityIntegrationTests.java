@@ -37,6 +37,14 @@ class SecurityIntegrationTests extends AbstractIntegrationTest {
     }
 
     @Test
+    void allowlistedInitialSetupStatusRemainsReachableWithoutAuthentication() {
+        ResponseEntity<String> response = restTemplate.getForEntity("/api/v1/setup", String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).contains("\"setupRequired\":");
+    }
+
+    @Test
     void allowlistedHealthEndpointRemainsReachableWithoutAuthentication() {
         ResponseEntity<String> response = restTemplate.getForEntity("/actuator/health", String.class);
 

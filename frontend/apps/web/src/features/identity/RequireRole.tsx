@@ -40,7 +40,7 @@ export function RequireRole({ allow, children }: RequireRoleProps) {
     );
   }
 
-  if (status === "anonymous") {
+  if (status === "anonymous" || status === "setup-required") {
     return <Navigate to="/sign-in" replace state={{ from: location }} />;
   }
 

@@ -79,6 +79,8 @@ public class SecurityConfiguration {
                     authorize
                             .requestMatchers(HttpMethod.GET, "/api/v1/application")
                             .permitAll();
+                    authorize.requestMatchers(HttpMethod.GET, "/api/v1/setup").permitAll();
+                    authorize.requestMatchers(HttpMethod.POST, "/api/v1/setup").permitAll();
                     // The session resource is the JSON-API login/logout endpoint (ADR-0001,
                     // ADR-0003): a caller is by definition not yet authenticated when calling
                     // POST, and DELETE (logout) is intentionally idempotent/safe to call without

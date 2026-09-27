@@ -1317,6 +1317,43 @@
         }
       }
     },
+    "/api/v1/setup": {
+      "get": {
+        "tags": ["initial-setup-controller"],
+        "operationId": "status",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InitialSetupStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["initial-setup-controller"],
+        "operationId": "completeInitialSetup",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteInitialSetupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
+      }
+    },
     "/api/v1/session": {
       "get": {
         "tags": ["session-controller"],
@@ -5918,6 +5955,45 @@
             "format": "date-time"
           },
           "active": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CompleteInitialSetupRequest": {
+        "type": "object",
+        "properties": {
+          "organizationName": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1
+          },
+          "username": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 10
+          },
+          "displayName": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 255
+          }
+        },
+        "required": ["displayName", "organizationName", "password", "username"]
+      },
+      "InitialSetupStatusResponse": {
+        "type": "object",
+        "properties": {
+          "setupRequired": {
             "type": "boolean"
           }
         }

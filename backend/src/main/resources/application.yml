@@ -67,14 +67,6 @@ springdoc:
 tarpeisto:
   application:
     display-name: ${TARPEISTO_APPLICATION_DISPLAY_NAME:Tarpeisto}
-  seed:
-    default-organization-name: ${TARPEISTO_SEED_DEFAULT_ORGANIZATION_NAME:Default Organization}
-    # Bootstrap credentials for the first-run Owner (OwnerSeeder). Both must be set to create an
-    # Owner; if either is blank (the default), no Owner is created automatically. Never logged.
-    owner-username: ${TARPEISTO_SEED_OWNER_USERNAME:}
-    owner-password: ${TARPEISTO_SEED_OWNER_PASSWORD:}
-    owner-display-name: ${TARPEISTO_SEED_OWNER_DISPLAY_NAME:Owner}
-    owner-email: ${TARPEISTO_SEED_OWNER_EMAIL:}
   security:
     login-rate-limit:
       max-attempts: ${TARPEISTO_SECURITY_LOGIN_RATE_LIMIT_MAX_ATTEMPTS:5}

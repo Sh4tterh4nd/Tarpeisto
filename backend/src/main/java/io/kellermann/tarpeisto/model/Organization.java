@@ -10,9 +10,9 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * The tenancy root every organization-owned record belongs to (specification section 3). Phase 0
- * creates exactly one default organization; every later phase's tenant-owned tables reference
- * {@code organization_id} rather than assuming a single hard-coded identifier.
+ * The tenancy root every organization-owned record belongs to (specification section 3). Initial
+ * setup creates the first organization; every tenant-owned table references {@code organization_id}
+ * rather than assuming a single hard-coded identifier.
  */
 @Entity
 @Table(name = "organization")

@@ -109,14 +109,14 @@ Backend production code starts under `io.kellermann.tarpeisto` with global `cont
 - Health/readiness endpoint
 - Structured logging with request/trace IDs
 - Migration runner and documented rollback policy
-- Seed command that creates a default organization and first Owner
+- One-time browser setup that atomically creates the initial organization and local Owner
 
 ### 2.4 Exit criteria
 
 - A clean checkout starts locally with one documented command.
 - CI runs on every branch/merge request.
 - PostgreSQL migrations run against an empty database.
-- Application can create an initial Owner and organization.
+- A clean database redirects to setup and can create the initial Owner and organization without deployment configuration.
 - No business features depend on globally hard-coded organization IDs.
 
 ## 3. Phase 1: identity, roles, and organization context
@@ -136,7 +136,7 @@ Even though the initial UI exposes one organization, membership is still explici
 
 ### 3.2 Application behavior
 
-- First-run Owner creation
+- First-run setup page and public setup-status endpoint, available only until the first Owner exists
 - Login/logout and secure session rotation
 - Local login as the default and recovery method
 - Adaptive versioned local-password hashing, login rate limiting, and non-enumerating failures

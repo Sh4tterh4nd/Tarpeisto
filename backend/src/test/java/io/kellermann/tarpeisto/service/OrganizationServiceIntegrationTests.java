@@ -3,7 +3,6 @@ package io.kellermann.tarpeisto.service;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.kellermann.tarpeisto.AbstractIntegrationTest;
-import io.kellermann.tarpeisto.config.SeedProperties;
 import io.kellermann.tarpeisto.model.Organization;
 import io.kellermann.tarpeisto.repository.OrganizationRepository;
 import java.util.UUID;
@@ -17,16 +16,6 @@ class OrganizationServiceIntegrationTests extends AbstractIntegrationTest {
 
     @Autowired
     private OrganizationRepository organizationRepository;
-
-    @Autowired
-    private SeedProperties seedProperties;
-
-    @Test
-    void defaultOrganizationIsSeededOnStartup() {
-        // OrganizationSeeder (an ApplicationRunner) already ran before this test executes.
-        assertThat(organizationRepository.findByNameIgnoreCase(seedProperties.defaultOrganizationName()))
-                .isPresent();
-    }
 
     @Test
     void ensureOrganizationExistsIsIdempotent() {

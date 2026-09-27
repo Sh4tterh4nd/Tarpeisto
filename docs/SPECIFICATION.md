@@ -42,7 +42,7 @@ Tarpeisto is a responsive web application and installable Progressive Web App (P
 
 | Term                            | Meaning                                                                                                                                       |
 | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| Organization                    | Owner of all inventory data. The initial installation contains one invisible default organization.                                            |
+| Organization                    | Owner of all inventory data. The initial installation creates one organization through the first-run setup page.                             |
 | Category                        | Colored classification assigned to a model, such as Networking or Cables.                                                                     |
 | Model                           | Shared catalog definition for either serialized equipment or quantity stock, such as `UniFi AP-HD`, `RAKO 400 x 300`, or `Gaffer tape 50 mm`. |
 | Physical asset                  | One individually tracked real-world unit with an internal UUID and public asset code.                                                         |
@@ -66,8 +66,11 @@ Tarpeisto is a responsive web application and installable Progressive Web App (P
 
 ### 3.1 Initial behavior
 
-- Installation creates one default organization.
-- The first user becomes the Owner of that organization.
+- An empty installation redirects every browser route to a one-time setup page until an Owner exists.
+- The setup page collects the organization name and the first local Owner's username, password, display name, and optional email address.
+- Saving setup atomically creates the organization, enabled local user, and Owner membership in PostgreSQL. It requires no seed environment variables, mounted bootstrap secret, or restart.
+- Setup becomes unavailable as soon as an Owner exists. Concurrent setup submissions are serialized so only one first Owner can be created.
+- An existing single organization without an Owner, including one left by an older installation, can be completed through the same setup page.
 - The organization concept is not shown in normal initial-product navigation.
 - Every organization-owned record contains `organization_id`.
 - All reads and writes are scoped by the organization from the authenticated server-side context.

@@ -2,7 +2,7 @@ import { createContext } from "react";
 import type { AppError } from "@tarpeisto/api-client";
 import type { LoginCredentials, Role, SessionPrincipal } from "./sessionApi";
 
-export type SessionStatus = "loading" | "authenticated" | "anonymous";
+export type SessionStatus = "loading" | "setup-required" | "authenticated" | "anonymous";
 
 export interface SessionContextValue {
   status: SessionStatus;

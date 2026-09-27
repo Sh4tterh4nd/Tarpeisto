@@ -452,6 +452,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["status"];
+        put?: never;
+        post: operations["completeInitialSetup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/session": {
         parameters: {
             query?: never;
@@ -2286,6 +2302,17 @@ export interface components {
             lastLoginAt?: string;
             active?: boolean;
         };
+        CompleteInitialSetupRequest: {
+            organizationName: string;
+            username: string;
+            password: string;
+            displayName: string;
+            /** Format: email */
+            email?: string;
+        };
+        InitialSetupStatusResponse: {
+            setupRequired?: boolean;
+        };
         LoginRequest: {
             username: string;
             password: string;
@@ -3758,6 +3785,48 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["ExternalIdentityResponse"];
                 };
+            };
+        };
+    };
+    status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["InitialSetupStatusResponse"];
+                };
+            };
+        };
+    };
+    completeInitialSetup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompleteInitialSetupRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

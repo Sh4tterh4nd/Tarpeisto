@@ -52,7 +52,7 @@ describe("App shell", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole("heading", { name: "Tarpeisto" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Tarpeisto" })).toBeInTheDocument();
     expect(screen.getAllByRole("status").length).toBeGreaterThan(0);
     expect(await screen.findByText("Tarpeisto", { selector: "p" })).toBeInTheDocument();
   });
@@ -94,4 +94,67 @@ describe("App shell", () => {
       "aria-current",
     );
   });
+
+  it("redirects an uninitialized installation to setup and signs in the new Owner", async () => {
+    vi.mocked(global.fetch).mockImplementation(async (input) => {
+      const request = input instanceof Request ? input : new Request(input);
+      const url = request.url;
+      if (url.includes("/api/v1/session") && request.method === "GET") {
+        return new Response(
+          JSON.stringify({ type: "about:blank", title: "Unauthorized", status: 401 }),
+          { status: 401, headers: { "content-type": "application/json" } },
+        );
+      }
+      if (url.includes("/api/v1/setup") && request.method === "GET") {
+        return new Response(JSON.stringify({ setupRequired: true }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      if (url.includes("/api/v1/setup") && request.method === "POST") {
+        return new Response(null, { status: 201 });
+      }
+      if (url.includes("/api/v1/session") && request.method === "POST") {
+        return new Response(
+          JSON.stringify({
+            userId: "11111111-1111-1111-1111-111111111111",
+            username: "first-owner",
+            displayName: "First Owner",
+            organizationId: "22222222-2222-2222-2222-222222222222",
+            role: "OWNER",
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      return new Response(
+        JSON.stringify({ applicationName: "Tarpeisto", version: "0.1.0", oidcConfigured: false }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    });
+
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={["/inventory"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "Set up your inventory home" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("navigation", { name: "Primary navigation" }),
+    ).not.toBeInTheDocument();
+
+    await user.clear(screen.getByLabelText(/owner display name/i));
+    await user.type(screen.getByLabelText(/owner display name/i), "First Owner");
+    await user.type(screen.getByLabelText(/owner username/i), "first-owner");
+    await user.type(screen.getByLabelText(/^password/i), "strong-password");
+    await user.type(screen.getByLabelText(/confirm password/i), "strong-password");
+    await user.click(screen.getByRole("button", { name: "Create organization" }));
+
+    expect(
+      await screen.findByRole("navigation", { name: "Primary navigation" }),
+    ).toBeInTheDocument();
+  }, 10_000);
 });

@@ -8,6 +8,7 @@ import {
   type LoginCredentials,
   type SessionPrincipal,
 } from "./sessionApi";
+import { fetchInitialSetupStatus } from "../setup/setupApi";
 
 export interface SessionProviderProps {
   children: ReactNode;
@@ -42,9 +43,16 @@ export function SessionProvider({ children }: SessionProviderProps) {
       setSessionExpired(false);
       return;
     }
-    // Both "never signed in" and an unexpected transport error fall back to
-    // the anonymous state: sign-in remains reachable either way, which is
-    // what actually matters to the user (ADR-0003 anti-lockout guarantee).
+    if (outcome.kind === "anonymous") {
+      const setupStatus = await fetchInitialSetupStatus();
+      if (setupStatus?.setupRequired) {
+        setPrincipal(undefined);
+        setStatus("setup-required");
+        return;
+      }
+    }
+    // A completed installation without a session, and unexpected transport
+    // failures, both fall back to sign-in so local recovery stays reachable.
     setPrincipal(undefined);
     setStatus("anonymous");
   }, []);
@@ -62,7 +70,9 @@ export function SessionProvider({ children }: SessionProviderProps) {
           setSessionExpired(true);
         }
         setPrincipal(undefined);
-        setStatus((current) => (current === "loading" ? current : "anonymous"));
+        setStatus((current) =>
+          current === "loading" || current === "setup-required" ? current : "anonymous",
+        );
       }),
     [],
   );
