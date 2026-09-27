@@ -20,8 +20,13 @@ const api = vi.hoisted(() => ({
   updatePackingTemplate: vi.fn(),
   updatePackingTemplateRequirement: vi.fn(),
 }));
+const packingSheet = vi.hoisted(() => ({
+  downloadPackingSheet: vi.fn(),
+  savePackingSheet: vi.fn(),
+}));
 
 vi.mock("./inventoryApi", () => ({ ...api, errorMessage: (error: Error) => error.message }));
+vi.mock("./packingSheetApi", () => packingSheet);
 
 const modelRequirement = {
   id: "cable-requirement",
@@ -116,6 +121,10 @@ describe("PackingPanel", () => {
     api.applyPackingTemplate.mockResolvedValue(ok([modelRequirement]));
     api.setPackingTemplateArchived.mockResolvedValue(ok(template));
     api.setPackingTemplateRequirementArchived.mockResolvedValue(ok(template));
+    packingSheet.downloadPackingSheet.mockResolvedValue({
+      kind: "ok",
+      data: new Blob(["packing-sheet"], { type: "application/pdf" }),
+    });
   });
 
   it("groups packing state and sends observed consumables into a refreshed preview", async () => {
@@ -150,6 +159,26 @@ describe("PackingPanel", () => {
     expect(screen.queryByRole("button", { name: "Manage templates" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Add requirement" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
+  });
+
+  it("lets every permanent role download a packing sheet and offers retry after failure", async () => {
+    const user = userEvent.setup();
+    render(<PackingPanel containerAssetId="container-1" canManage={false} />);
+    await screen.findByRole("heading", { name: "Interchangeable serialized" });
+    await user.click(screen.getByRole("button", { name: "Download packing sheet" }));
+    await waitFor(() =>
+      expect(packingSheet.downloadPackingSheet).toHaveBeenCalledWith("container-1"),
+    );
+    expect(packingSheet.savePackingSheet).toHaveBeenCalledWith(expect.any(Blob), "container-1");
+
+    packingSheet.downloadPackingSheet.mockResolvedValueOnce({
+      kind: "error",
+      error: new Error("Network unavailable"),
+    });
+    await user.click(screen.getByRole("button", { name: "Download packing sheet" }));
+    expect(await screen.findByText(/Could not download the packing sheet/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(packingSheet.downloadPackingSheet).toHaveBeenCalledTimes(3));
   });
 
   it("prunes a removed consumable observation before the next preview", async () => {

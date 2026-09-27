@@ -4483,6 +4483,36 @@
         }
       }
     },
+    "/api/v1/assets/{assetId}/packing-sheet.pdf": {
+      "get": {
+        "tags": ["packing-sheet-controller"],
+        "operationId": "packingSheetPdf",
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/assets/{assetId}/seal/history": {
       "get": {
         "tags": ["asset-controller"],

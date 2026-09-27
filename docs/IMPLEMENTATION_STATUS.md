@@ -27,7 +27,7 @@ Read it together with [`DEVELOPMENT_POLICIES.md`](DEVELOPMENT_POLICIES.md) and t
 | 8       | Checkout manifests, custody, consumable issue/return, PDF, return task creation | Complete, verified                                                                                  |
 | 9.1     | Online return-audit execution and baseline reconciliation                       | Complete, verified                                                                                   |
 | 10      | Finding review, lifecycle, repairs and seal administration                      | Complete, verified                                                                                   |
-| 11      | Container packing sheets                                                        | Not started                                                                                         |
+| 11      | Container packing sheets                                                        | Complete, verified; physical paper/camera acceptance pending                                        |
 | 9.2-9.3 | Persistent scan outbox and queued audit photographs                             | Explicitly deferred until after Phases 10 and 11                                                    |
 | 12-14   | Temporary access, search, hardening                                             | Not started                                                                                         |
 
@@ -58,6 +58,22 @@ Verified at the Phase 10 checkpoint:
   `lint`, `typecheck` and production `build` clean. Six Playwright journeys pass across scanner,
   online audit and finding-review flows on desktop and mobile; `jibBuildTar` succeeds with the
   matching frontend embedded.
+
+Verified at the Phase 11 checkpoint:
+
+- The server now renders direct-only container packing sheets as portrait A4 pages with duplicate
+  landscape-A5 halves, category bars, bundled Roboto Mono, canonical-code QR, measured wrapping,
+  column/font fitting and continuation pages. The backend suite has **429 tests in 55 suites, 0
+  failures and 0 skips**, including eight PostgreSQL packing-sheet integration tests. PDF tests
+  verify duplicate-half content, long unbroken text, multipage exact-asset completeness and
+  decoding the QR from both rendered halves.
+- The API contract and Packing panel download/retry state are implemented for every permanent
+  role. The frontend has **156 unit tests** (138 web, 11 api-client, 7 shared-ui), and
+  `format:check`, `lint`, `typecheck` and production `build` pass. Eight Playwright checks pass:
+  the existing six scanner/audit/review journeys plus desktop and mobile mocked-route packing-sheet
+  download journeys. `jibBuildTar` succeeds with the Phase 11 frontend embedded.
+- Physical printer alignment and camera scanning of a printed packing sheet remain manual
+  acceptance checks.
 
 ## 2. How to verify this yourself
 
@@ -332,7 +348,7 @@ what was verified. Treat the history as a readable grouping, not a bisectable ti
 ## 9. Suggested next steps
 
 1. Review Phases 6 and 7, including physical label-stock/mobile/P-touch acceptance.
-2. **Phase 11** - printable container packing sheets.
+2. Perform the remaining Phase 11 physical print and camera acceptance.
 3. **Phases 9.2 and 9.3** - persistent scan outbox and queued audit photographs.
 
 Phase 9.1 is implemented end to end for online operation: audits freeze direct expectations at start,

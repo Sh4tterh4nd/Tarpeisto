@@ -19,6 +19,7 @@ import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { Link as RouterLink } from "react-router-dom";
+import { downloadPackingSheet, savePackingSheet } from "./packingSheetApi";
 import {
   addPackingRequirement,
   addPackingTemplateRequirement,
@@ -114,6 +115,8 @@ export function PackingPanel({
   const [assetModelId, setAssetModelId] = useState("");
   const [specificAssetReference, setSpecificAssetReference] = useState("");
   const [quantity, setQuantity] = useState("1");
+  const [packingSheetBusy, setPackingSheetBusy] = useState(false);
+  const [packingSheetError, setPackingSheetError] = useState<string>();
 
   const activeRequirements = requirements?.filter((requirement) => !requirement.archived) ?? [];
   const archivedRequirements = requirements?.filter((requirement) => requirement.archived) ?? [];
@@ -190,6 +193,19 @@ export function PackingPanel({
     } finally {
       setBusy(false);
     }
+  }
+
+  async function downloadSheet() {
+    if (packingSheetBusy) return;
+    setPackingSheetBusy(true);
+    setPackingSheetError(undefined);
+    const result = await downloadPackingSheet(containerAssetId);
+    setPackingSheetBusy(false);
+    if (result.kind === "error") {
+      setPackingSheetError(errorMessage(result.error));
+      return;
+    }
+    savePackingSheet(result.data, containerAssetId);
   }
 
   function openRequirementEditor(editor: RequirementEditor) {
@@ -349,19 +365,36 @@ export function PackingPanel({
               This container keeps its own requirements. Templates are copied, never live-linked.
             </Typography>
           </div>
-          {canManage ? (
-            <Stack direction="row" spacing={1}>
-              <Button onClick={() => setTemplateLibraryOpen(true)}>Manage templates</Button>
-              <Button
-                startIcon={<AddIcon />}
-                onClick={() => openRequirementEditor({ scope: "container" })}
-              >
-                Add requirement
-              </Button>
-            </Stack>
-          ) : null}
+          <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
+            <Button onClick={() => void downloadSheet()} disabled={packingSheetBusy}>
+              {packingSheetBusy ? "Preparing sheet." : "Download packing sheet"}
+            </Button>
+            {canManage ? (
+              <>
+                <Button onClick={() => setTemplateLibraryOpen(true)}>Manage templates</Button>
+                <Button
+                  startIcon={<AddIcon />}
+                  onClick={() => openRequirementEditor({ scope: "container" })}
+                >
+                  Add requirement
+                </Button>
+              </>
+            ) : null}
+          </Stack>
         </Stack>
         {error ? <Alert severity="error">{error}</Alert> : null}
+        {packingSheetError ? (
+          <Alert
+            severity="error"
+            action={
+              <Button color="inherit" size="small" onClick={() => void downloadSheet()}>
+                Retry
+              </Button>
+            }
+          >
+            Could not download the packing sheet: {packingSheetError}
+          </Alert>
+        ) : null}
         {preview ? (
           <Alert severity={preview.complete ? "success" : "warning"}>
             {preview.complete
