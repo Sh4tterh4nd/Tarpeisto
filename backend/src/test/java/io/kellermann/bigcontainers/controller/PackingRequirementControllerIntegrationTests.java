@@ -68,6 +68,99 @@ class PackingRequirementControllerIntegrationTests extends AbstractIntegrationTe
     private JdbcTemplate jdbcTemplate;
 
     @Test
+    void selectedAssetIdCreatesAndAssignsAtomicallyWhileStaleVersionMakesNoRequirement() {
+        Fixture fixture = fixture();
+        UUID container = container(fixture, "Selected case");
+        UUID item = asset(fixture, serializedModel(fixture, "Router"), "Router");
+        String endpoint = "/api/v1/assets/" + container + "/packing-requirements";
+        Map<String, Object> stale = Map.of(
+                "type",
+                "SPECIFIC_ASSET",
+                "specificAssetId",
+                item,
+                "requiredQuantity",
+                1,
+                "assignToContainer",
+                true,
+                "expectedAssetVersion",
+                99);
+        assertThat(exchange(fixture.owner(), HttpMethod.POST, endpoint, stale).getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+        assertThat(json(exchange(fixture.owner(), HttpMethod.GET, endpoint, null)
+                        .getBody()))
+                .isEmpty();
+        assertThat(json(exchange(fixture.owner(), HttpMethod.GET, "/api/v1/assets/" + item + "/placement", null)
+                                .getBody())
+                        .path("parentContainerAssetId")
+                        .isNull())
+                .isTrue();
+        long version = jdbcTemplate.queryForObject("SELECT version FROM physical_asset WHERE id = ?", Long.class, item);
+        var success = exchange(
+                fixture.owner(),
+                HttpMethod.POST,
+                endpoint,
+                Map.of(
+                        "type",
+                        "SPECIFIC_ASSET",
+                        "specificAssetId",
+                        item,
+                        "requiredQuantity",
+                        1,
+                        "assignToContainer",
+                        true,
+                        "expectedAssetVersion",
+                        version));
+        assertThat(success.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(json(success.getBody()).path("specificAssetId").asString()).isEqualTo(item.toString());
+        var placement = json(exchange(fixture.owner(), HttpMethod.GET, "/api/v1/assets/" + item + "/placement", null)
+                .getBody());
+        assertThat(placement.path("parentContainerAssetId").asString()).isEqualTo(container.toString());
+        assertThat(placement.path("version").asLong()).isGreaterThan(version);
+    }
+
+    @Test
+    void templateSelectionUsesAssetIdAndRejectsPlacementOptions() {
+        Fixture fixture = fixture();
+        UUID item = asset(fixture, serializedModel(fixture, "Item"), "Item");
+        UUID template = templateId(exchange(
+                fixture.owner(), HttpMethod.POST, "/api/v1/packing-templates", Map.of("name", "Selected template")));
+        String path = "/api/v1/packing-templates/" + template + "/requirements";
+        var response = exchange(
+                fixture.owner(),
+                HttpMethod.POST,
+                path,
+                Map.of(
+                        "type",
+                        "SPECIFIC_ASSET",
+                        "specificAssetId",
+                        item,
+                        "requiredQuantity",
+                        1,
+                        "assignToContainer",
+                        true,
+                        "expectedAssetVersion",
+                        0));
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        response = exchange(
+                fixture.owner(),
+                HttpMethod.POST,
+                path,
+                Map.of("type", "SPECIFIC_ASSET", "specificAssetId", item, "requiredQuantity", 1));
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(json(response.getBody())
+                        .path("requirements")
+                        .get(0)
+                        .path("specificAssetId")
+                        .asString())
+                .isEqualTo(item.toString());
+        assertThat(jdbcTemplate.queryForObject(
+                        "SELECT parent_container_asset_id IS NULL FROM physical_asset WHERE id = ?",
+                        Boolean.class,
+                        item))
+                .isTrue();
+    }
+
+    @Test
     void onlyOwnersAndDeputiesCanMutateAndTenantReferencesDoNotLeak() {
         Fixture fixture = fixture();
         UUID container = container(fixture, "Network case");

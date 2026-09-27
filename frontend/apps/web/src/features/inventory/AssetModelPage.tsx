@@ -55,7 +55,7 @@ function EditModelDialog({
   const { model, categories } = data;
   const [name, setName] = useState(model.name);
   const [description, setDescription] = useState(model.description ?? "");
-  const [categoryId, setCategoryId] = useState(model.categoryId);
+  const [categoryId, setCategoryId] = useState(model.categoryId ?? "");
   const [replacementUrl, setReplacementUrl] = useState(model.replacementUrl ?? "");
   const [trackingMode, setTrackingMode] = useState(model.trackingMode);
   const [stockUnitLabel, setStockUnitLabel] = useState(model.stockUnitLabel ?? "");
@@ -84,8 +84,8 @@ function EditModelDialog({
       return;
     }
     const persistedChange = true;
-    if (categoryId !== model.categoryId) {
-      const category = await changeAssetModelCategory(model.id, categoryId);
+    if (categoryId !== (model.categoryId ?? "")) {
+      const category = await changeAssetModelCategory(model.id, categoryId || undefined);
       if (category.kind === "error") {
         setSaving(false);
         setError(errorMessage(category.error));
@@ -169,6 +169,7 @@ function EditModelDialog({
               value={categoryId}
               onChange={(event) => setCategoryId(event.target.value)}
             >
+              <MenuItem value="">Default</MenuItem>
               {categories
                 .filter((category) => !category.archived || category.id === model.categoryId)
                 .map((category) => (
@@ -328,60 +329,71 @@ export function AssetModelPage() {
         }
       />
 
-      <Paper
-        variant="outlined"
-        sx={{
-          mb: 3,
-          borderLeft: 6,
-          borderLeftColor: category?.color ?? "divider",
-          p: 2,
-        }}
-      >
-        <Stack direction={{ xs: "column", sm: "row" }} sx={{ gap: 2, flexWrap: "wrap" }}>
-          <Box sx={{ minWidth: 180 }}>
-            <Typography variant="body2" color="text.secondary">
-              Category
-            </Typography>
-            <Typography sx={{ fontWeight: 700 }}>{category?.name ?? "Unknown"}</Typography>
-          </Box>
-          <Box sx={{ minWidth: 180 }}>
-            <Typography variant="body2" color="text.secondary">
-              Tracking
-            </Typography>
-            <Typography sx={{ fontWeight: 700 }}>
-              {model.trackingMode === "SERIALIZED_ASSET"
-                ? model.canContainAssets
-                  ? "Serialized container"
-                  : "Serialized asset"
-                : `Quantity in ${model.stockUnitLabel}`}
-            </Typography>
-          </Box>
-          <Box sx={{ minWidth: 180 }}>
-            <Typography variant="body2" color="text.secondary">
-              Replacement
-            </Typography>
-            {model.replacementUrl ? (
-              <Link href={model.replacementUrl} target="_blank" rel="noreferrer">
-                Open supplier page
-              </Link>
-            ) : (
-              <Typography>Not set</Typography>
-            )}
-          </Box>
-          {model.archived ? <Chip label="Archived" /> : null}
-        </Stack>
-      </Paper>
-
       <Stack spacing={3}>
-        <MediaPanel assetModelId={assetModelId} canManage={canManage} />
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          spacing={3}
+          sx={{ alignItems: "flex-start" }}
+        >
+          <Stack spacing={3} sx={{ flex: 1, minWidth: 0, width: "100%" }}>
+            <Paper
+              variant="outlined"
+              sx={{
+                borderLeft: 6,
+                borderLeftColor: category?.color ?? "divider",
+                p: 2,
+              }}
+            >
+              <Stack direction={{ xs: "column", sm: "row" }} sx={{ gap: 2, flexWrap: "wrap" }}>
+                <Box sx={{ minWidth: 180 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Category
+                  </Typography>
+                  <Typography sx={{ fontWeight: 700 }}>{category?.name ?? "Default"}</Typography>
+                </Box>
+                <Box sx={{ minWidth: 180 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Tracking
+                  </Typography>
+                  <Typography sx={{ fontWeight: 700 }}>
+                    {model.trackingMode === "SERIALIZED_ASSET"
+                      ? model.canContainAssets
+                        ? "Serialized container"
+                        : "Serialized asset"
+                      : `Quantity in ${model.stockUnitLabel}`}
+                  </Typography>
+                </Box>
+                <Box sx={{ minWidth: 180 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Replacement
+                  </Typography>
+                  {model.replacementUrl ? (
+                    <Link href={model.replacementUrl} target="_blank" rel="noreferrer">
+                      Open supplier page
+                    </Link>
+                  ) : (
+                    <Typography>Not set</Typography>
+                  )}
+                </Box>
+                {model.archived ? <Chip label="Archived" /> : null}
+              </Stack>
+            </Paper>
+
+            {model.trackingMode === "SERIALIZED_ASSET" ? (
+              <ModelFieldsPanel
+                key={`fields-${model.id}-${definitionRevision}`}
+                assetModelId={assetModelId}
+                canManage={canManage}
+                onDefinitionsChanged={() => setDefinitionRevision((revision) => revision + 1)}
+              />
+            ) : null}
+          </Stack>
+          <Box sx={{ width: { xs: "100%", md: 360 }, flexShrink: 0 }}>
+            <MediaPanel assetModelId={assetModelId} canManage={canManage} />
+          </Box>
+        </Stack>
         {model.trackingMode === "SERIALIZED_ASSET" ? (
           <>
-            <ModelFieldsPanel
-              key={`fields-${model.id}-${definitionRevision}`}
-              assetModelId={assetModelId}
-              canManage={canManage}
-              onDefinitionsChanged={() => setDefinitionRevision((revision) => revision + 1)}
-            />
             <SerializedAssetsPanel
               key={`assets-${model.id}-${definitionRevision}`}
               assetModelId={assetModelId}

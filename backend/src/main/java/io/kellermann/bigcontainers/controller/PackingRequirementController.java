@@ -53,8 +53,11 @@ public class PackingRequirementController {
                         containerAssetId,
                         r.type(),
                         r.assetModelId(),
+                        r.specificAssetId(),
                         r.specificAssetReference(),
-                        r.requiredQuantity())));
+                        r.requiredQuantity(),
+                        Boolean.TRUE.equals(r.assignToContainer()),
+                        r.expectedAssetVersion())));
     }
 
     @GetMapping("/packing-requirements/{id}/reservation-impact")
@@ -83,7 +86,7 @@ public class PackingRequirementController {
                 request.expectedVersion(),
                 r.type(),
                 r.assetModelId(),
-                r.specificAssetReference(),
+                r.referenceWithoutAssignment(),
                 r.requiredQuantity(),
                 Boolean.TRUE.equals(request.confirmAffectedBookings())));
     }
@@ -139,7 +142,7 @@ public class PackingRequirementController {
                 templateId,
                 request.type(),
                 request.assetModelId(),
-                request.specificAssetReference(),
+                request.referenceWithoutAssignment(),
                 request.requiredQuantity()));
     }
 
@@ -155,7 +158,7 @@ public class PackingRequirementController {
                 request.expectedVersion(),
                 r.type(),
                 r.assetModelId(),
-                r.specificAssetReference(),
+                r.referenceWithoutAssignment(),
                 r.requiredQuantity()));
     }
 

@@ -13,6 +13,7 @@ const api = vi.hoisted(() => ({
   setCategoryArchived: vi.fn(),
   createAssetModel: vi.fn(),
   setAssetModelArchived: vi.fn(),
+  deleteCategory: vi.fn(),
 }));
 
 vi.mock("../identity/useSession", () => ({
@@ -26,6 +27,7 @@ vi.mock("./inventoryApi", () => ({
 
 describe("CatalogPage", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     testState.role = "OWNER";
     api.listCategories.mockResolvedValue({
       kind: "ok",
@@ -110,5 +112,43 @@ describe("CatalogPage", () => {
 
     expect(screen.getByRole("dialog", { name: "New category" })).toBeInTheDocument();
     expect(screen.getByLabelText("Category color")).toHaveValue("#2f6b5c");
+  });
+
+  it("creates a Default model without sending an empty category identifier", async () => {
+    api.createAssetModel.mockResolvedValue({ kind: "ok", data: { id: "new-model" } });
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole("button", { name: "Asset model" }));
+    await user.type(screen.getByRole("textbox", { name: "Model name" }), "Uncategorized model");
+    await user.click(screen.getByRole("button", { name: "Create model" }));
+    expect(api.createAssetModel).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "Uncategorized model", categoryId: undefined }),
+    );
+  });
+
+  it("requires a second confirmation to archive and cancels without changing the model", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole("button", { name: "Archive UniFi AP-HD" }));
+    expect(api.setAssetModelArchived).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(api.setAssetModelArchived).not.toHaveBeenCalled();
+    await user.click(await screen.findByRole("button", { name: "Archive UniFi AP-HD" }));
+    await user.click(screen.getByRole("button", { name: "Archive model" }));
+    expect(api.setAssetModelArchived).toHaveBeenCalledWith("model-1", true);
+  });
+
+  it("prevents deleting referenced categories and hides category deletion from Deputies", async () => {
+    const { unmount } = render(
+      <MemoryRouter>
+        <CatalogPage />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByRole("button", { name: "Delete Networking" })).toBeDisabled();
+    unmount();
+    testState.role = "DEPUTY";
+    renderPage();
+    await screen.findByRole("link", { name: "UniFi AP-HD" });
+    expect(screen.queryByRole("button", { name: "Delete Networking" })).not.toBeInTheDocument();
   });
 });

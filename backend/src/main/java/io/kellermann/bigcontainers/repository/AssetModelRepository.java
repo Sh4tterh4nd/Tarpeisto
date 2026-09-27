@@ -14,5 +14,7 @@ public interface AssetModelRepository extends JpaRepository<AssetModel, UUID> {
 
     List<AssetModel> findAllByOrganizationIdAndCategoryId(UUID organizationId, UUID categoryId);
 
+    boolean existsByOrganizationIdAndCategoryId(UUID organizationId, UUID categoryId);
+
     Optional<AssetModel> findByOrganizationIdAndNameIgnoreCaseAndArchivedAtIsNull(UUID organizationId, String name);
 }

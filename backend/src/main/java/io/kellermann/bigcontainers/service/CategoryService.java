@@ -4,7 +4,9 @@ import io.kellermann.bigcontainers.exception.NotFoundException;
 import io.kellermann.bigcontainers.exception.ValidationFailedException;
 import io.kellermann.bigcontainers.model.Category;
 import io.kellermann.bigcontainers.model.OrganizationRole;
+import io.kellermann.bigcontainers.repository.AssetModelRepository;
 import io.kellermann.bigcontainers.repository.CategoryRepository;
+import io.kellermann.bigcontainers.repository.OrganizationRepository;
 import io.kellermann.bigcontainers.security.BigContainersPrincipal;
 import java.time.Clock;
 import java.util.List;
@@ -29,11 +31,20 @@ public class CategoryService {
 
     private final CategoryRepository categoryRepository;
     private final ActivityLogService activityLogService;
+    private final AssetModelRepository assetModelRepository;
+    private final OrganizationRepository organizationRepository;
     private final Clock clock;
 
-    public CategoryService(CategoryRepository categoryRepository, ActivityLogService activityLogService, Clock clock) {
+    public CategoryService(
+            CategoryRepository categoryRepository,
+            ActivityLogService activityLogService,
+            AssetModelRepository assetModelRepository,
+            OrganizationRepository organizationRepository,
+            Clock clock) {
         this.categoryRepository = categoryRepository;
         this.activityLogService = activityLogService;
+        this.assetModelRepository = assetModelRepository;
+        this.organizationRepository = organizationRepository;
         this.clock = clock;
     }
 
@@ -48,6 +59,7 @@ public class CategoryService {
     @Transactional
     public CategoryView create(BigContainersPrincipal principal, String name, String color) {
         requireOwnerOrDeputy(principal);
+        lockOrganization(principal.organizationId());
         requireNameAvailable(principal.organizationId(), name);
 
         var now = clock.instant();
@@ -75,6 +87,7 @@ public class CategoryService {
     @Transactional
     public CategoryView rename(BigContainersPrincipal principal, UUID categoryId, String newName, String newColor) {
         requireOwnerOrDeputy(principal);
+        lockOrganization(principal.organizationId());
         Category category = requireCategory(principal.organizationId(), categoryId);
         if (!category.getName().equalsIgnoreCase(newName)) {
             requireNameAvailable(principal.organizationId(), newName);
@@ -98,6 +111,7 @@ public class CategoryService {
     @Transactional
     public void archive(BigContainersPrincipal principal, UUID categoryId) {
         requireOwnerOrDeputy(principal);
+        lockOrganization(principal.organizationId());
         Category category = requireCategory(principal.organizationId(), categoryId);
         category.archive(clock.instant());
         activityLogService.record(
@@ -112,6 +126,7 @@ public class CategoryService {
     @Transactional
     public void restore(BigContainersPrincipal principal, UUID categoryId) {
         requireOwnerOrDeputy(principal);
+        lockOrganization(principal.organizationId());
         Category category = requireCategory(principal.organizationId(), categoryId);
         category.restore(clock.instant());
         activityLogService.record(
@@ -121,6 +136,25 @@ public class CategoryService {
                 "CATEGORY",
                 category.getId(),
                 null);
+    }
+
+    @Transactional
+    public void delete(BigContainersPrincipal principal, UUID categoryId) {
+        requireOwner(principal);
+        lockOrganization(principal.organizationId());
+        Category category = requireCategory(principal.organizationId(), categoryId);
+        if (assetModelRepository.existsByOrganizationIdAndCategoryId(principal.organizationId(), categoryId)) {
+            throw new ValidationFailedException("A category referenced by an asset model cannot be deleted.");
+        }
+        activityLogService.record(
+                principal.organizationId(),
+                principal.userId(),
+                "CATEGORY_DELETED",
+                "CATEGORY",
+                category.getId(),
+                Map.of("name", category.getName(), "color", category.getColor()));
+        categoryRepository.delete(category);
+        categoryRepository.flush();
     }
 
     /**
@@ -163,6 +197,18 @@ public class CategoryService {
                 || (principal.role() != OrganizationRole.OWNER && principal.role() != OrganizationRole.DEPUTY)) {
             throw new AccessDeniedException("Owner or Deputy role required.");
         }
+    }
+
+    private void requireOwner(BigContainersPrincipal principal) {
+        if (principal == null || principal.role() != OrganizationRole.OWNER) {
+            throw new AccessDeniedException("Owner role required.");
+        }
+    }
+
+    private void lockOrganization(UUID organizationId) {
+        organizationRepository
+                .findWithLockById(organizationId)
+                .orElseThrow(() -> new NotFoundException("Organization not found."));
     }
 
     private void requireOrganizationMember(BigContainersPrincipal principal) {

@@ -10,6 +10,8 @@ const api = vi.hoisted(() => ({
   archivePackingRequirement: vi.fn(),
   createPackingTemplate: vi.fn(),
   listAssetModels: vi.fn(),
+  getAsset: vi.fn(),
+  searchAssets: vi.fn(),
   listPackingRequirements: vi.fn(),
   listPackingTemplates: vi.fn(),
   previewPacking: vi.fn(),
@@ -67,6 +69,10 @@ function ok(data: unknown) {
   return { kind: "ok" as const, data };
 }
 
+async function expandPacking(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await screen.findByRole("button", { name: /Packing sheet/ }));
+}
+
 describe("PackingPanel", () => {
   let currentRequirements: (typeof modelRequirement)[];
 
@@ -86,6 +92,21 @@ describe("PackingPanel", () => {
     );
     api.listPackingRequirements.mockImplementation(() => Promise.resolve(ok(currentRequirements)));
     api.listPackingTemplates.mockResolvedValue(ok([template]));
+    api.searchAssets.mockResolvedValue(
+      ok({
+        items: [
+          {
+            id: "asset-1",
+            displayName: "Access point 1",
+            publicCode: "AP-001",
+            assetModelName: "Access point",
+            parentContainerAssetId: undefined,
+            placementVersion: 8,
+          },
+        ],
+        nextCursor: undefined,
+      }),
+    );
     api.previewPacking.mockImplementation((_containerAssetId, observedConsumableQuantities = {}) =>
       Promise.resolve(
         ok({
@@ -130,6 +151,7 @@ describe("PackingPanel", () => {
   it("groups packing state and sends observed consumables into a refreshed preview", async () => {
     const user = userEvent.setup();
     render(<PackingPanel containerAssetId="container-1" canManage />);
+    await expandPacking(user);
 
     expect(
       await screen.findByRole("heading", { name: "Interchangeable serialized" }),
@@ -153,7 +175,9 @@ describe("PackingPanel", () => {
   });
 
   it("keeps manager actions hidden from a viewer", async () => {
+    const user = userEvent.setup();
     render(<PackingPanel containerAssetId="container-1" canManage={false} />);
+    await expandPacking(user);
 
     expect(await screen.findByText("Required: 5 · Missing")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Manage templates" })).not.toBeInTheDocument();
@@ -164,6 +188,7 @@ describe("PackingPanel", () => {
   it("lets every permanent role download a packing sheet and offers retry after failure", async () => {
     const user = userEvent.setup();
     render(<PackingPanel containerAssetId="container-1" canManage={false} />);
+    await expandPacking(user);
     await screen.findByRole("heading", { name: "Interchangeable serialized" });
     await user.click(screen.getByRole("button", { name: "Download packing sheet" }));
     await waitFor(() =>
@@ -184,6 +209,7 @@ describe("PackingPanel", () => {
   it("prunes a removed consumable observation before the next preview", async () => {
     const user = userEvent.setup();
     render(<PackingPanel containerAssetId="container-1" canManage />);
+    await expandPacking(user);
     const observed = await screen.findByLabelText("Observed Gaffer tape");
     await user.clear(observed);
     await user.type(observed, "2.5");
@@ -213,6 +239,7 @@ describe("PackingPanel", () => {
   it("updates a requirement with an exact reference and always submits quantity one, then restores it", async () => {
     const user = userEvent.setup();
     render(<PackingPanel containerAssetId="container-1" canManage />);
+    await expandPacking(user);
     await screen.findByText("Required: 5 · Missing");
 
     const firstEdit = screen.getAllByRole("button", { name: "Edit" })[0];
@@ -220,10 +247,9 @@ describe("PackingPanel", () => {
     await user.click(firstEdit!);
     await user.click(screen.getByRole("combobox", { name: "Requirement kind" }));
     await user.click(screen.getByRole("option", { name: "Exact asset" }));
-    await user.type(
-      screen.getByRole("textbox", { name: "Exact asset public code or UUID" }),
-      "AP-001",
-    );
+    const picker = screen.getByRole("combobox", { name: "Exact asset" });
+    await user.type(picker, "AP");
+    await user.click(await screen.findByRole("option", { name: /Access point 1/ }));
     expect(screen.getByRole("spinbutton", { name: "Required quantity" })).toBeDisabled();
     await user.click(screen.getByRole("button", { name: "Save" }));
 
@@ -233,8 +259,11 @@ describe("PackingPanel", () => {
         requirement: {
           type: "SPECIFIC_ASSET",
           assetModelId: undefined,
-          specificAssetReference: "AP-001",
+          specificAssetId: "asset-1",
+          specificAssetReference: undefined,
           requiredQuantity: 1,
+          assignToContainer: false,
+          expectedAssetVersion: undefined,
         },
       }),
     );
@@ -249,9 +278,74 @@ describe("PackingPanel", () => {
     );
   });
 
+  it("assigns a selected exact asset only when explicitly checked and refreshes contents after success", async () => {
+    const user = userEvent.setup();
+    const onContentsChanged = vi.fn();
+    api.addPackingRequirement.mockResolvedValue(ok({}));
+    render(
+      <PackingPanel
+        containerAssetId="container-1"
+        canManage
+        onContentsChanged={onContentsChanged}
+      />,
+    );
+    await expandPacking(user);
+    await user.click(screen.getByRole("button", { name: "Add requirement" }));
+    await user.click(screen.getByRole("combobox", { name: "Requirement kind" }));
+    await user.click(screen.getByRole("option", { name: "Exact asset" }));
+    const checkbox = screen.getByRole("checkbox", {
+      name: "Assign this asset to this container now",
+    });
+    expect(checkbox).not.toBeChecked();
+    await user.type(screen.getByRole("combobox", { name: "Exact asset" }), "AP");
+    await user.click(await screen.findByRole("option", { name: /Access point 1/ }));
+    await user.click(checkbox);
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(api.addPackingRequirement).toHaveBeenCalledWith(
+        "container-1",
+        expect.objectContaining({
+          specificAssetId: "asset-1",
+          assignToContainer: true,
+          expectedAssetVersion: 8,
+        }),
+      ),
+    );
+    await waitFor(() => expect(onContentsChanged).toHaveBeenCalledTimes(1));
+  });
+
+  it("loads the existing exact asset into the picker when editing a requirement", async () => {
+    api.listPackingRequirements.mockResolvedValue(
+      ok([
+        {
+          ...modelRequirement,
+          type: "SPECIFIC_ASSET",
+          assetModelId: undefined,
+          specificAssetId: "asset-1",
+          requiredQuantity: 1,
+        },
+      ]),
+    );
+    api.getAsset.mockResolvedValue(ok({ id: "asset-1", publicCode: "AP-001" }));
+    const user = userEvent.setup();
+    render(<PackingPanel containerAssetId="container-1" canManage />);
+    await expandPacking(user);
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: "Exact asset" })).toHaveDisplayValue(
+        /Access point 1.*AP-001/,
+      ),
+    );
+    expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+    expect(
+      screen.getByRole("checkbox", { name: "Assign this asset to this container now" }),
+    ).not.toBeChecked();
+  });
+
   it("manages copied templates and their independent requirements", async () => {
     const user = userEvent.setup();
     render(<PackingPanel containerAssetId="container-1" canManage />);
+    await expandPacking(user);
     await screen.findByText("Required: 5 · Missing");
     expect(
       screen.getByText(

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import PauseIcon from "@mui/icons-material/Pause";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import RefreshIcon from "@mui/icons-material/Refresh";
@@ -74,10 +74,13 @@ export function ScannerViewport({ capability, onCode }: ScannerViewportProps) {
     const availability = capability.availability();
     return availability === "ready" ? "ready" : availability;
   });
-  const [shouldRun, setShouldRun] = useState(false);
+  // Request camera access once on entry. A denial or failure turns this off, so
+  // the user retains an explicit retry without a permission-request loop.
+  const [shouldRun, setShouldRun] = useState(() => capability.availability() === "ready");
   const [cameraId, setCameraId] = useState("");
   const [cameras, setCameras] = useState<QrCameraDevice[]>([]);
   const [engine, setEngine] = useState<QrScannerEngine>();
+  const deliverCode = useEffectEvent((code: string) => onCode(code));
 
   useEffect(() => {
     if (!shouldRun || !videoRef.current) return;
@@ -97,7 +100,7 @@ export function ScannerViewport({ capability, onCode }: ScannerViewportProps) {
         session = await capability.start(
           videoRef.current as HTMLVideoElement,
           cameraId || undefined,
-          onCode,
+          (code) => deliverCode(code),
           () => {
             if (!disposed) {
               setStatus("reconnecting");
@@ -126,7 +129,7 @@ export function ScannerViewport({ capability, onCode }: ScannerViewportProps) {
       disposed = true;
       session?.stop();
     };
-  }, [cameraId, capability, onCode, shouldRun]);
+  }, [cameraId, capability, shouldRun]);
 
   const canStart = status !== "unsupported" && status !== "insecure";
   const isRunning = status === "running" || status === "starting";
@@ -241,7 +244,7 @@ export function ScannerViewport({ capability, onCode }: ScannerViewportProps) {
               disabled={status === "starting"}
               sx={{ minHeight: 44 }}
             >
-              {status === "starting" ? "Starting camera" : "Pause camera"}
+              {status === "starting" ? "Start camera" : "Pause camera"}
             </Button>
           ) : (
             <Button

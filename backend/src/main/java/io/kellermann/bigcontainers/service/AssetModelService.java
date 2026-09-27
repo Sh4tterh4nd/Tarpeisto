@@ -120,7 +120,10 @@ public class AssetModelService {
             BigDecimal lowStockThreshold,
             boolean canContainAssets) {
         requireOwnerOrDeputy(principal);
-        categoryService.requireActiveCategoryForSelection(principal.organizationId(), categoryId);
+        lockOrganization(principal.organizationId());
+        if (categoryId != null) {
+            categoryService.requireActiveCategoryForSelection(principal.organizationId(), categoryId);
+        }
         requireNameAvailable(principal.organizationId(), name);
         requireValidReplacementUrl(replacementUrl);
 
@@ -161,6 +164,7 @@ public class AssetModelService {
     @Transactional
     public AssetModelView rename(BigContainersPrincipal principal, UUID assetModelId, String name, String description) {
         requireOwnerOrDeputy(principal);
+        lockOrganization(principal.organizationId());
         AssetModel assetModel = requireAssetModel(principal.organizationId(), assetModelId);
         if (!assetModel.getName().equalsIgnoreCase(name)) {
             requireNameAvailable(principal.organizationId(), name);
@@ -179,8 +183,11 @@ public class AssetModelService {
     @Transactional
     public AssetModelView changeCategory(BigContainersPrincipal principal, UUID assetModelId, UUID categoryId) {
         requireOwnerOrDeputy(principal);
+        lockOrganization(principal.organizationId());
         AssetModel assetModel = requireAssetModel(principal.organizationId(), assetModelId);
-        categoryService.requireActiveCategoryForSelection(principal.organizationId(), categoryId);
+        if (categoryId != null) {
+            categoryService.requireActiveCategoryForSelection(principal.organizationId(), categoryId);
+        }
         assetModel.changeCategory(categoryId, clock.instant());
         activityLogService.record(
                 principal.organizationId(),
@@ -188,7 +195,7 @@ public class AssetModelService {
                 "ASSET_MODEL_CATEGORY_CHANGED",
                 "ASSET_MODEL",
                 assetModel.getId(),
-                Map.of("categoryId", categoryId.toString()));
+                categoryId == null ? Map.of("category", "Default") : Map.of("categoryId", categoryId.toString()));
         return AssetModelView.from(assetModel);
     }
 

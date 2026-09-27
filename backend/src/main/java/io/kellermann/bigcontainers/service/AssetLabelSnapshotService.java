@@ -21,6 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class AssetLabelSnapshotService {
 
     private static final int MAX_ASSETS_PER_REQUEST = 500;
+    private static final String DEFAULT_CATEGORY_NAME = "Default";
+    private static final String DEFAULT_CATEGORY_COLOR = "#5B6472";
 
     private final AssetRepository assetRepository;
 
@@ -69,7 +71,7 @@ public class AssetLabelSnapshotService {
                 projection.getModelName(),
                 projection.getIndividualName(),
                 projection.getUnitNumber(),
-                projection.getCategoryName(),
-                projection.getCategoryColor());
+                projection.getCategoryName() == null ? DEFAULT_CATEGORY_NAME : projection.getCategoryName(),
+                projection.getCategoryColor() == null ? DEFAULT_CATEGORY_COLOR : projection.getCategoryColor());
     }
 }

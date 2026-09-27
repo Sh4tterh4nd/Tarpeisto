@@ -315,6 +315,7 @@ export function AssetPage() {
   const [actionError, setActionError] = useState<{ routeId: string; message: string }>();
   const [archiveBusyRouteId, setArchiveBusyRouteId] = useState<string>();
   const [labelExportOpen, setLabelExportOpen] = useState(false);
+  const [placementRevision, setPlacementRevision] = useState(0);
   const loadRequest = useRef(0);
 
   const load = useCallback(async () => {
@@ -398,7 +399,9 @@ export function AssetPage() {
         description={`${asset.assetModelName} · unit ${asset.unitNumber}`}
         actions={
           <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
-            <Button onClick={() => setLabelExportOpen(true)}>Export label</Button>
+            {!containerCapable ? (
+              <Button onClick={() => setLabelExportOpen(true)}>Export label</Button>
+            ) : null}
             {canManage ? (
               <Stack direction="row" spacing={1}>
                 <Button
@@ -421,17 +424,6 @@ export function AssetPage() {
           </Stack>
         }
       />
-      <AssetReviewPanel
-        assetId={asset.id}
-        canManage={canManage}
-        containerCapable={containerCapable}
-        lifecycleState={asset.lifecycleState}
-        sealable={asset.sealable}
-        sealState={asset.sealState}
-        sealVerifiedAt={asset.sealVerifiedAt ?? undefined}
-        lastVerifiedAt={asset.lastVerifiedAt ?? undefined}
-        replacesAssetId={asset.replacesAssetId ?? undefined}
-      />
       {currentActionError ? (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setActionError(undefined)}>
           {currentActionError}
@@ -449,32 +441,85 @@ export function AssetPage() {
       ) : null}
 
       <Stack spacing={3}>
-        <AssetPlacementPanel assetId={asset.id} canManage={canManage} />
-        {containerCapable ? (
-          <PackingPanel containerAssetId={asset.id} canManage={canManage} />
-        ) : null}
-        <MediaPanel
-          assetId={asset.id}
-          fallbackAssetModelId={asset.assetModelId}
-          containerCapable={containerCapable}
-          canManage={canManage}
-        />
-        <Paper variant="outlined" sx={{ overflow: "hidden" }}>
-          <Box sx={{ p: 2, bgcolor: "primary.main", color: "primary.contrastText" }}>
-            <Typography variant="body2">Public asset code</Typography>
-            <Typography
-              component="div"
-              sx={{ fontFamily: "monospace", fontSize: "2rem", fontWeight: 800, letterSpacing: 4 }}
-            >
-              {asset.publicCode}
-            </Typography>
-          </Box>
-          <Stack direction={{ xs: "column", sm: "row" }} sx={{ gap: 3, p: 2 }}>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="body2" color="text.secondary">
-                Condition
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          spacing={3}
+          sx={{ alignItems: "flex-start" }}
+        >
+          <Paper variant="outlined" sx={{ flex: 1, width: "100%" }}>
+            {asset.values.length > 0 ? (
+              <>
+                <Typography variant="h3" sx={{ p: 2 }}>
+                  Unit values
+                </Typography>
+                <Divider />
+                <List disablePadding>
+                  {[...asset.values]
+                    .sort((a, b) => a.displayOrder - b.displayOrder)
+                    .map((value) => (
+                      <ListItem key={value.fieldId} divider>
+                        <ListItemText
+                          primary={value.fieldName}
+                          secondary={
+                            value.stringValue || value.dateValue || value.optionValue || "Missing"
+                          }
+                        />
+                      </ListItem>
+                    ))}
+                </List>
+              </>
+            ) : null}
+            <Box sx={{ p: 2, bgcolor: "primary.main", color: "primary.contrastText" }}>
+              <Typography variant="body2">Public asset code</Typography>
+              <Typography
+                component="div"
+                sx={{
+                  fontFamily: "monospace",
+                  fontSize: "2rem",
+                  fontWeight: 800,
+                  letterSpacing: 4,
+                }}
+              >
+                {asset.publicCode}
               </Typography>
-              <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+            </Box>
+            {asset.purchaseDate ? (
+              <Typography sx={{ p: 2 }}>
+                <Typography component="span" color="text.secondary">
+                  Purchase date:{" "}
+                </Typography>
+                {asset.purchaseDate}
+              </Typography>
+            ) : null}
+          </Paper>
+          <Box sx={{ width: { xs: "100%", md: 360 }, flexShrink: 0 }}>
+            <MediaPanel
+              assetId={asset.id}
+              fallbackAssetModelId={asset.assetModelId}
+              containerCapable={containerCapable}
+              canManage={canManage}
+            />
+          </Box>
+        </Stack>
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          spacing={3}
+          sx={{ alignItems: "flex-start" }}
+        >
+          <Box sx={{ flex: 1, width: "100%" }}>
+            <AssetPlacementPanel
+              key={`${asset.id}-${placementRevision}`}
+              assetId={asset.id}
+              canManage={canManage}
+            />
+          </Box>
+          <Paper variant="outlined" sx={{ width: { xs: "100%", md: 360 }, p: 2 }}>
+            <Typography variant="h3">Current state</Typography>
+            <Stack spacing={1.5} sx={{ mt: 1 }}>
+              <Box>
+                <Typography variant="body2" color="text.secondary">
+                  Condition
+                </Typography>
                 <Typography sx={{ fontWeight: 700 }}>
                   {asset.condition === "GOOD" ? "Good" : "Damaged"}
                 </Typography>
@@ -486,13 +531,11 @@ export function AssetPage() {
                     Change
                   </Button>
                 ) : null}
-              </Stack>
-            </Box>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="body2" color="text.secondary">
-                Lifecycle
-              </Typography>
-              <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+              </Box>
+              <Box>
+                <Typography variant="body2" color="text.secondary">
+                  Lifecycle
+                </Typography>
                 <Typography sx={{ fontWeight: 700 }}>{asset.lifecycleState}</Typography>
                 {canManage ? (
                   <Button
@@ -502,56 +545,35 @@ export function AssetPage() {
                     Change
                   </Button>
                 ) : null}
-              </Stack>
-            </Box>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="body2" color="text.secondary">
-                Purchase date
-              </Typography>
-              <Typography sx={{ fontWeight: 700 }}>
-                {asset.purchaseDate || "Not recorded"}
-              </Typography>
-            </Box>
-          </Stack>
-        </Paper>
-
-        <Paper variant="outlined">
-          <Typography variant="h3" sx={{ p: 2 }}>
-            Unit values
-          </Typography>
-          <Divider />
-          {asset.values.length === 0 ? (
-            <Typography color="text.secondary" sx={{ p: 2 }}>
-              No values have been recorded for this unit.
+              </Box>
+            </Stack>
+          </Paper>
+        </Stack>
+        <AssetReviewPanel
+          key={asset.id}
+          assetId={asset.id}
+          canManage={canManage}
+          containerCapable={containerCapable}
+          lifecycleState={asset.lifecycleState}
+          sealable={asset.sealable}
+          sealState={asset.sealState}
+          sealVerifiedAt={asset.sealVerifiedAt ?? undefined}
+          lastVerifiedAt={asset.lastVerifiedAt ?? undefined}
+          replacesAssetId={asset.replacesAssetId ?? undefined}
+        />
+        {containerCapable ? (
+          <PackingPanel
+            containerAssetId={asset.id}
+            canManage={canManage}
+            onContentsChanged={() => setPlacementRevision((value) => value + 1)}
+          />
+        ) : null}
+        {history.length > 0 ? (
+          <Paper variant="outlined">
+            <Typography variant="h3" sx={{ p: 2 }}>
+              Condition and lifecycle history
             </Typography>
-          ) : (
-            <List disablePadding>
-              {[...asset.values]
-                .sort((a, b) => a.displayOrder - b.displayOrder)
-                .map((value) => (
-                  <ListItem key={value.fieldId} divider>
-                    <ListItemText
-                      primary={value.fieldName}
-                      secondary={
-                        value.stringValue || value.dateValue || value.optionValue || "Missing"
-                      }
-                    />
-                  </ListItem>
-                ))}
-            </List>
-          )}
-        </Paper>
-
-        <Paper variant="outlined">
-          <Typography variant="h3" sx={{ p: 2 }}>
-            Condition and lifecycle history
-          </Typography>
-          <Divider />
-          {history.length === 0 ? (
-            <Typography color="text.secondary" sx={{ p: 2 }}>
-              No state changes have been recorded.
-            </Typography>
-          ) : (
+            <Divider />
             <List disablePadding>
               {history.map((item) => (
                 <ListItem key={item.id} divider alignItems="flex-start">
@@ -562,8 +584,8 @@ export function AssetPage() {
                 </ListItem>
               ))}
             </List>
-          )}
-        </Paper>
+          </Paper>
+        ) : null}
       </Stack>
 
       {dialog?.routeId === asset.id && dialog.kind === "details" ? (
@@ -578,7 +600,7 @@ export function AssetPage() {
           onSaved={load}
         />
       ) : null}
-      {labelExportOpen ? (
+      {labelExportOpen && !containerCapable ? (
         <AssetLabelExportDialog assetIds={[asset.id]} onClose={() => setLabelExportOpen(false)} />
       ) : null}
     </>

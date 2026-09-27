@@ -73,6 +73,9 @@ test("app shell loads and a valid public code resolves to an asset", async ({ pa
   await expect(page.getByRole("heading", { name: "BigContainers" })).toBeVisible();
   await expect(page.getByRole("status").first()).toBeVisible();
 
+  if (!(await page.getByRole("link", { name: "Scan equipment" }).isVisible())) {
+    await page.getByRole("button", { name: "Open navigation" }).click();
+  }
   await page.getByRole("link", { name: "Scan equipment" }).click();
   await expect(page.getByRole("heading", { name: "Scan equipment" })).toBeVisible();
 

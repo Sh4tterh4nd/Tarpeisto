@@ -20,6 +20,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class PackingSheetSnapshotService {
 
+    private static final String DEFAULT_CATEGORY_NAME = "Default";
+    private static final String DEFAULT_CATEGORY_COLOR = "#5B6472";
+
     private final AssetRepository assets;
 
     public PackingSheetSnapshotService(AssetRepository assets) {
@@ -52,9 +55,13 @@ public class PackingSheetSnapshotService {
                         .toList();
         return new PackingSheetSnapshot(
                 displayName(container.getIndividualName(), container.getModelName(), container.getUnitNumber()),
-                container.getModelName(),
+                container.getModelDescription() == null
+                                || container.getModelDescription().isBlank()
+                        ? container.getModelName()
+                        : container.getModelDescription(),
                 container.getPublicCode(),
-                container.getCategoryColor(),
+                container.getCategoryName() == null ? DEFAULT_CATEGORY_NAME : container.getCategoryName(),
+                container.getCategoryColor() == null ? DEFAULT_CATEGORY_COLOR : container.getCategoryColor(),
                 requirements,
                 children);
     }

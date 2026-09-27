@@ -40,27 +40,27 @@ BigContainers is a responsive web application and installable Progressive Web Ap
 
 ## 2. Terminology
 
-| Term | Meaning |
-|---|---|
-| Organization | Owner of all inventory data. The initial installation contains one invisible default organization. |
-| Category | Colored classification assigned to a model, such as Networking or Cables. |
-| Model | Shared catalog definition for either serialized equipment or quantity stock, such as `UniFi AP-HD`, `RAKO 400 x 300`, or `Gaffer tape 50 mm`. |
-| Physical asset | One individually tracked real-world unit with an internal UUID and public asset code. |
-| Quantity stock | An amount of one consumable model held at a location or in a container, without individual asset identities. |
-| Stock movement | Immutable receipt, issue, return, transfer, consumption, or adjustment that changes a quantity-stock balance. |
-| Container | A physical asset whose model allows it to contain assets. |
-| Location | Hierarchical physical storage place, such as `HQ / Room 13 / Shelf A`. |
-| Packing requirement | Definition of what a container must directly contain. |
-| Exact requirement | Requirement that can only be fulfilled by one specified physical asset. |
-| Model-quantity requirement | Requirement that can be fulfilled by any eligible serialized physical units of a specified model. |
-| Consumable-quantity requirement | Requirement for an amount of a quantity-tracked model; no individual QR scan is expected. |
-| Current contents | Exact assets most recently verified as physically present in a container. |
-| Packing template | Reusable starting set of packing requirements copied onto a container. |
-| Event | Time-bounded reservation and movement of containers and/or individual assets. |
-| Checkout manifest | Immutable list of exact physical assets that left inventory for an event. |
-| Audit | Verification of the direct contents of one container. |
-| Audit batch | Related set of container audits, normally created for one event return. |
-| Finding | Missing, damaged, unexpected, misplaced, or unreadable-label observation from an audit. |
+| Term                            | Meaning                                                                                                                                       |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Organization                    | Owner of all inventory data. The initial installation contains one invisible default organization.                                            |
+| Category                        | Colored classification assigned to a model, such as Networking or Cables.                                                                     |
+| Model                           | Shared catalog definition for either serialized equipment or quantity stock, such as `UniFi AP-HD`, `RAKO 400 x 300`, or `Gaffer tape 50 mm`. |
+| Physical asset                  | One individually tracked real-world unit with an internal UUID and public asset code.                                                         |
+| Quantity stock                  | An amount of one consumable model held at a location or in a container, without individual asset identities.                                  |
+| Stock movement                  | Immutable receipt, issue, return, transfer, consumption, or adjustment that changes a quantity-stock balance.                                 |
+| Container                       | A physical asset whose model allows it to contain assets.                                                                                     |
+| Location                        | Hierarchical physical storage place, such as `HQ / Room 13 / Shelf A`.                                                                        |
+| Packing requirement             | Definition of what a container must directly contain.                                                                                         |
+| Exact requirement               | Requirement that can only be fulfilled by one specified physical asset.                                                                       |
+| Model-quantity requirement      | Requirement that can be fulfilled by any eligible serialized physical units of a specified model.                                             |
+| Consumable-quantity requirement | Requirement for an amount of a quantity-tracked model; no individual QR scan is expected.                                                     |
+| Current contents                | Exact assets most recently verified as physically present in a container.                                                                     |
+| Packing template                | Reusable starting set of packing requirements copied onto a container.                                                                        |
+| Event                           | Time-bounded reservation and movement of containers and/or individual assets.                                                                 |
+| Checkout manifest               | Immutable list of exact physical assets that left inventory for an event.                                                                     |
+| Audit                           | Verification of the direct contents of one container.                                                                                         |
+| Audit batch                     | Related set of container audits, normally created for one event return.                                                                       |
+| Finding                         | Missing, damaged, unexpected, misplaced, or unreadable-label observation from an audit.                                                       |
 
 ## 3. Tenancy and organization boundary
 
@@ -155,6 +155,8 @@ Rules:
 - The UI automatically chooses readable foreground text for the selected color.
 - Archived categories remain visible on historical records but cannot be selected for new models.
 - Category color is used in badges and container packing sheets.
+- An Owner or Deputy may create, edit, or archive a category. Only an Owner may hard-delete a category, and only when no asset model, including an archived model, references it.
+- Category deletion is an unreferenced setup-data deletion, not a way to remove historical records. It writes an immutable activity snapshot containing the category's former name, color, actor, and timestamp before the category row is removed.
 
 ## 6. Asset models
 
@@ -166,7 +168,7 @@ An asset model contains shared catalog information. Its tracking mode determines
 - Organization ID
 - Name, required
 - Description, optional multiline plain text
-- Category, required
+- Category, optional. A model with no category displays as `Default` with a neutral color; `Default` is a presentation value, not a synthetic category row.
 - Replacement URL, optional HTTP/HTTPS URL pointing to a manufacturer or preferred supplier
 - Primary reference photograph, optional
 - Tracking mode, required: `SERIALIZED_ASSET` by default or `QUANTITY_STOCK`
@@ -200,14 +202,14 @@ When `can_contain_assets` is enabled on a serialized model, every physical asset
 
 Examples:
 
-| Model | Can contain assets |
-|---|---:|
-| UniFi AP-HD | No |
-| LAN cable 10m | No |
-| RAKO 400 x 300 | Yes |
-| Pelican 1510 | Yes |
-| 19-inch flightcase | Yes |
-| Euro pallet | Yes |
+| Model              | Can contain assets |
+| ------------------ | -----------------: |
+| UniFi AP-HD        |                 No |
+| LAN cable 10m      |                 No |
+| RAKO 400 x 300     |                Yes |
+| Pelican 1510       |                Yes |
+| 19-inch flightcase |                Yes |
+| Euro pallet        |                Yes |
 
 Disabling containment is prohibited while any unit of the model currently contains assets or has active packing requirements.
 
@@ -504,6 +506,7 @@ AP 1 cannot satisfy one of `Mobile Net Large`'s interchangeable AP slots.
 ### 12.4 Editing requirements
 
 - Only Owners and Deputies can add, edit, archive, or remove requirements.
+- The exact-asset picker searches eligible assets by code and name rather than requiring a manually typed code. It also offers an explicit option to assign the selected asset to the container as part of the same transaction; when selected, requirement creation and current-parent assignment either both succeed or neither does.
 - Requirements are normally locked while the container is checked out.
 - Adding a requirement automatically updates future reserved events containing the container.
 - Additions do not require destructive-change confirmation.
@@ -890,7 +893,7 @@ All generated documents use a bundled monospaced font family with regular and bo
 
 ### 23.1 Asset-label content
 
-Asset labels are generated only for serialized physical assets. Quantity-tracked consumables do not receive individual codes or labels.
+Asset labels are generated only for serialized physical assets that are not containers. Quantity-tracked consumables do not receive individual codes or labels. Containers use the container contents/packing sheet rather than ordinary A4 asset-label or P-touch export.
 
 Left side:
 
@@ -936,13 +939,16 @@ qr_value
 
 `qr_value` equals the canonical public code. The user's P-touch template creates the QR and controls printer-specific layout.
 
+Container assets are excluded from the P-touch export.
+
 ### 23.4 Container packing sheets
 
 - A4 page split into two identical A5-sized halves.
 - Each half contains the same content.
-- Thick top bar uses the container category color.
-- Container individual name is bold monospace and at least 22 pt.
-- Include container model, asset code, and QR.
+- Each A5 half is landscape.
+- A substantial category-colored identity bar has the bold container name on the left, the category and model description below it, and the QR plus public code on the right. The description preview is measured to at most three lines and ends with an ellipsis when additional text does not fit.
+- The identity bar uses the neutral `Default` color when the container model has no category.
+- The content list begins below the identity bar and contains the direct packing requirements only.
 - Include packing requirements grouped by model and quantity.
 - Consumable requirements show their amount and stock unit, for example `2 rolls Gaffer tape 50 mm`.
 - Exact requirements include the required asset code.
@@ -968,6 +974,21 @@ Packing-list layout starts at 12 pt:
 4. Never reduce below 8 pt.
 5. Generate additional duplicated pages if the list still does not fit.
 
+## 23.5 Inventory navigation and detail presentation
+
+- Desktop navigation is a left-side menu. Phone and narrow-tablet navigation uses an equivalent accessible drawer.
+- Inventory has distinct Asset Models and Assets views. Models show catalog definitions; Assets show individual serialized units and containers.
+- Asset-model and asset tables support header-click ascending/descending sort. Models filter by category and tracking mode; physical assets filter by category and by equipment/container type, because quantity-tracked models do not create physical assets.
+- Archiving an asset model requires a second explicit confirmation before the archive mutation is submitted.
+- Asset detail presents the title first; beneath it, the public-code block follows the unit-values block, with the reference photograph to the right. Placement is below, with condition and lifecycle to its right. Current condition and lifecycle remain visible. Empty unit-value and state-history sections are omitted rather than shown as empty panels.
+- Asset-model detail presents the reference photograph on the right, category and unit-definition fields stacked on the left, and physical units at the bottom.
+- Container detail keeps the packing sheet/content preview in a collapsed section by default because the direct contents remain the primary on-page view.
+
+## 23.6 Scanner camera startup
+
+- Entering an equipment-scanning flow immediately attempts to start the preferred available camera.
+- If permission is denied, no camera is available, or startup fails, the scanner presents the existing device-selection, retry, and manual-code fallbacks without blocking the workflow.
+
 ## 24. PWA and connectivity resilience
 
 ### 24.1 PWA
@@ -992,7 +1013,7 @@ Full offline inventory operation is not required. During an active audit:
 
 ## 25. Archiving and history
 
-- Models, assets, quantity-stock balances, categories, locations, templates, requirements, users, completed events, and audits are archived rather than destructively deleted once referenced by history.
+- Models, assets, quantity-stock balances, categories, locations, templates, requirements, users, completed events, and audits are archived rather than destructively deleted once referenced by history. The Owner-only deletion exception for an unreferenced category is defined in section 5.
 - Archived records are excluded from normal pickers and searches unless the archive filter is enabled.
 - Historical records continue displaying archived names and relationships.
 - Activity history records actor, timestamp, action, target, and relevant before/after information.
@@ -1012,6 +1033,7 @@ History includes at least:
 - Repair open/close
 - Seal changes
 - Archiving/restoration
+- Owner deletion of an unreferenced category, represented by its preserved activity snapshot
 
 ## 26. Search and operational views
 

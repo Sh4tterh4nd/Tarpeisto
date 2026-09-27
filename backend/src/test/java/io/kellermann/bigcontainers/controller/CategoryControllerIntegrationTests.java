@@ -64,6 +64,39 @@ class CategoryControllerIntegrationTests extends AbstractIntegrationTest {
     @Autowired
     private Clock clock;
 
+    @Test
+    void hardDeleteIsOwnerOnlyAndMissingAndForeignCategoriesAreEquivalent() {
+        Fixture fixture = fixtureWithAllRoles();
+        UUID categoryId = createCategory(fixture, OrganizationRole.OWNER, "Delete me", "#112233");
+        for (OrganizationRole role :
+                List.of(OrganizationRole.DEPUTY, OrganizationRole.OPERATOR_AUDITOR, OrganizationRole.VIEWER)) {
+            assertThat(exchange(fixture.sessionFor(role), HttpMethod.DELETE, "/api/v1/categories/" + categoryId, null)
+                            .getStatusCode())
+                    .isEqualTo(HttpStatus.FORBIDDEN);
+        }
+        assertThat(exchange(
+                                fixture.sessionFor(OrganizationRole.OWNER),
+                                HttpMethod.DELETE,
+                                "/api/v1/categories/" + categoryId,
+                                null)
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(categoryRepository.findById(categoryId)).isEmpty();
+        assertThat(activityLogRepository.findAllByOrganizationIdOrderByOccurredAtDesc(
+                        fixture.organization().getId()))
+                .filteredOn(row -> row.getAction().equals("CATEGORY_DELETED"))
+                .singleElement()
+                .satisfies(row -> assertThat(row.getDetail()).contains("Delete me", "#112233"));
+        Fixture foreign = fixtureWithAllRoles();
+        UUID foreignId = createCategory(foreign, OrganizationRole.OWNER, "Foreign", "#112233");
+        for (UUID id : List.of(foreignId, UUID.randomUUID())) {
+            var response = exchange(
+                    fixture.sessionFor(OrganizationRole.OWNER), HttpMethod.DELETE, "/api/v1/categories/" + id, null);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(response.getBody()).contains("Category not found.");
+        }
+    }
+
     @ParameterizedTest
     @EnumSource(
             value = OrganizationRole.class,

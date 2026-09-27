@@ -337,6 +337,26 @@
             }
           }
         }
+      },
+      "delete": {
+        "tags": ["category-controller"],
+        "operationId": "delete",
+        "parameters": [
+          {
+            "name": "categoryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
       }
     },
     "/api/v1/bookings/{bookingId}": {
@@ -4092,7 +4112,7 @@
       },
       "delete": {
         "tags": ["media-controller"],
-        "operationId": "delete",
+        "operationId": "delete_1",
         "parameters": [
           {
             "name": "mediaId",
@@ -4454,6 +4474,95 @@
         }
       }
     },
+    "/api/v1/assets": {
+      "get": {
+        "tags": ["asset-controller"],
+        "operationId": "search",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "containerOnly",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "includeInactive",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "name"
+            }
+          },
+          {
+            "name": "direction",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "asc"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetSearchPageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/assets/{assetId}": {
       "get": {
         "tags": ["asset-controller"],
@@ -4476,36 +4585,6 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/AssetResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/assets/{assetId}/packing-sheet.pdf": {
-      "get": {
-        "tags": ["packing-sheet-controller"],
-        "operationId": "packingSheetPdf",
-        "parameters": [
-          {
-            "name": "assetId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/pdf": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
                 }
               }
             }
@@ -4538,6 +4617,36 @@
                   "items": {
                     "$ref": "#/components/schemas/SealHistoryView"
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{assetId}/packing-sheet.pdf": {
+      "get": {
+        "tags": ["packing-sheet-controller"],
+        "operationId": "packingSheetPdf",
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
                 }
               }
             }
@@ -4955,11 +5064,22 @@
             "type": "string",
             "format": "uuid"
           },
+          "specificAssetId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "specificAssetReference": {
             "type": "string"
           },
           "requiredQuantity": {
             "type": "number"
+          },
+          "assignToContainer": {
+            "type": "boolean"
+          },
+          "expectedAssetVersion": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -5690,8 +5810,7 @@
             "type": "string",
             "format": "uuid"
           }
-        },
-        "required": ["categoryId"]
+        }
       },
       "SetCanContainAssetsRequest": {
         "type": "object",
@@ -6779,7 +6898,7 @@
             "type": "boolean"
           }
         },
-        "required": ["categoryId", "name", "trackingMode"]
+        "required": ["name", "trackingMode"]
       },
       "CreateModelCustomFieldRequest": {
         "type": "object",
@@ -7224,6 +7343,74 @@
           "snapshot": {
             "type": "object",
             "additionalProperties": {}
+          }
+        }
+      },
+      "AssetSearchPageResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssetSearchResponse"
+            }
+          },
+          "nextCursor": {
+            "type": "string"
+          }
+        }
+      },
+      "AssetSearchResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "publicCode": {
+            "type": "string"
+          },
+          "assetModelId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetModelName": {
+            "type": "string"
+          },
+          "categoryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "categoryName": {
+            "type": "string"
+          },
+          "categoryColor": {
+            "type": "string"
+          },
+          "canContainAssets": {
+            "type": "boolean"
+          },
+          "condition": {
+            "type": "string",
+            "enum": ["GOOD", "DAMAGED"]
+          },
+          "lifecycleState": {
+            "type": "string",
+            "enum": ["ACTIVE", "LOST", "DESTROYED", "RETIRED"]
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "parentContainerAssetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "placementVersion": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },

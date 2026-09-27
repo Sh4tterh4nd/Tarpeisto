@@ -228,28 +228,34 @@ public final class PackingSheetDocument {
             float baseY)
             throws IOException {
         float width = PDRectangle.A4.getWidth();
-        float barY = baseY + HALF_HEIGHT - 20.0f;
+        float barY = baseY + HALF_HEIGHT - header.barHeight();
         float[] color = color(snapshot.categoryColor());
         content.setNonStrokingColor(color[0], color[1], color[2]);
-        content.addRect(0, barY, width, 20.0f);
+        content.addRect(0, barY, width, header.barHeight());
         content.fill();
         float[] contrast = readableText(color);
         content.setNonStrokingColor(contrast[0], contrast[1], contrast[2]);
-        write(content, bold, 8.0f, MARGIN, barY + 6.0f, "BIGCONTAINERS / PACKING SHEET");
-        content.setNonStrokingColor(0f, 0f, 0f);
-        float titleY = baseY + HALF_HEIGHT - 48.0f;
+        float titleY = baseY + HALF_HEIGHT - 24.0f;
         for (Line line : header.title()) {
-            write(content, bold, 22.0f, MARGIN, titleY, line.text());
-            titleY -= 24.0f;
+            write(content, bold, 18.0f, MARGIN, titleY, line.text());
+            titleY -= 20.0f;
         }
-        titleY -= 6.0f;
+        titleY -= 3.0f;
+        for (Line line : header.category()) {
+            write(content, bold, 8.0f, MARGIN, titleY, line.text());
+            titleY -= 10.0f;
+        }
+        titleY -= 2.0f;
         for (Line line : header.model()) {
-            write(content, regular, 9.0f, MARGIN, titleY, line.text());
-            titleY -= 12.0f;
+            write(content, regular, 8.0f, MARGIN, titleY, line.text());
+            titleY -= 10.0f;
         }
-        write(content, bold, 10.0f, MARGIN, titleY - 2.0f, snapshot.containerCode());
         float qrX = width - MARGIN - QR_SIZE;
-        float qrY = baseY + HALF_HEIGHT - 94.0f;
+        float qrY = baseY + HALF_HEIGHT - 70.0f;
+        content.setNonStrokingColor(1f, 1f, 1f);
+        content.addRect(qrX - 3.0f, qrY - 14.0f, QR_SIZE + 6.0f, QR_SIZE + 17.0f);
+        content.fill();
+        content.setNonStrokingColor(0f, 0f, 0f);
         drawQr(content, snapshot.containerCode(), qrX, qrY, QR_SIZE);
         write(content, bold, 8.0f, qrX, qrY - 10.0f, snapshot.containerCode());
 
@@ -309,14 +315,24 @@ public final class PackingSheetDocument {
     private static Header header(PackingSheetSnapshot snapshot, PDType0Font regular, PDType0Font bold)
             throws IOException {
         float width = PDRectangle.A4.getWidth() - MARGIN * 2 - QR_SIZE - 10.0f;
-        List<Line> title = wrap(snapshot.containerName(), bold, 22.0f, width, 24.0f);
-        List<Line> model = wrap(snapshot.containerModel(), regular, 9.0f, width, 12.0f);
-        float codeY = HALF_HEIGHT - 48.0f - title.size() * 24.0f - 6.0f - model.size() * 12.0f - 2.0f;
-        float contentTop = Math.min(codeY - 20.0f, HALF_HEIGHT - 124.0f);
+        List<Line> title = wrap(snapshot.containerName(), bold, 18.0f, width, 20.0f);
+        List<Line> category = wrap(snapshot.categoryName(), bold, 8.0f, width, 10.0f);
+        // Descriptions are free-form text: retain a measured three-line preview in the identity
+        // bar so even a multi-paragraph description leaves room for the direct requirements.
+        List<Line> model = wrap(snapshot.containerModel(), regular, 8.0f, width, 10.0f);
+        if (model.size() > 3) {
+            model = new ArrayList<>(model.subList(0, 3));
+            String last = model.getLast().text();
+            int prefix = largestFittingPrefix(last + "...", regular, 8.0f, width - measure(regular, 8.0f, "..."));
+            model.set(2, new Line(last.substring(0, Math.min(prefix, last.length())) + "...", false, false, 10.0f));
+        }
+        float barHeight =
+                Math.max(86.0f, 24.0f + title.size() * 20.0f + category.size() * 10.0f + model.size() * 10.0f + 12.0f);
+        float contentTop = HALF_HEIGHT - barHeight - 12.0f;
         if (contentTop - CONTENT_BOTTOM < 11.0f) {
             throw new IllegalArgumentException("Container name and model are too long for an A5 packing-sheet header.");
         }
-        return new Header(title, model, contentTop);
+        return new Header(title, category, model, barHeight, contentTop);
     }
 
     private static PDType0Font loadFont(PDDocument document, String resource) throws IOException {
@@ -353,7 +369,7 @@ public final class PackingSheetDocument {
 
     private record Line(String text, boolean bold, boolean heading, float height) {}
 
-    private record Header(List<Line> title, List<Line> model, float contentTop) {}
+    private record Header(List<Line> title, List<Line> category, List<Line> model, float barHeight, float contentTop) {}
 
     private record Layout(int fontSize, int columns, float contentTop) {
         float lineHeight() {

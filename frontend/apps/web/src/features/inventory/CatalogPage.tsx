@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import AddIcon from "@mui/icons-material/Add";
 import ArchiveIcon from "@mui/icons-material/Archive";
+import DeleteIcon from "@mui/icons-material/Delete";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
 import UnarchiveIcon from "@mui/icons-material/Unarchive";
 import Alert from "@mui/material/Alert";
@@ -25,6 +26,7 @@ import TableCell from "@mui/material/TableCell";
 import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
+import TableSortLabel from "@mui/material/TableSortLabel";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
@@ -34,6 +36,7 @@ import { useSession } from "../identity/useSession";
 import {
   createAssetModel,
   createCategory,
+  deleteCategory,
   errorMessage,
   listAssetModels,
   listCategories,
@@ -153,7 +156,7 @@ function AssetModelDialog({ categories, onClose, onCreated }: AssetModelDialogPr
   const availableCategories = categories.filter((category) => !category.archived);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [categoryId, setCategoryId] = useState(availableCategories[0]?.id ?? "");
+  const [categoryId, setCategoryId] = useState("");
   const [replacementUrl, setReplacementUrl] = useState("");
   const [trackingMode, setTrackingMode] =
     useState<CreateAssetModelInput["trackingMode"]>("SERIALIZED_ASSET");
@@ -168,7 +171,7 @@ function AssetModelDialog({ categories, onClose, onCreated }: AssetModelDialogPr
     const input: CreateAssetModelInput = {
       name: name.trim(),
       description: description.trim() || undefined,
-      categoryId,
+      categoryId: categoryId || undefined,
       replacementUrl: replacementUrl.trim() || undefined,
       trackingMode,
       stockUnitLabel: trackingMode === "QUANTITY_STOCK" ? stockUnitLabel.trim() : undefined,
@@ -215,8 +218,8 @@ function AssetModelDialog({ categories, onClose, onCreated }: AssetModelDialogPr
               label="Category"
               value={categoryId}
               onChange={(event) => setCategoryId(event.target.value)}
-              required
             >
+              <MenuItem value="">Default</MenuItem>
               {availableCategories.map((category) => (
                 <MenuItem key={category.id} value={category.id}>
                   {category.name}
@@ -282,7 +285,6 @@ function AssetModelDialog({ categories, onClose, onCreated }: AssetModelDialogPr
             disabled={
               saving ||
               !name.trim() ||
-              !categoryId ||
               (trackingMode === "QUANTITY_STOCK" && !stockUnitLabel.trim())
             }
           >
@@ -303,6 +305,12 @@ export function CatalogPage() {
   const [categoryDialog, setCategoryDialog] = useState<CategoryRecord | "new">();
   const [modelDialogOpen, setModelDialogOpen] = useState(false);
   const [actionError, setActionError] = useState<string>();
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [trackingFilter, setTrackingFilter] = useState("");
+  const [sort, setSort] = useState<"name" | "category" | "tracking">("name");
+  const [direction, setDirection] = useState<"asc" | "desc">("asc");
+  const [archiveCandidate, setArchiveCandidate] = useState<AssetModelRecord>();
+  const [deleteCandidate, setDeleteCandidate] = useState<CategoryRecord>();
 
   const load = useCallback(async () => {
     const [categoryResult, modelResult] = await Promise.all([listCategories(), listAssetModels()]);
@@ -326,13 +334,22 @@ export function CatalogPage() {
     })();
   }, [load]);
 
-  const visibleModels = useMemo(
-    () =>
-      state.status === "loaded"
-        ? state.data.models.filter((model) => showArchived || !model.archived)
-        : [],
-    [showArchived, state],
-  );
+  const visibleModels = useMemo(() => {
+    if (state.status !== "loaded") return [];
+    const categoryName = (model: AssetModelRecord) =>
+      state.data.categories.find((item) => item.id === model.categoryId)?.name ?? "Default";
+    const value = (model: AssetModelRecord) =>
+      sort === "name" ? model.name : sort === "category" ? categoryName(model) : model.trackingMode;
+    return state.data.models
+      .filter((model) => showArchived || !model.archived)
+      .filter(
+        (model) =>
+          !categoryFilter ||
+          (categoryFilter === "Default" ? !model.categoryId : model.categoryId === categoryFilter),
+      )
+      .filter((model) => !trackingFilter || model.trackingMode === trackingFilter)
+      .sort((a, b) => value(a).localeCompare(value(b)) * (direction === "asc" ? 1 : -1));
+  }, [categoryFilter, direction, showArchived, sort, state, trackingFilter]);
 
   async function toggleCategory(category: CategoryRecord) {
     setActionError(undefined);
@@ -367,9 +384,7 @@ export function CatalogPage() {
                 variant="contained"
                 startIcon={<AddIcon />}
                 onClick={() => setModelDialogOpen(true)}
-                disabled={
-                  state.status !== "loaded" || state.data.categories.every((item) => item.archived)
-                }
+                disabled={state.status !== "loaded"}
               >
                 Asset model
               </Button>
@@ -421,25 +436,39 @@ export function CatalogPage() {
               {state.data.categories
                 .filter((category) => showArchived || !category.archived)
                 .map((category) => (
-                  <Chip
-                    key={category.id}
-                    label={`${category.name}${category.archived ? " · archived" : ""}`}
-                    onClick={canManage ? () => setCategoryDialog(category) : undefined}
-                    onDelete={canManage ? () => void toggleCategory(category) : undefined}
-                    deleteIcon={category.archived ? <UnarchiveIcon /> : <ArchiveIcon />}
-                    sx={{
-                      bgcolor: category.color,
-                      color: foregroundFor(category.color),
-                      fontWeight: 700,
-                      "& .MuiChip-deleteIcon": { color: "inherit" },
-                    }}
-                  />
+                  <Stack key={category.id} direction="row" sx={{ alignItems: "center" }}>
+                    <Chip
+                      key={category.id}
+                      label={`${category.name}${category.archived ? " · archived" : ""}`}
+                      onClick={canManage ? () => setCategoryDialog(category) : undefined}
+                      onDelete={canManage ? () => void toggleCategory(category) : undefined}
+                      deleteIcon={category.archived ? <UnarchiveIcon /> : <ArchiveIcon />}
+                      sx={{
+                        bgcolor: category.color,
+                        color: foregroundFor(category.color),
+                        fontWeight: 700,
+                        "& .MuiChip-deleteIcon": { color: "inherit" },
+                      }}
+                    />
+                    {role === "OWNER" ? (
+                      <IconButton
+                        aria-label={`Delete ${category.name}`}
+                        title={
+                          state.data.models.some((model) => model.categoryId === category.id)
+                            ? "Move all models to another category before deleting this category"
+                            : `Delete ${category.name}`
+                        }
+                        disabled={state.data.models.some(
+                          (model) => model.categoryId === category.id,
+                        )}
+                        onClick={() => setDeleteCandidate(category)}
+                        sx={{ minWidth: 44, minHeight: 44 }}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    ) : null}
+                  </Stack>
                 ))}
-              {state.data.categories.length === 0 ? (
-                <Typography color="text.secondary">
-                  Create a category before adding the first asset model.
-                </Typography>
-              ) : null}
             </Stack>
           </Paper>
 
@@ -451,14 +480,48 @@ export function CatalogPage() {
               </Typography>
             </Box>
             <Divider />
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ p: 2, pb: 0 }}>
+              <TextField
+                select
+                label="Category"
+                value={categoryFilter}
+                onChange={(event) => setCategoryFilter(event.target.value)}
+                sx={{ minWidth: 170 }}
+              >
+                <MenuItem value="">All categories</MenuItem>
+                <MenuItem value="Default">Default</MenuItem>
+                {state.data.categories.map((category) => (
+                  <MenuItem key={category.id} value={category.id}>
+                    {category.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                select
+                label="Tracking"
+                value={trackingFilter}
+                onChange={(event) => setTrackingFilter(event.target.value)}
+                sx={{ minWidth: 170 }}
+              >
+                <MenuItem value="">All tracking</MenuItem>
+                <MenuItem value="SERIALIZED_ASSET">Serialized</MenuItem>
+                <MenuItem value="QUANTITY_STOCK">Quantity stock</MenuItem>
+              </TextField>
+            </Stack>
             {visibleModels.length === 0 ? (
               <Stack sx={{ alignItems: "center", py: 6, px: 2 }} spacing={1}>
                 <Inventory2OutlinedIcon color="disabled" sx={{ fontSize: 48 }} />
-                <Typography variant="h3">No asset models yet</Typography>
+                <Typography variant="h3">
+                  {state.data.models.length
+                    ? "No models match these filters"
+                    : "No asset models yet"}
+                </Typography>
                 <Typography color="text.secondary" sx={{ textAlign: "center" }}>
-                  {canManage
-                    ? "Create the first model to begin tracking equipment or supplies."
-                    : "An Owner or Deputy can create the first model."}
+                  {state.data.models.length
+                    ? "Choose a different category or tracking mode, or show archived models."
+                    : canManage
+                      ? "Create the first model to begin tracking equipment or supplies."
+                      : "An Owner or Deputy can create the first model."}
                 </Typography>
               </Stack>
             ) : (
@@ -466,9 +529,49 @@ export function CatalogPage() {
                 <Table>
                   <TableHead>
                     <TableRow>
-                      <TableCell>Model</TableCell>
-                      <TableCell>Category</TableCell>
-                      <TableCell>Tracking</TableCell>
+                      <TableCell sortDirection={sort === "name" ? direction : false}>
+                        <TableSortLabel
+                          aria-label="Sort by model"
+                          active={sort === "name"}
+                          direction={sort === "name" ? direction : "asc"}
+                          onClick={() => {
+                            setDirection(sort === "name" && direction === "asc" ? "desc" : "asc");
+                            setSort("name");
+                          }}
+                        >
+                          Model
+                        </TableSortLabel>
+                      </TableCell>
+                      <TableCell sortDirection={sort === "category" ? direction : false}>
+                        <TableSortLabel
+                          aria-label="Sort by category"
+                          active={sort === "category"}
+                          direction={sort === "category" ? direction : "asc"}
+                          onClick={() => {
+                            setDirection(
+                              sort === "category" && direction === "asc" ? "desc" : "asc",
+                            );
+                            setSort("category");
+                          }}
+                        >
+                          Category
+                        </TableSortLabel>
+                      </TableCell>
+                      <TableCell sortDirection={sort === "tracking" ? direction : false}>
+                        <TableSortLabel
+                          aria-label="Sort by tracking"
+                          active={sort === "tracking"}
+                          direction={sort === "tracking" ? direction : "asc"}
+                          onClick={() => {
+                            setDirection(
+                              sort === "tracking" && direction === "asc" ? "desc" : "asc",
+                            );
+                            setSort("tracking");
+                          }}
+                        >
+                          Tracking
+                        </TableSortLabel>
+                      </TableCell>
                       <TableCell align="right">Action</TableCell>
                     </TableRow>
                   </TableHead>
@@ -491,7 +594,7 @@ export function CatalogPage() {
                               <Chip size="small" label="Archived" sx={{ ml: 1 }} />
                             ) : null}
                           </TableCell>
-                          <TableCell>{category?.name ?? "Unknown"}</TableCell>
+                          <TableCell>{category?.name ?? "Default"}</TableCell>
                           <TableCell>
                             {model.trackingMode === "SERIALIZED_ASSET"
                               ? model.canContainAssets
@@ -503,7 +606,11 @@ export function CatalogPage() {
                             {canManage ? (
                               <IconButton
                                 aria-label={`${model.archived ? "Restore" : "Archive"} ${model.name}`}
-                                onClick={() => void toggleModel(model)}
+                                onClick={() =>
+                                  model.archived
+                                    ? void toggleModel(model)
+                                    : setArchiveCandidate(model)
+                                }
                               >
                                 {model.archived ? <UnarchiveIcon /> : <ArchiveIcon />}
                               </IconButton>
@@ -534,6 +641,54 @@ export function CatalogPage() {
           onCreated={(model) => navigate(`/inventory/models/${model.id}`)}
         />
       ) : null}
+      <Dialog open={Boolean(archiveCandidate)} onClose={() => setArchiveCandidate(undefined)}>
+        <DialogTitle>Archive {archiveCandidate?.name}?</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Archived models remain in history and cannot be used for normal inventory work.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setArchiveCandidate(undefined)}>Cancel</Button>
+          <Button
+            color="warning"
+            variant="contained"
+            onClick={() => {
+              if (archiveCandidate) void toggleModel(archiveCandidate);
+              setArchiveCandidate(undefined);
+            }}
+          >
+            Archive model
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={Boolean(deleteCandidate)} onClose={() => setDeleteCandidate(undefined)}>
+        <DialogTitle>Delete {deleteCandidate?.name}?</DialogTitle>
+        <DialogContent>
+          <Typography>
+            This permanently removes the category only if no model, including archived models,
+            references it.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteCandidate(undefined)}>Cancel</Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={() => {
+              if (deleteCandidate)
+                void (async () => {
+                  const error = await deleteCategory(deleteCandidate.id);
+                  if (error) setActionError(errorMessage(error));
+                  else await load();
+                })();
+              setDeleteCandidate(undefined);
+            }}
+          >
+            Delete category
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }

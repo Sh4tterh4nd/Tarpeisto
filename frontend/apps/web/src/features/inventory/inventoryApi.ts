@@ -1,5 +1,5 @@
 import { AppError, apiClient, toAppError } from "@bigcontainers/api-client";
-import type { components, ProblemDetails } from "@bigcontainers/api-client";
+import type { components, paths, ProblemDetails } from "@bigcontainers/api-client";
 
 // The generated OpenAPI marks response members optional because Springdoc does not emit
 // `required` for Java record accessors. These endpoints always serialize their declared response
@@ -21,6 +21,13 @@ export type StockSummaryRecord = Required<components["schemas"]["AssetModelStock
 export type StockMovementRecord = Required<components["schemas"]["StockMovementResponse"]>;
 export type LocationRecord = Required<components["schemas"]["LocationResponse"]>;
 export type AssetPlacementRecord = Required<components["schemas"]["AssetPlacementResponse"]>;
+export type AssetSearchRecord = Required<components["schemas"]["AssetSearchResponse"]>;
+export type AssetSearchPage = Omit<
+  Required<components["schemas"]["AssetSearchPageResponse"]>,
+  "items"
+> & {
+  items: AssetSearchRecord[];
+};
 
 export type CreateCategoryInput = components["schemas"]["CreateCategoryRequest"];
 export type CreateAssetModelInput = components["schemas"]["CreateAssetModelRequest"];
@@ -89,6 +96,12 @@ export function setCategoryArchived(categoryId: string, archived: boolean) {
   return command(() => apiClient.POST(path, { params: { path: { categoryId } } }));
 }
 
+export function deleteCategory(categoryId: string) {
+  return command(() =>
+    apiClient.DELETE("/api/v1/categories/{categoryId}", { params: { path: { categoryId } } }),
+  );
+}
+
 export function listAssetModels(): Promise<ApiResult<AssetModelRecord[]>> {
   return read(() => apiClient.GET("/api/v1/asset-models"));
 }
@@ -116,13 +129,19 @@ export function updateAssetModelDetails(assetModelId: string, name: string, desc
   );
 }
 
-export function changeAssetModelCategory(assetModelId: string, categoryId: string) {
+export function changeAssetModelCategory(assetModelId: string, categoryId?: string) {
   return read<AssetModelRecord>(() =>
     apiClient.PUT("/api/v1/asset-models/{assetModelId}/category", {
       params: { path: { assetModelId } },
       body: { categoryId },
     }),
   );
+}
+
+export function searchAssets(
+  query: NonNullable<paths["/api/v1/assets"]["get"]["parameters"]["query"]>,
+): Promise<ApiResult<AssetSearchPage>> {
+  return read(() => apiClient.GET("/api/v1/assets", { params: { query } }));
 }
 
 export function changeAssetModelReplacementUrl(assetModelId: string, replacementUrl?: string) {

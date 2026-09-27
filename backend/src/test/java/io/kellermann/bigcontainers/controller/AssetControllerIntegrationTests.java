@@ -73,6 +73,44 @@ class AssetControllerIntegrationTests extends AbstractIntegrationTest {
     @Autowired
     private Clock clock;
 
+    @Test
+    void assetSearchApiPaginatesAndUncategorizedModelsNeedNoSyntheticCategory() {
+        Fixture fixture = fixtureWithAllRoles();
+        var create = exchange(
+                fixture.sessionFor(OrganizationRole.OWNER),
+                HttpMethod.POST,
+                "/api/v1/asset-models",
+                Map.of("name", "Uncategorized", "trackingMode", "SERIALIZED_ASSET", "canContainAssets", false));
+        assertThat(create.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        UUID modelId = extractId(create.getBody(), 0);
+        var units = bulkCreate(fixture, modelId, 3);
+        assertThat(units.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        for (OrganizationRole role : OrganizationRole.values()) {
+            var first =
+                    exchange(fixture.sessionFor(role), HttpMethod.GET, "/api/v1/assets?category=Default&limit=2", null);
+            assertThat(first.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(extractStringFields(first.getBody(), "id")).hasSize(2);
+            assertThat(first.getBody()).contains("\"categoryName\":\"Default\"", "\"categoryColor\":\"#5B6472\"");
+            String cursor = extractField(first.getBody(), "nextCursor");
+            var second = exchange(
+                    fixture.sessionFor(role),
+                    HttpMethod.GET,
+                    "/api/v1/assets?category=Default&limit=2&cursor=" + cursor,
+                    null);
+            assertThat(second.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(extractStringFields(second.getBody(), "id")).hasSize(1);
+            assertThat(extractStringFields(second.getBody(), "id"))
+                    .doesNotContainAnyElementsOf(extractStringFields(first.getBody(), "id"));
+        }
+        for (String invalid : List.of(
+                "cursor=%21",
+                "sort=id", "direction=sideways", "limit=0", "limit=101", "limit=bad", "category=invalid")) {
+            var response = exchange(
+                    fixture.sessionFor(OrganizationRole.OWNER), HttpMethod.GET, "/api/v1/assets?" + invalid, null);
+            assertThat(response.getStatusCode()).as(invalid).isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+    }
+
     @ParameterizedTest
     @EnumSource(
             value = OrganizationRole.class,

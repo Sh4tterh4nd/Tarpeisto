@@ -22,14 +22,17 @@ import io.kellermann.bigcontainers.repository.AssetStateChangeRepository;
 import io.kellermann.bigcontainers.repository.AssetUnitNumberSequenceRepository;
 import io.kellermann.bigcontainers.repository.CheckoutManifestAssetRepository;
 import io.kellermann.bigcontainers.repository.ConsumableStockRepository;
+import io.kellermann.bigcontainers.repository.JdbcAssetSearchRepository;
 import io.kellermann.bigcontainers.repository.ModelCustomFieldOptionRepository;
 import io.kellermann.bigcontainers.repository.ModelCustomFieldRepository;
 import io.kellermann.bigcontainers.repository.OrganizationRepository;
 import io.kellermann.bigcontainers.security.BigContainersPrincipal;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -77,6 +80,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AssetService {
 
     private final AssetRepository assetRepository;
+    private final JdbcAssetSearchRepository assetSearchRepository;
     private final AssetCustomFieldValueRepository assetCustomFieldValueRepository;
     private final AssetStateChangeRepository assetStateChangeRepository;
     private final ConsumableStockRepository consumableStockRepository;
@@ -93,6 +97,7 @@ public class AssetService {
 
     public AssetService(
             AssetRepository assetRepository,
+            JdbcAssetSearchRepository assetSearchRepository,
             AssetCustomFieldValueRepository assetCustomFieldValueRepository,
             AssetStateChangeRepository assetStateChangeRepository,
             ConsumableStockRepository consumableStockRepository,
@@ -107,6 +112,7 @@ public class AssetService {
             CheckoutManifestAssetRepository checkoutManifestAssets,
             Clock clock) {
         this.assetRepository = assetRepository;
+        this.assetSearchRepository = assetSearchRepository;
         this.assetCustomFieldValueRepository = assetCustomFieldValueRepository;
         this.assetStateChangeRepository = assetStateChangeRepository;
         this.consumableStockRepository = consumableStockRepository;
@@ -133,6 +139,92 @@ public class AssetService {
                         .findAllByOrganizationIdAndAssetModelIdAndLifecycleStateAndArchivedAtIsNullOrderByUnitNumberAsc(
                                 principal.organizationId(), assetModelId, LifecycleState.ACTIVE);
         return assets.stream().map(asset -> toView(asset, model.name())).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public AssetSearchPageView search(
+            BigContainersPrincipal principal,
+            String query,
+            String category,
+            Boolean containerOnly,
+            boolean includeInactive,
+            String sort,
+            String direction,
+            int limit,
+            String cursor) {
+        requireAuthenticated(principal);
+        if (limit < 1 || limit > 100) {
+            throw new ValidationFailedException("limit must be between 1 and 100.");
+        }
+        UUID categoryId = null;
+        boolean defaultCategory = "Default".equalsIgnoreCase(category);
+        if (category != null && !category.isBlank() && !defaultCategory) {
+            try {
+                categoryId = UUID.fromString(category);
+            } catch (IllegalArgumentException invalid) {
+                throw new ValidationFailedException("category must be a category id or Default.");
+            }
+        }
+        String property = switch (sort == null ? "name" : sort) {
+            case "name", "code", "condition", "lifecycle" -> sort == null ? "name" : sort;
+            default -> throw new ValidationFailedException("Unsupported asset sort.");
+        };
+        if (!"asc".equalsIgnoreCase(direction) && !"desc".equalsIgnoreCase(direction)) {
+            throw new ValidationFailedException("direction must be asc or desc.");
+        }
+        boolean descending = "desc".equalsIgnoreCase(direction);
+        UUID anchor = parseCursor(cursor, property, descending);
+        var page = assetSearchRepository.search(
+                principal.organizationId(),
+                query == null || query.isBlank() ? null : query.trim(),
+                categoryId,
+                defaultCategory,
+                containerOnly,
+                includeInactive,
+                property,
+                descending,
+                limit + 1,
+                anchor);
+        List<AssetSearchView> items = page.stream()
+                .limit(limit)
+                .map(asset -> new AssetSearchView(
+                        asset.id(),
+                        asset.displayName(),
+                        asset.publicCode(),
+                        asset.assetModelId(),
+                        asset.assetModelName(),
+                        asset.categoryId(),
+                        asset.categoryName(),
+                        asset.categoryColor(),
+                        asset.canContainAssets(),
+                        asset.condition(),
+                        asset.lifecycleState(),
+                        asset.archived(),
+                        asset.parentContainerAssetId(),
+                        asset.placementVersion()))
+                .toList();
+        return new AssetSearchPageView(
+                items, page.size() > limit ? encodeCursor(items.getLast().id(), property, descending) : null);
+    }
+
+    private static UUID parseCursor(String cursor, String sort, boolean descending) {
+        if (cursor == null) return null;
+        try {
+            String decoded = new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8);
+            String prefix = "v1:" + sort + ":" + descending + ":";
+            if (!decoded.startsWith(prefix)) throw new IllegalArgumentException();
+            UUID id = UUID.fromString(decoded.substring(prefix.length()));
+            if (!encodeCursor(id, sort, descending).equals(cursor)) throw new IllegalArgumentException();
+            return id;
+        } catch (IllegalArgumentException invalid) {
+            throw new ValidationFailedException("cursor is invalid.");
+        }
+    }
+
+    private static String encodeCursor(UUID id, String sort, boolean descending) {
+        return Base64.getUrlEncoder()
+                .withoutPadding()
+                .encodeToString(("v1:" + sort + ":" + descending + ":" + id).getBytes(StandardCharsets.UTF_8));
     }
 
     @Transactional(readOnly = true)

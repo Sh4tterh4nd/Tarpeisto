@@ -45,7 +45,7 @@ public class AssetModel {
     @Column(name = "description")
     private String description;
 
-    @Column(name = "category_id", nullable = false)
+    @Column(name = "category_id")
     private UUID categoryId;
 
     @Column(name = "replacement_url")
@@ -97,7 +97,7 @@ public class AssetModel {
         this.organizationId = Objects.requireNonNull(organizationId, "organizationId must not be null");
         this.name = requireNonBlankName(name);
         this.description = blankToNull(description);
-        this.categoryId = Objects.requireNonNull(categoryId, "categoryId must not be null");
+        this.categoryId = categoryId;
         this.replacementUrl = blankToNull(replacementUrl);
         validateTrackingConsistency(trackingMode, stockUnitLabel, lowStockThreshold, canContainAssets);
         this.trackingMode = trackingMode;
@@ -115,7 +115,7 @@ public class AssetModel {
     }
 
     public void changeCategory(UUID newCategoryId, Instant now) {
-        this.categoryId = Objects.requireNonNull(newCategoryId, "newCategoryId must not be null");
+        this.categoryId = newCategoryId;
         touch(now);
     }
 

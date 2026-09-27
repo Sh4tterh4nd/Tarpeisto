@@ -140,7 +140,9 @@ test("an owner downloads a container packing sheet", async ({ page }) => {
   });
 
   await page.goto(`/inventory/assets/${assetId}`);
-  await expect(page.getByRole("heading", { name: "Packing sheet" })).toBeVisible();
+  const packingPanel = page.getByRole("button", { name: /Packing sheet/ });
+  await expect(packingPanel).toBeVisible();
+  await packingPanel.click();
 
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download packing sheet" }).click();

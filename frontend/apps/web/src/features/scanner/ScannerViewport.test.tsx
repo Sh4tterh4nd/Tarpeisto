@@ -25,13 +25,11 @@ describe("ScannerViewport", () => {
     ["native", /Fast browser decoder active/],
     ["fallback", /Portable QR decoder active/],
   ] as const)("shows the %s decoder mode", async (engine, message) => {
-    const user = userEvent.setup();
     const { capability } = cameraCapability(engine);
     render(<ScannerViewport capability={capability} onCode={vi.fn()} />);
 
-    await user.click(screen.getByRole("button", { name: "Start camera" }));
-
     expect(await screen.findByText(message)).toBeInTheDocument();
+    expect(capability.start).toHaveBeenCalledTimes(1);
   });
 
   it("releases the previous session when switching cameras and when unmounted", async () => {
@@ -39,7 +37,6 @@ describe("ScannerViewport", () => {
     const { capability, stop } = cameraCapability();
     const { unmount } = render(<ScannerViewport capability={capability} onCode={vi.fn()} />);
 
-    await user.click(screen.getByRole("button", { name: "Start camera" }));
     await screen.findByLabelText("Camera");
     await user.click(screen.getByRole("combobox", { name: "Camera" }));
     await user.click(await screen.findByRole("option", { name: "Front camera" }));
@@ -54,7 +51,6 @@ describe("ScannerViewport", () => {
     const { capability, stop } = cameraCapability();
     render(<ScannerViewport capability={capability} onCode={vi.fn()} />);
 
-    await user.click(screen.getByRole("button", { name: "Start camera" }));
     await screen.findByRole("button", { name: "Pause camera" });
     await user.click(screen.getByRole("button", { name: "Pause camera" }));
 
@@ -63,7 +59,6 @@ describe("ScannerViewport", () => {
   });
 
   it("reports an explicit camera-permission state", async () => {
-    const user = userEvent.setup();
     const capability: QrScannerCapability = {
       availability: () => "ready",
       listCameras: vi.fn(),
@@ -71,9 +66,23 @@ describe("ScannerViewport", () => {
     };
     render(<ScannerViewport capability={capability} onCode={vi.fn()} />);
 
-    await user.click(screen.getByRole("button", { name: "Start camera" }));
-
     expect(await screen.findByRole("alert")).toHaveTextContent(/Camera permission was denied/);
+    expect(capability.start).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the camera session running when the parent changes its scan callback", async () => {
+    const { capability, stop } = cameraCapability();
+    const first = vi.fn();
+    const second = vi.fn();
+    const { rerender } = render(<ScannerViewport capability={capability} onCode={first} />);
+    await screen.findByRole("button", { name: "Pause camera" });
+    rerender(<ScannerViewport capability={capability} onCode={second} />);
+    expect(capability.start).toHaveBeenCalledTimes(1);
+    expect(stop).not.toHaveBeenCalled();
+    const callback = vi.mocked(capability.start).mock.calls[0]![2];
+    callback("123452");
+    expect(second).toHaveBeenCalledWith("123452");
+    expect(first).not.toHaveBeenCalled();
   });
 
   it("surfaces unsupported and insecure contexts without offering camera start", () => {

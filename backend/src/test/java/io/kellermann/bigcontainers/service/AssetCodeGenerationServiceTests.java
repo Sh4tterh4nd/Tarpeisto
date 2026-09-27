@@ -31,10 +31,12 @@ class AssetCodeGenerationServiceTests {
     }
 
     @Test
-    void generatingManyCodesProducesNoDuplicatesForAFreshChecker() {
+    void generatingManyCodesRemainsUniqueAgainstPreviouslyIssuedCodes() {
         Set<String> seen = new HashSet<>();
+        UUID organizationId = UUID.randomUUID();
         for (int i = 0; i < 1_000; i++) {
-            AssetCode code = service.generate(UUID.randomUUID(), (organizationId, publicCode) -> false);
+            AssetCode code =
+                    service.generate(organizationId, (checkedOrganizationId, publicCode) -> seen.contains(publicCode));
             assertThat(seen.add(code.value()))
                     .as("code %s should be unique", code.value())
                     .isTrue();

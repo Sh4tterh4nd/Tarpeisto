@@ -9,6 +9,7 @@ public record PackingSheetSnapshot(
         String containerName,
         String containerModel,
         String containerCode,
+        String categoryName,
         String categoryColor,
         List<Requirement> requirements,
         List<ChildContainer> childContainers) {
@@ -17,9 +18,21 @@ public record PackingSheetSnapshot(
         containerName = Objects.requireNonNull(containerName, "containerName must not be null");
         containerModel = Objects.requireNonNull(containerModel, "containerModel must not be null");
         containerCode = Objects.requireNonNull(containerCode, "containerCode must not be null");
+        categoryName = Objects.requireNonNull(categoryName, "categoryName must not be null");
         categoryColor = Objects.requireNonNull(categoryColor, "categoryColor must not be null");
         requirements = List.copyOf(requirements == null ? List.of() : requirements);
         childContainers = List.copyOf(childContainers == null ? List.of() : childContainers);
+    }
+
+    /** Compatibility constructor for callers predating the category-name identity-bar field. */
+    public PackingSheetSnapshot(
+            String containerName,
+            String containerModel,
+            String containerCode,
+            String categoryColor,
+            List<Requirement> requirements,
+            List<ChildContainer> childContainers) {
+        this(containerName, containerModel, containerCode, "Default", categoryColor, requirements, childContainers);
     }
 
     public record Requirement(

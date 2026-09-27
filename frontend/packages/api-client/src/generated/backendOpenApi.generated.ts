@@ -126,7 +126,7 @@ export interface paths {
         get?: never;
         put: operations["rename"];
         post?: never;
-        delete?: never;
+        delete: operations["delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1502,7 +1502,7 @@ export interface paths {
         get: operations["stream"];
         put?: never;
         post?: never;
-        delete: operations["delete"];
+        delete: operations["delete_1"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1684,6 +1684,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/assets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["search"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/assets/{assetId}": {
         parameters: {
             query?: never;
@@ -1700,22 +1716,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/assets/{assetId}/packing-sheet.pdf": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["packingSheetPdf"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/assets/{assetId}/seal/history": {
         parameters: {
             query?: never;
@@ -1724,6 +1724,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["sealHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assets/{assetId}/packing-sheet.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["packingSheetPdf"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1929,8 +1945,13 @@ export interface components {
             type?: "SPECIFIC_ASSET" | "MODEL_QUANTITY" | "CONSUMABLE_QUANTITY";
             /** Format: uuid */
             assetModelId?: string;
+            /** Format: uuid */
+            specificAssetId?: string;
             specificAssetReference?: string;
             requiredQuantity?: number;
+            assignToContainer?: boolean;
+            /** Format: int64 */
+            expectedAssetVersion?: number;
         };
         UpdateLayoutMediaRequest: {
             caption?: string;
@@ -2222,7 +2243,7 @@ export interface components {
         };
         ChangeAssetModelCategoryRequest: {
             /** Format: uuid */
-            categoryId: string;
+            categoryId?: string;
         };
         SetCanContainAssetsRequest: {
             canContainAssets?: boolean;
@@ -2613,7 +2634,7 @@ export interface components {
             name: string;
             description?: string;
             /** Format: uuid */
-            categoryId: string;
+            categoryId?: string;
             replacementUrl?: string;
             /** @enum {string} */
             trackingMode: "SERIALIZED_ASSET" | "QUANTITY_STOCK";
@@ -2793,6 +2814,33 @@ export interface components {
             snapshot?: {
                 [key: string]: unknown;
             };
+        };
+        AssetSearchPageResponse: {
+            items?: components["schemas"]["AssetSearchResponse"][];
+            nextCursor?: string;
+        };
+        AssetSearchResponse: {
+            /** Format: uuid */
+            id?: string;
+            displayName?: string;
+            publicCode?: string;
+            /** Format: uuid */
+            assetModelId?: string;
+            assetModelName?: string;
+            /** Format: uuid */
+            categoryId?: string;
+            categoryName?: string;
+            categoryColor?: string;
+            canContainAssets?: boolean;
+            /** @enum {string} */
+            condition?: "GOOD" | "DAMAGED";
+            /** @enum {string} */
+            lifecycleState?: "ACTIVE" | "LOST" | "DESTROYED" | "RETIRED";
+            archived?: boolean;
+            /** Format: uuid */
+            parentContainerAssetId?: string;
+            /** Format: int64 */
+            placementVersion?: number;
         };
         SealHistoryView: {
             /** @enum {string} */
@@ -3059,6 +3107,26 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["CategoryResponse"];
                 };
+            };
+        };
+    };
+    delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                categoryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -5648,7 +5716,7 @@ export interface operations {
             };
         };
     };
-    delete: {
+    delete_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -5911,6 +5979,35 @@ export interface operations {
             };
         };
     };
+    search: {
+        parameters: {
+            query?: {
+                query?: string;
+                category?: string;
+                containerOnly?: boolean;
+                includeInactive?: boolean;
+                sort?: string;
+                direction?: string;
+                limit?: number;
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AssetSearchPageResponse"];
+                };
+            };
+        };
+    };
     get_6: {
         parameters: {
             query?: never;
@@ -5933,28 +6030,6 @@ export interface operations {
             };
         };
     };
-    packingSheetPdf: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                assetId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/pdf": string;
-                };
-            };
-        };
-    };
     sealHistory: {
         parameters: {
             query?: never;
@@ -5973,6 +6048,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["SealHistoryView"][];
+                };
+            };
+        };
+    };
+    packingSheetPdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
                 };
             };
         };

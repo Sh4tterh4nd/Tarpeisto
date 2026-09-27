@@ -12,6 +12,9 @@ import { NotFoundPage } from "./NotFoundPage";
 const CatalogPage = lazy(() =>
   import("../features/inventory/CatalogPage").then((module) => ({ default: module.CatalogPage })),
 );
+const AssetsPage = lazy(() =>
+  import("../features/inventory/AssetsPage").then((module) => ({ default: module.AssetsPage })),
+);
 const AssetModelPage = lazy(() =>
   import("../features/inventory/AssetModelPage").then((module) => ({
     default: module.AssetModelPage,
@@ -130,6 +133,16 @@ export function AppRoutes() {
           <RequireRole allow={[...INVENTORY_ROLES]}>
             <Suspense fallback={<LoadingPage />}>
               <CatalogPage />
+            </Suspense>
+          </RequireRole>
+        }
+      />
+      <Route
+        path="/inventory/assets"
+        element={
+          <RequireRole allow={[...INVENTORY_ROLES]}>
+            <Suspense fallback={<LoadingPage />}>
+              <AssetsPage />
             </Suspense>
           </RequireRole>
         }

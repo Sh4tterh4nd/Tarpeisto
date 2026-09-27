@@ -13,23 +13,24 @@ Read it together with [`DEVELOPMENT_POLICIES.md`](DEVELOPMENT_POLICIES.md) and t
 
 ## 1. Summary
 
-| Phase   | Scope                                                                           | State                                                                                               |
-| ------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| 0       | Repository, build, CI, Compose, migrations, app skeleton                        | Complete, verified                                                                                  |
-| 1       | Identity, roles, organization context, local login, OIDC                        | Complete, verified                                                                                  |
-| 2a      | Public asset-code library, categories, asset models, custom-field definitions   | Complete end to end, verified                                                                       |
-| 2b      | Physical assets, custom-field values, consumable stock, movement ledger         | Complete end to end, verified                                                                       |
-| 3       | Media storage (S3-compatible)                                                   | Complete, verified                                                                                  |
-| 4       | Hierarchical locations and physical containment                                 | Complete, verified                                                                                  |
-| 5       | Packing requirements and templates                                              | Complete, verified                                                                                  |
-| 6       | QR scanning and initial asset-label output                                      | Implemented; automated verification complete, physical print/device acceptance pending              |
-| 7       | Events, reservations, recursive expansion and conflict calculation              | Complete, verified                                                                                  |
-| 8       | Checkout manifests, custody, consumable issue/return, PDF, return task creation | Complete, verified                                                                                  |
-| 9.1     | Online return-audit execution and baseline reconciliation                       | Complete, verified                                                                                   |
-| 10      | Finding review, lifecycle, repairs and seal administration                      | Complete, verified                                                                                   |
-| 11      | Container packing sheets                                                        | Complete, verified; physical paper/camera acceptance pending                                        |
-| 9.2-9.3 | Persistent scan outbox and queued audit photographs                             | Explicitly deferred until after Phases 10 and 11                                                    |
-| 12-14   | Temporary access, search, hardening                                             | Not started                                                                                         |
+| Phase   | Scope                                                                           | State                                                                                  |
+| ------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| 0       | Repository, build, CI, Compose, migrations, app skeleton                        | Complete, verified                                                                     |
+| 1       | Identity, roles, organization context, local login, OIDC                        | Complete, verified                                                                     |
+| 2a      | Public asset-code library, categories, asset models, custom-field definitions   | Complete end to end, verified                                                          |
+| 2b      | Physical assets, custom-field values, consumable stock, movement ledger         | Complete end to end, verified                                                          |
+| 3       | Media storage (S3-compatible)                                                   | Complete, verified                                                                     |
+| 4       | Hierarchical locations and physical containment                                 | Complete, verified                                                                     |
+| 5       | Packing requirements and templates                                              | Complete, verified                                                                     |
+| 6       | QR scanning and initial asset-label output                                      | Implemented; automated verification complete, physical print/device acceptance pending |
+| 7       | Events, reservations, recursive expansion and conflict calculation              | Complete, verified                                                                     |
+| 8       | Checkout manifests, custody, consumable issue/return, PDF, return task creation | Complete, verified                                                                     |
+| 9.1     | Online return-audit execution and baseline reconciliation                       | Complete, verified                                                                     |
+| 10      | Finding review, lifecycle, repairs and seal administration                      | Complete, verified                                                                     |
+| 11      | Container packing sheets                                                        | Complete, verified; physical paper/camera acceptance pending                           |
+| QoL     | Inventory navigation, browsing, exact assignment, layouts and safer catalog UX  | Complete, verified                                                                     |
+| 9.2-9.3 | Persistent scan outbox and queued audit photographs                             | Deferred until after the completed inventory QoL milestone                             |
+| 12-14   | Temporary access, search, hardening                                             | Not started                                                                            |
 
 Verified at the Phase 8 checkpoint:
 
@@ -74,6 +75,18 @@ Verified at the Phase 11 checkpoint:
   download journeys. `jibBuildTar` succeeds with the Phase 11 frontend embedded.
 - Physical printer alignment and camera scanning of a printed packing sheet remain manual
   acceptance checks.
+
+Verified at the inventory quality-of-life checkpoint:
+
+- The backend suite has **459 tests in 57 suites, 0 failures and 0 skips** against PostgreSQL. It
+  covers nullable model categories, Owner-only safe category deletion, bounded asset search,
+  container exclusion from ordinary labels, and atomic exact-requirement assignment with rollback.
+- The frontend has **165 unit tests** (147 web, 11 api-client, 7 shared-ui), with `format:check`,
+  `lint`, `typecheck` and production `build` clean. All eight desktop/mobile Playwright journeys
+  pass, and `jibBuildTar` succeeds with the matching frontend embedded.
+- The app now has a desktop navigation rail and mobile drawer, separate model and asset tables,
+  sortable/filterable inventory views, searchable exact-asset requirements, safer confirmations,
+  optional `Default` categories, refined responsive details and immediate scanner startup.
 
 ## 2. How to verify this yourself
 
@@ -120,21 +133,22 @@ base image.
 
 Migrations (Flyway owns all schema; applied migrations are immutable):
 
-| Migration | Contents                                                                                            |
-| --------- | --------------------------------------------------------------------------------------------------- |
-| `V1`      | `organization`                                                                                      |
-| `V2`      | Spring Session JDBC schema                                                                          |
-| `V3`      | `app_user`, `organization_membership`, `external_identity`, `activity_log`                          |
-| `V4`      | `category`, `asset_model`, `model_custom_field`, `model_custom_field_option`                        |
-| `V5`      | `physical_asset`, `asset_custom_field_value`, `asset_state_history`, `asset_model.next_unit_number` |
-| `V6`      | `consumable_stock_balance`, `stock_movement`                                                        |
-| `V7`-`V8` | S3-compatible media metadata, layout images and deferred-cleanup support                            |
-| `V9`      | Organization locations, physical containment and generalized stock places                           |
-| `V10`     | Packing templates, copy-on-apply requirements and immutable packing history                         |
-| `V11`     | Events, booking lines, immutable reservation revisions/claims and event history                     |
-| `V12`     | Immutable checkout manifests, custody/return operations and audit-task dependency foundation        |
-| `V13`     | Online container-audit facts, frozen expectations, scans, observations, findings and operation IDs  |
+| Migration | Contents                                                                                                                   |
+| --------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `V1`      | `organization`                                                                                                             |
+| `V2`      | Spring Session JDBC schema                                                                                                 |
+| `V3`      | `app_user`, `organization_membership`, `external_identity`, `activity_log`                                                 |
+| `V4`      | `category`, `asset_model`, `model_custom_field`, `model_custom_field_option`                                               |
+| `V5`      | `physical_asset`, `asset_custom_field_value`, `asset_state_history`, `asset_model.next_unit_number`                        |
+| `V6`      | `consumable_stock_balance`, `stock_movement`                                                                               |
+| `V7`-`V8` | S3-compatible media metadata, layout images and deferred-cleanup support                                                   |
+| `V9`      | Organization locations, physical containment and generalized stock places                                                  |
+| `V10`     | Packing templates, copy-on-apply requirements and immutable packing history                                                |
+| `V11`     | Events, booking lines, immutable reservation revisions/claims and event history                                            |
+| `V12`     | Immutable checkout manifests, custody/return operations and audit-task dependency foundation                               |
+| `V13`     | Online container-audit facts, frozen expectations, scans, observations, findings and operation IDs                         |
 | `V14`     | Append-only finding resolutions, repair/seal/verification history, formal manifest accounting and audit-attempt projection |
+| `V15`     | Optional asset-model categories while retaining tenant-safe category references                                            |
 
 API surface is under `/api/v1`. The OpenAPI document at `/v3/api-docs` (enabled only under the `dev`
 profile) is the machine-readable contract; treat it as authoritative over any list here. Broadly:
@@ -245,6 +259,14 @@ verification state, seal controls, replacement lineage and replacement creation.
 views link directly into review. The updated OpenAPI snapshot and generated client were captured from
 a live `dev` backend after V14 migrated a clean PostgreSQL database.
 
+The post-Phase-11 quality-of-life milestone adds a persistent desktop navigation rail and mobile
+drawer, distinct sortable/filterable model and physical-asset views, optional neutral `Default`
+categories, guarded archive/delete actions, exact-asset search with optional atomic container
+assignment, responsive record/photo layouts, collapsed packing-sheet details, and camera auto-start.
+Containers use only the duplicated A5-on-A4 contents sheet and are excluded from ordinary label
+exports. The OpenAPI snapshot and generated TypeScript client were recaptured from a live `dev`
+backend after V15 migrated PostgreSQL.
+
 API types are **generated** from the backend's OpenAPI document into
 `packages/api-client/src/generated/`. Hand-written duplicates of generated request/response shapes
 are forbidden by policy. Regenerate with the package's `generate` script against a running backend.
@@ -266,10 +288,10 @@ environment; the reasoning is recorded in the workflow itself.
 These are **not** oversights. Each is deferred because the table or phase it depends on does not
 exist yet, and each is documented at its call site in code.
 
-| Deferred                                          | Where it plugs in                                                                                                      |
-| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Automatic email linking toggle                    | A static environment variable, not a runtime Owner-toggled setting, because no settings store exists yet.              |
-| Cross-model "metadata incomplete" dashboard view | Per-asset and per-model visibility exists; the organization-wide operational view belongs to Phase 13.                 |
+| Deferred                                         | Where it plugs in                                                                                         |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| Automatic email linking toggle                   | A static environment variable, not a runtime Owner-toggled setting, because no settings store exists yet. |
+| Cross-model "metadata incomplete" dashboard view | Per-asset and per-model visibility exists; the organization-wide operational view belongs to Phase 13.    |
 
 ## 6. Known characteristics worth knowing before changing things
 
@@ -347,7 +369,7 @@ what was verified. Treat the history as a readable grouping, not a bisectable ti
 
 ## 9. Suggested next steps
 
-1. Review Phases 6 and 7, including physical label-stock/mobile/P-touch acceptance.
+1. Complete remaining physical label-stock/mobile/P-touch acceptance.
 2. Perform the remaining Phase 11 physical print and camera acceptance.
 3. **Phases 9.2 and 9.3** - persistent scan outbox and queued audit photographs.
 
@@ -355,6 +377,6 @@ Phase 9.1 is implemented end to end for online operation: audits freeze direct e
 enforce bottom-up execution, match exact requirements before model quantities, retain corrections,
 reconcile exact event-manifest identities separately from container completeness, and transition clean
 or finding-bearing returns appropriately. Browser-persistent outbox retry and queued photographs remain
-the explicitly deferred Phase 9.2/9.3 work after Phase 11.
+the explicitly deferred Phase 9.2/9.3 work after the completed inventory quality-of-life milestone.
 
 Before starting, run the verification commands in section 2 to confirm the tree is still green.

@@ -357,9 +357,14 @@ export function SerializedAssetsPanel(props: SerializedAssetsPanelProps) {
               }
               label="Show inactive"
             />
-            <Button onClick={() => setLabelExportOpen(true)} disabled={selectedVisibleCount === 0}>
-              Export labels{selectedVisibleCount ? ` (${selectedVisibleCount})` : ""}
-            </Button>
+            {!containerCapable ? (
+              <Button
+                onClick={() => setLabelExportOpen(true)}
+                disabled={selectedVisibleCount === 0}
+              >
+                Export labels{selectedVisibleCount ? ` (${selectedVisibleCount})` : ""}
+              </Button>
+            ) : null}
             {canManage ? (
               <>
                 {!containerCapable ? (
@@ -376,6 +381,11 @@ export function SerializedAssetsPanel(props: SerializedAssetsPanelProps) {
             ) : null}
           </Stack>
         </Stack>
+        {containerCapable ? (
+          <Alert severity="info" sx={{ mx: 2, mb: 2 }}>
+            Container labels use the container contents sheet. Open a container to download it.
+          </Alert>
+        ) : null}
         {error ? (
           <Alert severity="error" sx={{ m: 2 }}>
             {error}
@@ -466,7 +476,7 @@ export function SerializedAssetsPanel(props: SerializedAssetsPanelProps) {
           onCreated={load}
         />
       ) : null}
-      {labelExportOpen && selectedVisibleCount > 0 ? (
+      {labelExportOpen && selectedVisibleCount > 0 && !containerCapable ? (
         <AssetLabelExportDialog
           assetIds={visibleAssetIds.filter((assetId) => selectedAssetIds.has(assetId))}
           onClose={() => setLabelExportOpen(false)}

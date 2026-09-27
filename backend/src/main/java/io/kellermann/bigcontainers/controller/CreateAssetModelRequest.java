@@ -10,7 +10,7 @@ import java.util.UUID;
 public record CreateAssetModelRequest(
         @NotBlank String name,
         String description,
-        @NotNull UUID categoryId,
+        UUID categoryId,
         String replacementUrl,
         @NotNull TrackingMode trackingMode,
         String stockUnitLabel,

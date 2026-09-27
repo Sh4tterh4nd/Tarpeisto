@@ -53,6 +53,21 @@ public class AssetController {
                 .toList();
     }
 
+    @GetMapping("/assets")
+    public AssetSearchPageResponse search(
+            @AuthenticationPrincipal BigContainersPrincipal principal,
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) Boolean containerOnly,
+            @RequestParam(defaultValue = "false") boolean includeInactive,
+            @RequestParam(defaultValue = "name") String sort,
+            @RequestParam(defaultValue = "asc") String direction,
+            @RequestParam(defaultValue = "50") int limit,
+            @RequestParam(required = false) String cursor) {
+        return AssetSearchPageResponse.from(assetService.search(
+                principal, query, category, containerOnly, includeInactive, sort, direction, limit, cursor));
+    }
+
     @PostMapping("/asset-models/{assetModelId}/assets")
     public ResponseEntity<AssetResponse> create(
             @AuthenticationPrincipal BigContainersPrincipal principal,

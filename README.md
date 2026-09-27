@@ -2,9 +2,10 @@
 
 BigContainers is a focused equipment, container, booking, checkout, return, and audit system for small event-technology teams.
 
-Implementation is complete through Phase 11. Identity, inventory, media, locations, containment,
-packing requirements, printable container packing sheets, events, checkout/return, online audits,
-review, repairs and seals are built and tested. See the
+Implementation is complete through Phase 11 and the post-Phase-11 inventory quality-of-life
+milestone. Identity, inventory, media, locations, containment, packing requirements, printable
+container packing sheets, events, checkout/return, online audits, review, repairs and seals are
+built and tested. See the
 [implementation status](docs/IMPLEMENTATION_STATUS.md) for the exact verified boundary.
 
 ## Documentation

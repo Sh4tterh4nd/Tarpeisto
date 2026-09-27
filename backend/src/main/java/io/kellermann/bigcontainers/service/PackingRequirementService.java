@@ -65,6 +65,7 @@ public class PackingRequirementService {
     private final Clock clock;
     private final ObjectMapper objectMapper;
     private final AssetSealService seals;
+    private final AssetPlacementService placementService;
 
     public PackingRequirementService(
             PackingRequirementRepository requirements,
@@ -79,6 +80,7 @@ public class PackingRequirementService {
             BookingImpactService bookingImpact,
             CheckoutManifestAssetRepository checkoutManifestAssets,
             AssetSealService seals,
+            AssetPlacementService placementService,
             Clock clock,
             ObjectMapper objectMapper) {
         this.requirements = requirements;
@@ -95,6 +97,7 @@ public class PackingRequirementService {
         this.clock = clock;
         this.objectMapper = objectMapper;
         this.seals = seals;
+        this.placementService = placementService;
     }
 
     @Transactional(readOnly = true)
@@ -246,10 +249,36 @@ public class PackingRequirementService {
             UUID model,
             String assetReference,
             BigDecimal quantity) {
+        return add(p, container, type, model, null, assetReference, quantity, false, null);
+    }
+
+    @Transactional
+    public PackingRequirementView add(
+            BigContainersPrincipal p,
+            UUID container,
+            PackingRequirementType type,
+            UUID model,
+            UUID specificAssetId,
+            String assetReference,
+            BigDecimal quantity,
+            boolean assignToContainer,
+            Long expectedAssetVersion) {
         admin(p);
         lock(p.organizationId());
         requireContainerForWrite(p.organizationId(), container);
-        UUID asset = resolveAssetReference(p.organizationId(), assetReference);
+        if (specificAssetId != null && assetReference != null && !assetReference.isBlank()) {
+            throw new ValidationFailedException("Select an exact asset by id or reference, not both.");
+        }
+        UUID asset = specificAssetId == null
+                ? resolveAssetReference(p.organizationId(), assetReference)
+                : resolveAssetReference(p.organizationId(), specificAssetId.toString());
+        if (assignToContainer && type != PackingRequirementType.SPECIFIC_ASSET) {
+            throw new ValidationFailedException(
+                    "Only an exact asset requirement can assign an asset to the container.");
+        }
+        if (assignToContainer && expectedAssetVersion == null) {
+            throw new ValidationFailedException("expectedAssetVersion is required when assigning an exact asset.");
+        }
         validate(p.organizationId(), type, model, asset, quantity);
         requireAvailable(p.organizationId(), container, null, type, model, asset);
         int order = requirements
@@ -267,6 +296,9 @@ public class PackingRequirementService {
                 row.getId(),
                 transition(null, snapshot(row)));
         requirements.flush();
+        if (assignToContainer) {
+            placementService.move(p, asset, null, container, expectedAssetVersion);
+        }
         bookingImpact.changed(p);
         return view(row);
     }

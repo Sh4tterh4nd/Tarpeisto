@@ -27,7 +27,11 @@ describe("App shell", () => {
             organizationId: "22222222-2222-2222-2222-222222222222",
             role: "OWNER",
           }
-        : { applicationName: "BigContainers", version: "0.1.0", oidcConfigured: false };
+        : url.includes("/api/v1/assets")
+          ? { items: [], nextCursor: undefined }
+          : url.includes("/api/v1/categories")
+            ? []
+            : { applicationName: "BigContainers", version: "0.1.0", oidcConfigured: false };
       return Promise.resolve(
         new Response(JSON.stringify(body), {
           status: 200,
@@ -67,5 +71,27 @@ describe("App shell", () => {
     expect(
       await screen.findByRole("heading", { name: "Scan equipment" }, { timeout: 5000 }),
     ).toBeInTheDocument();
+  });
+
+  it("provides separate model and asset destinations in the left navigation", async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <App />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByRole("link", { name: "Inventory models" })).toHaveAttribute(
+      "href",
+      "/inventory",
+    );
+    expect(screen.getByRole("link", { name: "Assets" })).toHaveAttribute(
+      "href",
+      "/inventory/assets",
+    );
+    await user.click(screen.getByRole("link", { name: "Assets" }));
+    expect(screen.getByRole("link", { name: "Assets" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Inventory models" })).not.toHaveAttribute(
+      "aria-current",
+    );
   });
 });

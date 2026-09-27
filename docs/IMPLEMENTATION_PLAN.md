@@ -646,9 +646,11 @@ Implement in this order:
 ### 13.1 Generator
 
 - A4 with two identical A5-sized halves
-- Thick category-color bar
-- Container name in bold monospaced type at 22 pt or larger
-- Container model, code, and QR
+- A5 landscape halves with a substantial category-color identity bar
+- Bold container name on the left; category and a measured, at-most-three-line model-description preview beneath it, with an ellipsis when truncated
+- QR and public code on the right
+- Neutral `Default` identity bar when the container model has no category
+- Direct packing requirements only, listed below the identity bar
 - Grouped model quantities
 - Exact asset names/codes
 - Nested-container entries
@@ -678,22 +680,56 @@ Implement in this order:
 - Every requirement appears exactly once per duplicated half.
 - Multi-page sheets preserve the duplicate-half rule.
 
-## 14. Phase 9.2: persistent audit scan outbox (after Phase 11)
+## 14. Quality-of-life inventory refinement (after Phase 11, before deferred Phase 9.2)
+
+This focused milestone improves established inventory workflows without changing the deferred persistent-audit or evidence-upload commitments.
+
+### 14.1 Navigation, inventory, and category behavior
+
+- Move desktop navigation to the left side and provide an equivalent accessible mobile drawer.
+- Keep distinct Asset Models and Assets routes/views.
+- Add sortable asset-model and asset tables. Model filters cover category and tracking mode; physical-asset filters cover category and equipment/container type.
+- Require an explicit second confirmation before archiving an asset model.
+- Make the asset-model category optional. Render a null category as `Default` with a neutral color without creating a synthetic category row.
+- Keep category creation, editing, and archiving available to Owners and Deputies. Permit Owner-only hard deletion only when no asset model, including archived models, references the category; write the deletion activity snapshot before removing the unreferenced setup row.
+
+### 14.2 Container requirements, detail presentation, and exports
+
+- Replace manual exact-asset code entry with code/name search and selection.
+- Offer a checkbox to assign the chosen exact asset to the container immediately. Requirement creation and current-parent assignment are one authorized, tenant-scoped transaction when selected.
+- Present asset detail as title, then unit values and public code, with reference photo to the right; below, show placement with current condition and lifecycle to its right. Omit empty unit-value and state-history sections while retaining visible condition and lifecycle.
+- Present asset-model detail with reference photo on the right, category and unit-definition fields stacked at left, and physical units at the bottom.
+- Collapse the packing sheet/content preview on container detail by default while retaining direct contents as the primary view.
+- Exclude containers from ordinary asset-label PDF and P-touch export. Use only the container contents/packing sheet: duplicated A5 landscape halves on A4, a category-colored identity bar, and direct requirements below it.
+
+### 14.3 Scanner startup and acceptance criteria
+
+- Attempt camera startup immediately when an equipment-scanning flow opens; preserve permission-denied, unavailable-camera, retry/device-selection, and manual-entry fallbacks.
+- Desktop navigation is left-sided and mobile navigation is usable through the drawer at phone width.
+- Model and asset views remain distinct; both tables sort in both directions, models filter by category/tracking mode, and physical assets filter by category/equipment-or-container type.
+- A null model category renders as neutral `Default` and is never persisted as a category record. A referenced category, including one referenced solely by an archived model, cannot be hard-deleted. An Owner can delete an unreferenced category only with an immutable activity snapshot; a Deputy cannot.
+- Archiving a model requires the second confirmation; canceling it makes no mutation.
+- Selecting an exact asset through search and enabling immediate assignment leaves both the requirement and current parent unchanged on any validation/authorization failure, and updates both on success.
+- Asset, asset-model, and container detail layouts meet the stated placement and empty-section behavior at desktop and phone widths.
+- Entering a scanner flow requests camera access without an extra start action and always leaves a usable fallback path.
+- Container assets never appear in ordinary asset-label PDFs or P-touch CSV. Container sheets preserve two identical A5 landscape halves per A4 page, show the required identity bar, list direct requirements exactly once per half, and retain the existing fit/overflow guarantees.
+
+## 15. Phase 9.2: persistent audit scan outbox (after quality-of-life refinement)
 
 - Persist pre-generated operation UUIDs and scan/correction mutations in IndexedDB.
 - Retry in order with bounded exponential backoff and explicit failed/synchronizing status.
 - Block completion while local operations remain unsynchronized.
 - Recover queued work after refresh or PWA restart without double-applying server mutations.
 
-## 15. Phase 9.3: queued audit evidence photographs (after Phase 9.2)
+## 16. Phase 9.3: queued audit evidence photographs (after Phase 9.2)
 
 - Persist evidence-upload metadata and binary staging safely for short outages.
 - Show upload progress, retry failures, and prevent completion until required uploads synchronize.
 - Recover queued photo work after refresh or PWA restart.
 
-## 16. Phase 12: temporary access
+## 17. Phase 12: temporary access
 
-### 16.1 Invitation model
+### 17.1 Invitation model
 
 - Random token stored hashed where practical
 - Organization, event/audit-batch scope, issuer, issued time, expiry, revocation
@@ -701,7 +737,7 @@ Implement in this order:
 - Volunteer display-name capture
 - Resulting temporary principal/session identity
 
-### 16.2 Permission boundaries
+### 17.2 Permission boundaries
 
 - Only assigned event/audit operations
 - No packing-requirement administration
@@ -709,22 +745,22 @@ Implement in this order:
 - No unrelated inventory browsing
 - Immediate server-side expiry/revocation checks
 
-### 16.3 Exit criteria
+### 17.3 Exit criteria
 
 - QR invitation grants only intended audit access.
 - Expired and revoked tokens fail immediately.
 - Audit entries identify the temporary volunteer name/session.
 
-## 17. Phase 13: archive, search, operational dashboard, and exports
+## 18. Phase 13: archive, search, operational dashboard, and exports
 
-### 17.1 Archive behavior
+### 18.1 Archive behavior
 
 - Archive/restore supported entities
 - Archive-safe pickers and references
 - Explicit archived filters
 - No loss of historical labels in event/audit displays
 
-### 17.2 Search
+### 18.2 Search
 
 - Public code exact lookup
 - Model/asset/container name search
@@ -733,7 +769,7 @@ Implement in this order:
 - Consumable-model and stock-place search
 - Condition, lifecycle, booking, repair, and audit-status filters
 
-### 17.3 Dashboard
+### 18.3 Dashboard
 
 - Upcoming events
 - Currently checked out
@@ -744,7 +780,7 @@ Implement in this order:
 - Containers incomplete/unavailable
 - Consumables below low-stock threshold
 
-### 17.4 Data exports
+### 18.4 Data exports
 
 - P-touch CSV as already implemented
 - Inventory CSV export for backup/reporting
@@ -753,15 +789,15 @@ Implement in this order:
 - Audit result download
 - Activity/history export if required
 
-### 17.5 Exit criteria
+### 18.5 Exit criteria
 
 - Normal search excludes archived/inactive records by default.
 - Operational work queues lead directly to the next required action.
 - Exported data accurately reflects organization scope.
 
-## 18. Phase 14: production hardening and first stable release
+## 19. Phase 14: production hardening and first stable release
 
-### 18.1 Security review
+### 19.1 Security review
 
 - Authorization matrix review for every endpoint
 - Cross-organization tests
@@ -773,7 +809,7 @@ Implement in this order:
 - Dependency and container scanning
 - Secret-handling review
 
-### 18.2 Reliability
+### 19.2 Reliability
 
 - Transaction-bound activity logging
 - Concurrency tests for reservations, scan movement, and audit completion
@@ -782,7 +818,7 @@ Implement in this order:
 - Migration upgrade rehearsal from the prior release candidate
 - Media orphan detection/cleanup tool
 
-### 18.3 Browser/device testing
+### 19.3 Browser/device testing
 
 - Current Safari on iPhone/iPad
 - Current Chrome on Android
@@ -792,7 +828,7 @@ Implement in this order:
 - Low-connectivity and reconnect tests
 - Multiple camera selection where devices expose it
 
-### 18.4 Deployment deliverables
+### 19.4 Deployment deliverables
 
 - Versioned OCI application image produced by Jib and published to GitHub Container Registry
 - Immutable semantic-version and commit tags, release-only `latest`, and recorded image digest
@@ -805,7 +841,7 @@ Implement in this order:
 - Restore verification guide
 - Initial administrator runbook
 
-### 18.5 Stable-release gate
+### 19.5 Stable-release gate
 
 - All specification acceptance scenarios pass.
 - No unresolved critical/high security findings.
@@ -813,9 +849,9 @@ Implement in this order:
 - Backup and restore have been tested on a clean host.
 - An event has been rehearsed end-to-end with volunteer-equivalent users.
 
-## 19. Cross-cutting test strategy
+## 20. Cross-cutting test strategy
 
-### 19.1 Unit tests
+### 20.1 Unit tests
 
 - Public-code generation/normalization/checksum
 - Requirement matching
@@ -826,7 +862,7 @@ Implement in this order:
 - Permission decisions
 - Layout fit calculations
 
-### 19.2 PostgreSQL integration tests
+### 20.2 PostgreSQL integration tests
 
 - Composite tenant constraints
 - Uniqueness rules
@@ -840,7 +876,7 @@ Implement in this order:
 
 Use a real PostgreSQL instance rather than substituting an in-memory database.
 
-### 19.3 End-to-end tests
+### 20.3 End-to-end tests
 
 - Model and bulk asset creation
 - Label generation and lookup
@@ -855,14 +891,14 @@ Use a real PostgreSQL instance rather than substituting an in-memory database.
 - Consumable receipt, transfer, booking, issue, return, audit, and consumption
 - OIDC login, account linking, disabled-user rejection, and local recovery during provider failure
 
-### 19.4 Visual and physical tests
+### 20.4 Visual and physical tests
 
 - Screenshot regression for mobile workflows
 - Rendered PDF image comparison
 - Physical label alignment calibration
 - QR readability from the actual printers and label stock
 
-## 20. Key technical risks and mitigations
+## 21. Key technical risks and mitigations
 
 | Risk                                                     | Mitigation                                                                                                                    |
 | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
@@ -880,7 +916,7 @@ Use a real PostgreSQL instance rather than substituting an in-memory database.
 | S3 deployment behavior diverges                          | One storage contract with shared conformance tests.                                                                           |
 | Audit history is accidentally rewritten                  | Immutable completed records and append-only resolutions.                                                                      |
 
-## 21. Milestone summary
+## 22. Milestone summary
 
 ### Milestone A: Inventory foundation
 
@@ -896,13 +932,13 @@ Phases 7-8. Events can reserve equipment, prevent conflicts, check out exact man
 
 ### Milestone D: Audit and remediation
 
-Phase 9.1, then Phases 10 and 11, then deferred Phases 9.2 and 9.3, followed by Phase 12. Online bottom-up audits and flexible cable matching precede findings/repairs/seals and packing sheets; persistent scan and photo recovery follows those workflows.
+Phase 9.1, then Phases 10 and 11, followed by the quality-of-life inventory refinement, then deferred Phases 9.2 and 9.3, followed by Phase 12. Online bottom-up audits and flexible cable matching precede findings/repairs/seals, packing sheets, and polished inventory workflows; persistent scan and photo recovery remains deferred until those workflows are complete.
 
 ### Milestone E: Stable self-hosted release
 
 Phases 13-14. Search, dashboards, exports, archiving, hardening, deployment, backup, restore, and production acceptance are complete.
 
-## 22. Immediate next actions
+## 23. Immediate next actions
 
 1. Review and approve this specification and mark any deliberately deferred behavior.
 2. Treat ADR-0001 as the accepted stack and structure baseline; update it only when a concrete implementation finding requires a change.
