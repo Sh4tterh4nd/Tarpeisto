@@ -331,3 +331,11 @@ Create or update an ADR when changing the base package, overall package architec
 - Third-party actions are pinned by full commit SHA.
 - `main`, semantic-version, and commit-derived tags follow ADR-0004. Semantic-version and commit tags must not be overwritten.
 - Production documentation recommends an exact semantic version or digest, never a mutable branch tag.
+
+## 10. Change delivery and Git history
+
+Application implementation follows the repository-local [`tarpeisto-sol-terra-delivery`](../.agents/skills/tarpeisto-sol-terra-delivery/SKILL.md) skill. That skill owns the agent workflow and the discretion to batch complete test-suite runs across consecutive, coherent phases. The applicable checks in section 8 must still pass before the requested review point or final handoff.
+
+Commits use a concise Conventional Commit subject in the form `type(scope): imperative summary`. The body is a short Markdown bullet list containing only important outcomes, normally two bullets and never a large prose description. Do not add `Co-Authored-By` trailers or agent/model attribution.
+
+Keep commits scoped to one coherent implementation unit and review the staged diff before committing. Do not amend, rebase, force-push, or otherwise rewrite existing history unless the user explicitly requests it. Do not push commits, publish images, or trigger a deployment unless the task explicitly includes that external action.

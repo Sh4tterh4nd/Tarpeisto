@@ -14,3 +14,9 @@ Implementation must preserve the documented controller-service-repository depend
 Use the global `controller`, `service`, `repository`, and `model` packages defined in the development policies. Do not add empty packages or generic dumping grounds such as `common`, `misc`, or `util` in anticipation of future code.
 
 Run the affected backend and frontend checks described in `docs/DEVELOPMENT_POLICIES.md` and review the complete diff before considering a change complete.
+
+## Implementation workflow
+
+For feature work, bug fixes, refactors, migrations, or implementation phases, load and follow [`tarpeisto-sol-terra-delivery`](.agents/skills/tarpeisto-sol-terra-delivery/SKILL.md). It defines the required SOL planning and Terra implementation workflow, testing discretion across related phases, review responsibilities, and commit-message format.
+
+Read-only investigation, explanation, and status reporting do not require the implementation workflow.
