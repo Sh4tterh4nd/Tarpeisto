@@ -28,7 +28,8 @@ credentials are external Docker Swarm secrets, mounted as files.
 
 3. Edit the non-secret values in `docker-compose.yml`: the released application image (prefer a
    digest), public base URL, and display name. Keep the SeaweedFS endpoint,
-   region, bucket, and path-style configuration together unless you intentionally use external S3.
+   region, bucket, path-style, and chunked-encoding configuration together unless you intentionally
+   use external S3.
 
 4. Deploy the stack:
 
@@ -134,6 +135,31 @@ downgrade.
 ## External S3
 
 To use AWS S3 or another managed S3-compatible service, remove the `seaweedfs` service and its
-volume, set the endpoint/region/bucket/path-style settings for that provider, and keep the S3
-credential secret targets on `app`. For AWS S3, omit the endpoint and set path-style access to
-`false`.
+volume, set the endpoint/region/bucket/path-style/chunked-encoding settings for that provider, and
+keep the S3 credential secret targets on `app`. For AWS S3, omit the endpoint and set path-style
+access to `false`; chunked encoding remains enabled by default.
+
+### Cloudflare R2
+
+Create the bucket and an R2 API token with Object Read & Write permission restricted to that
+bucket. Create the Swarm access-key and secret-key secrets from the R2 token's Access Key ID and
+Secret Access Key, then map them to the existing `tarpeisto.s3.access-key` and
+`tarpeisto.s3.secret-key` targets on `app`.
+
+Remove the `seaweedfs` service and the `seaweedfs-data` volume, then replace the application S3
+settings with the following. Use the jurisdiction-specific `eu.r2.cloudflarestorage.com` hostname
+for an EU-jurisdiction R2 bucket; otherwise use `r2.cloudflarestorage.com`.
+
+```yaml
+environment:
+  TARPEISTO_S3_ENABLED: "true"
+  TARPEISTO_S3_ENDPOINT: https://<cloudflare-account-id>.r2.cloudflarestorage.com
+  TARPEISTO_S3_REGION: auto
+  TARPEISTO_S3_BUCKET: tarpeisto
+  TARPEISTO_S3_PATH_STYLE_ACCESS: "true"
+  TARPEISTO_S3_CHUNKED_ENCODING: "false"
+```
+
+R2 requires chunked transfer encoding to be disabled for AWS SDK for Java v2 uploads. The bucket
+remains private: Tarpeisto authorizes and streams media server-side, so an `r2.dev` URL, custom
+domain, and browser CORS policy are not required.

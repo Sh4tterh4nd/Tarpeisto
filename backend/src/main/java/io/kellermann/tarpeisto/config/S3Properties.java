@@ -17,6 +17,7 @@ public record S3Properties(
         String accessKey,
         String secretKey,
         boolean pathStyleAccess,
+        boolean chunkedEncoding,
         String serverSideEncryption,
         @Min(1) long maxUploadBytes) {
 

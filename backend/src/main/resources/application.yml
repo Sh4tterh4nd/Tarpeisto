@@ -95,5 +95,6 @@ tarpeisto:
     access-key: ${TARPEISTO_S3_ACCESS_KEY:}
     secret-key: ${TARPEISTO_S3_SECRET_KEY:}
     path-style-access: ${TARPEISTO_S3_PATH_STYLE_ACCESS:true}
+    chunked-encoding: ${TARPEISTO_S3_CHUNKED_ENCODING:true}
     server-side-encryption: ${TARPEISTO_S3_SERVER_SIDE_ENCRYPTION:}
     max-upload-bytes: ${TARPEISTO_S3_MAX_UPLOAD_BYTES:10485760}
