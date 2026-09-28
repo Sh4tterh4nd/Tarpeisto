@@ -1908,6 +1908,65 @@ class BookingControllerIntegrationTests extends AbstractIntegrationTest {
                 .isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
+    @Test
+    void standaloneContainerAuditLaunchStartsLeafAndReplaysOneOperationSafely() {
+        Fixture f = fixture();
+        UUID containerModel = createSerializedModel(f, "Standalone audit case", true);
+        UUID container = createAsset(f, containerModel, "Standalone case");
+        UUID operationId = UUID.randomUUID();
+        String path = "/api/v1/audits/containers/" + container + "/launch";
+        Map<String, Object> request = Map.of("containerCode", publicCode(container), "operationId", operationId);
+
+        ResponseEntity<String> first = exchange(f.owner(), HttpMethod.POST, path, request);
+        assertThat(first.getStatusCode()).withFailMessage(first.getBody()).isEqualTo(HttpStatus.OK);
+        JsonNode firstView = json(first.getBody());
+        assertThat(firstView.path("state").asText()).isEqualTo("IN_PROGRESS");
+        UUID taskId = UUID.fromString(firstView.path("taskId").asText());
+        assertThat(jdbc.sql(
+                                "SELECT event_booking_id FROM audit_batch WHERE id=(SELECT audit_batch_id FROM audit_task WHERE id=:id)")
+                        .param("id", taskId)
+                        .query(UUID.class)
+                        .optional())
+                .isEmpty();
+
+        ResponseEntity<String> replay = exchange(f.owner(), HttpMethod.POST, path, request);
+        assertThat(replay.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(json(replay.getBody()).path("taskId").asText()).isEqualTo(taskId.toString());
+        assertThat(exchange(
+                                f.owner(),
+                                HttpMethod.POST,
+                                path,
+                                Map.of("containerCode", "OTHER", "operationId", operationId))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+    }
+
+    @Test
+    void standaloneContainerAuditLaunchBuildsNestedTasksAndReturnsTheReadyChild() {
+        Fixture f = fixture();
+        UUID containerModel = createSerializedModel(f, "Nested standalone cases", true);
+        UUID root = createAsset(f, containerModel, "Root case");
+        UUID child = createAsset(f, containerModel, "Child case");
+        place(f, child, root);
+
+        ResponseEntity<String> response = exchange(
+                f.owner(),
+                HttpMethod.POST,
+                "/api/v1/audits/containers/" + root + "/launch",
+                Map.of("containerCode", publicCode(root), "operationId", UUID.randomUUID()));
+
+        assertThat(response.getStatusCode()).withFailMessage(response.getBody()).isEqualTo(HttpStatus.OK);
+        JsonNode view = json(response.getBody());
+        assertThat(view.path("containerAssetId").asText()).isEqualTo(child.toString());
+        assertThat(view.path("state").asText()).isEqualTo("READY");
+        assertThat(view.path("id").isNull()).isTrue();
+        assertThat(jdbc.sql("SELECT state FROM audit_task WHERE container_asset_id=:id")
+                        .param("id", root)
+                        .query(String.class)
+                        .single())
+                .isEqualTo("BLOCKED");
+    }
+
     private ResponseEntity<String> completeForReview(Fixture f, UUID audit, UUID box, boolean missing, boolean sealed) {
         return exchange(
                 f.owner(),

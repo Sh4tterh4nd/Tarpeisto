@@ -5,6 +5,9 @@ export type ScannerAsset = Required<components["schemas"]["AssetResponse"]>;
 export type ScannerPlacement = Required<components["schemas"]["AssetPlacementResponse"]>;
 export type ScannerStockBalance = Required<components["schemas"]["ConsumableStockResponse"]>;
 export type ScannerAssetModel = Required<components["schemas"]["AssetModelResponse"]>;
+export interface ContainerAuditLaunch {
+  readonly taskId: string;
+}
 
 export type ScannerApiResult<T> = { kind: "ok"; data: T } | { kind: "error"; error: AppError };
 
@@ -76,6 +79,19 @@ export function restoreScannedAsset(assetId: string): Promise<ScannerApiResult<S
     apiClient.PUT("/api/v1/assets/{assetId}/lifecycle", {
       params: { path: { assetId } },
       body: { lifecycleState: "ACTIVE", reason: "Restored after scanner lookup" },
+    }),
+  );
+}
+
+export function launchContainerAudit(
+  containerId: string,
+  containerCode: string,
+  operationId: string,
+): Promise<ScannerApiResult<ContainerAuditLaunch>> {
+  return read(() =>
+    apiClient.POST("/api/v1/audits/containers/{containerId}/launch", {
+      params: { path: { containerId } },
+      body: { containerCode, operationId },
     }),
   );
 }

@@ -59,7 +59,7 @@ Tarpeisto is a responsive web application and installable Progressive Web App (P
 | Event                           | Time-bounded reservation and movement of containers and/or individual assets.                                                                 |
 | Checkout manifest               | Immutable list of exact physical assets that left inventory for an event.                                                                     |
 | Audit                           | Verification of the direct contents of one container.                                                                                         |
-| Audit batch                     | Related set of container audits, normally created for one event return.                                                                       |
+| Audit batch                     | Related set of container audits, created for an event return or an independently launched container audit.                                   |
 | Finding                         | Missing, damaged, unexpected, misplaced, or unreadable-label observation from an audit.                                                       |
 
 ## 3. Tenancy and organization boundary
@@ -656,6 +656,12 @@ An event return batch provides:
 - Final unresolved-finding summary
 - Consumable quantity confirmation and adjustment history
 
+An independently launched container batch has no booking or manifest. An Owner, Deputy, or
+Operator/Auditor may launch it only by scanning an active container from the equipment scanner.
+The service creates tasks for that container and its current descendant containers, with the same
+direct-child bottom-up ordering. It cannot be launched while any asset in that physical subtree is
+in unreleased event custody, and it never changes event-manifest or booking state.
+
 ### 16.2 Bottom-up ordering
 
 Audits verify one physical boundary at a time.
@@ -685,6 +691,10 @@ If an audited child is reopened or its seal is broken before the parent is compl
 3. Confirm the container identity, photographs, and packing layout.
 4. Display direct expected contents and current progress.
 5. Start continuous scanning.
+
+When an eligible user scans an active container in the equipment scanner, the result offers to
+start this standalone audit immediately. Declining keeps a visible `Start audit` action; direct
+links and refreshed result pages do not show the prompt automatically.
 
 ### 17.2 Scanning behavior
 

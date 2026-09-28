@@ -12,6 +12,7 @@ const api = vi.hoisted(() => ({
   listScannedContainerContents: vi.fn(),
   listScannedContainerStock: vi.fn(),
   restoreScannedAsset: vi.fn(),
+  launchContainerAudit: vi.fn(),
   scannerErrorMessage: vi.fn((error: Error) => error.message),
 }));
 
@@ -38,11 +39,20 @@ const lostContainer = {
   updatedAt: "2026-09-26T00:00:00Z",
 };
 
-function renderResult() {
+const activeContainer = { ...lostContainer, lifecycleState: "ACTIVE" };
+
+function renderResult(scanned = false) {
   render(
-    <MemoryRouter initialEntries={["/scan/assets/container-1"]}>
+    <MemoryRouter
+      initialEntries={[
+        scanned
+          ? { pathname: "/scan/assets/container-1", state: { scannedCode: "7K3MXY" } }
+          : "/scan/assets/container-1",
+      ]}
+    >
       <Routes>
         <Route path="/scan/assets/:assetId" element={<ScannerResultPage />} />
+        <Route path="/audits/tasks/:taskId" element={<div>Audit task opened</div>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -72,6 +82,7 @@ describe("ScannerResultPage", () => {
       kind: "ok",
       data: { ...lostContainer, lifecycleState: "ACTIVE" },
     });
+    api.launchContainerAudit.mockResolvedValue({ kind: "ok", data: { taskId: "audit-task-1" } });
   });
 
   it("shows a prominent lost alert, direct container context, and manager restore action", async () => {
@@ -109,5 +120,62 @@ describe("ScannerResultPage", () => {
     expect(
       screen.queryByText("No direct asset contents are currently recorded."),
     ).not.toBeInTheDocument();
+  });
+
+  it("offers an authorized user an audit prompt only after a genuine scanner navigation", async () => {
+    const user = userEvent.setup();
+    api.getScannedAsset.mockResolvedValue({ kind: "ok", data: activeContainer });
+    renderResult(true);
+    expect(
+      await screen.findByRole("dialog", { name: "Start a container audit?" }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Not now" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Start audit" })).toBeInTheDocument();
+  });
+
+  it("does not offer a Viewer an audit prompt", async () => {
+    state.role = "VIEWER";
+    api.getScannedAsset.mockResolvedValue({ kind: "ok", data: activeContainer });
+    renderResult(true);
+    await screen.findByText("Mobile network box");
+    expect(
+      screen.queryByRole("dialog", { name: "Start a container audit?" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Start audit" })).not.toBeInTheDocument();
+  });
+
+  it("starts the audit and opens the returned task", async () => {
+    const user = userEvent.setup();
+    api.getScannedAsset.mockResolvedValue({ kind: "ok", data: activeContainer });
+    renderResult(true);
+    await user.click(await screen.findByRole("button", { name: "Start audit" }));
+    await waitFor(() =>
+      expect(api.launchContainerAudit).toHaveBeenCalledWith(
+        "container-1",
+        "7K3MXY",
+        expect.any(String),
+      ),
+    );
+    expect(await screen.findByText("Audit task opened")).toBeInTheDocument();
+  });
+
+  it("dismisses a failed launch prompt and retries with the same operation", async () => {
+    const user = userEvent.setup();
+    api.launchContainerAudit
+      .mockResolvedValueOnce({ kind: "error", error: new Error("Launch failed") })
+      .mockResolvedValueOnce({ kind: "ok", data: { taskId: "audit-task-1" } });
+    api.getScannedAsset.mockResolvedValue({ kind: "ok", data: activeContainer });
+    renderResult(true);
+    await user.click(await screen.findByRole("button", { name: "Start audit" }));
+    expect(
+      await screen.findByText(/Could not start the container audit: Launch failed/),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    const firstOperationId = api.launchContainerAudit.mock.calls[0]?.[2];
+    expect(firstOperationId).toEqual(expect.any(String));
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(screen.getByText("Audit task opened")).toBeInTheDocument());
+    expect(api.launchContainerAudit.mock.calls[1]?.[2]).toBe(firstOperationId);
   });
 });

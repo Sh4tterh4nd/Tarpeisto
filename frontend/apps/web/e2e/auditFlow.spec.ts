@@ -33,6 +33,15 @@ test("an online return audit starts, scans and completes", async ({ page }) => {
       json: { applicationName: "Tarpeisto", version: "test", oidcConfigured: false },
     }),
   );
+  await page.route("**/api/v1/assets/33333333-3333-3333-3333-333333333333", (route) =>
+    route.fulfill({
+      json: {
+        id: "33333333-3333-3333-3333-333333333333",
+        displayName: "Audit case",
+        publicCode: "7K3MXY",
+      },
+    }),
+  );
   await page.route("**/api/v1/audits/tasks/11111111-1111-1111-1111-111111111111", (route) =>
     route.fulfill({ json: { ...baseAudit, state: "READY", scans: [] } }),
   );
@@ -80,7 +89,7 @@ test("an online return audit starts, scans and completes", async ({ page }) => {
 
   await page.goto("/audits/tasks/11111111-1111-1111-1111-111111111111");
 
-  await expect(page.getByRole("heading", { name: "Return audit" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Container audit: Audit case" })).toBeVisible();
   await expect(page.getByText(/Online-only/)).toBeVisible();
 
   await page.getByLabel("Scan assigned container to start").fill("7K3MXY");

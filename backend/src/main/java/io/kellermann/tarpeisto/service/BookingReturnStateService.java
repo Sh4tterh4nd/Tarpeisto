@@ -117,12 +117,14 @@ public class BookingReturnStateService {
         findings.findAllByOrganizationIdAndAuditIdOrderById(principal.organizationId(), auditId).stream()
                 .filter(finding -> finding.getAssetId() != null)
                 .forEach(finding -> released.add(finding.getAssetId()));
-        UUID manifestId = batches.findByIdAndOrganizationId(audit.getAuditBatchId(), principal.organizationId())
-                .orElseThrow()
-                .getManifestId();
-        manifestAssets.findAllByOrganizationIdAndManifestIdOrderById(principal.organizationId(), manifestId).stream()
-                .filter(item -> released.contains(item.getAssetId()) && item.getReturnedAt() != null)
-                .forEach(item -> item.releaseAfterAudit(clock.instant()));
+        AuditBatch batch = batches.findByIdAndOrganizationId(audit.getAuditBatchId(), principal.organizationId())
+                .orElseThrow();
+        if (batch.isEventReturnBatch())
+            manifestAssets
+                    .findAllByOrganizationIdAndManifestIdOrderById(principal.organizationId(), batch.getManifestId())
+                    .stream()
+                    .filter(item -> released.contains(item.getAssetId()) && item.getReturnedAt() != null)
+                    .forEach(item -> item.releaseAfterAudit(clock.instant()));
         if (container.isSealable() && container.getSealState() == SealState.APPLIED) {
             container.verifySeal(clock.instant());
             sealHistory.save(new AssetSealHistory(
@@ -150,6 +152,8 @@ public class BookingReturnStateService {
                 batches.findByIdAndOrganizationId(batchId, organizationId).orElseThrow();
         List<AuditTask> batchTasks = tasks.findAllByOrganizationIdAndAuditBatchIdOrderById(organizationId, batchId);
         unlockReviewedParents(organizationId, batchTasks);
+
+        if (!batch.isEventReturnBatch()) return;
 
         boolean unresolved = audits.findAllByOrganizationIdAndAuditBatchIdOrderById(organizationId, batchId).stream()
                 .anyMatch(audit -> hasUnresolvedFindings(organizationId, audit.getId()));

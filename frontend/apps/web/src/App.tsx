@@ -26,6 +26,7 @@ function PrimaryNav() {
     ["Status", "/"],
     ["Inventory models", "/inventory"],
     ["Assets", "/inventory/assets"],
+    ["Containers", "/inventory/containers"],
     ["Locations", "/inventory/locations"],
     ["Events", "/events"],
     ["Scan equipment", "/scan"],

@@ -7,11 +7,15 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import Divider from "@mui/material/Divider";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { PageHeading } from "@tarpeisto/shared-ui";
-import { Link as RouterLink, useParams } from "react-router-dom";
+import { Link as RouterLink, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useSession } from "../identity/useSession";
 import {
   getScannedAsset,
@@ -19,6 +23,7 @@ import {
   getScannedAssetPlacement,
   listScannedContainerContents,
   listScannedContainerStock,
+  launchContainerAudit,
   restoreScannedAsset,
   scannerErrorMessage,
   type ScannerAsset,
@@ -39,13 +44,36 @@ function lifecycleLabel(state: ScannerAsset["lifecycleState"]): string {
 /** A focused post-scan result, deliberately distinct from the full edit-heavy asset page. */
 export function ScannerResultPage() {
   const { assetId } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { role } = useSession();
   const canRestore = role === "OWNER" || role === "DEPUTY";
+  const canLaunchAudit = role === "OWNER" || role === "DEPUTY" || role === "OPERATOR_AUDITOR";
+  const initialScannedCode =
+    typeof location.state === "object" && location.state !== null && "scannedCode" in location.state
+      ? (location.state as { scannedCode?: unknown }).scannedCode
+      : undefined;
   const [asset, setAsset] = useState<ScannerAsset>();
   const [containerSummary, setContainerSummary] = useState<ContainerSummary>();
   const [error, setError] = useState<string>();
   const [restoring, setRestoring] = useState(false);
+  const [auditPromptOpen, setAuditPromptOpen] = useState(false);
+  const [auditPromptDismissed, setAuditPromptDismissed] = useState(false);
+  const [launchingAudit, setLaunchingAudit] = useState(false);
+  const [launchError, setLaunchError] = useState<string>();
   const request = useRef(0);
+  const promptShown = useRef(false);
+  const launchOperationId = useRef<string | undefined>(undefined);
+  const [scanContext] = useState(() => ({
+    assetId,
+    code: typeof initialScannedCode === "string" ? initialScannedCode : undefined,
+  }));
+  const scannedCode = scanContext.assetId === assetId ? scanContext.code : undefined;
+  const genuineScan = typeof scannedCode === "string";
+
+  useEffect(() => {
+    if (scannedCode) navigate(location.pathname, { replace: true });
+  }, [location.pathname, navigate, scannedCode]);
 
   const load = useCallback(async () => {
     if (!assetId) return;
@@ -74,6 +102,17 @@ export function ScannerResultPage() {
       return;
     }
 
+    if (
+      genuineScan &&
+      canLaunchAudit &&
+      assetResult.data.lifecycleState === "ACTIVE" &&
+      !assetResult.data.archived &&
+      !promptShown.current
+    ) {
+      promptShown.current = true;
+      setAuditPromptOpen(true);
+    }
+
     const [contentsResult, stockResult] = await Promise.all([
       listScannedContainerContents(assetResult.data.id),
       listScannedContainerStock(assetResult.data.id),
@@ -84,7 +123,7 @@ export function ScannerResultPage() {
       contents: contentsResult.kind === "ok" ? contentsResult.data : undefined,
       stock: stockResult.kind === "ok" ? stockResult.data : undefined,
     });
-  }, [assetId]);
+  }, [assetId, canLaunchAudit, genuineScan]);
 
   useEffect(() => {
     // Deferring the initial fetch avoids a cascading render while preserving
@@ -106,6 +145,22 @@ export function ScannerResultPage() {
       return;
     }
     setAsset(restored.data);
+  }
+
+  async function startAudit() {
+    if (!asset || !genuineScan || launchingAudit) return;
+    launchOperationId.current ??= crypto.randomUUID();
+    setLaunchingAudit(true);
+    setLaunchError(undefined);
+    const result = await launchContainerAudit(asset.id, scannedCode, launchOperationId.current);
+    setLaunchingAudit(false);
+    if (result.kind === "error") {
+      setLaunchError(scannerErrorMessage(result.error));
+      setAuditPromptOpen(false);
+      setAuditPromptDismissed(true);
+      return;
+    }
+    navigate(`/audits/tasks/${result.data.taskId}`);
   }
 
   if (error && !asset) {
@@ -158,6 +213,23 @@ export function ScannerResultPage() {
       />
 
       {error ? <Alert severity="error">{error}</Alert> : null}
+      {launchError ? (
+        <Alert
+          severity="error"
+          action={
+            <Button
+              color="inherit"
+              size="small"
+              disabled={launchingAudit}
+              onClick={() => void startAudit()}
+            >
+              Retry
+            </Button>
+          }
+        >
+          Could not start the container audit: {launchError}
+        </Alert>
+      ) : null}
       {asset.lifecycleState === "LOST" ? (
         <Alert
           severity="error"
@@ -279,6 +351,49 @@ export function ScannerResultPage() {
           </Stack>
         </Paper>
       ) : null}
+      {containerSummary &&
+      canLaunchAudit &&
+      genuineScan &&
+      asset.lifecycleState === "ACTIVE" &&
+      !asset.archived &&
+      auditPromptDismissed ? (
+        <Button
+          variant="outlined"
+          sx={{ alignSelf: "start" }}
+          onClick={() => setAuditPromptOpen(true)}
+        >
+          Start audit
+        </Button>
+      ) : null}
+      <Dialog
+        open={auditPromptOpen}
+        onClose={() => {
+          setAuditPromptOpen(false);
+          setAuditPromptDismissed(true);
+        }}
+        aria-labelledby="start-container-audit-title"
+      >
+        <DialogTitle id="start-container-audit-title">Start a container audit?</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Start an online audit for this container and its nested containers. Child containers are
+            checked first.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setAuditPromptOpen(false);
+              setAuditPromptDismissed(true);
+            }}
+          >
+            Not now
+          </Button>
+          <Button variant="contained" onClick={() => void startAudit()} disabled={launchingAudit}>
+            {launchingAudit ? "Starting" : "Start audit"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 }

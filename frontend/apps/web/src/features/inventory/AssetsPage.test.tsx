@@ -126,4 +126,20 @@ describe("AssetsPage", () => {
     expect(screen.queryByRole("link", { name: "Old result" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Load more" })).not.toBeInTheDocument();
   });
+
+  it("uses a fixed containers-only view without the redundant type picker", async () => {
+    render(
+      <MemoryRouter>
+        <AssetsPage containersOnly />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByRole("heading", { name: /Containers/ })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Category" })).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Type" })).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(api.searchAssets).toHaveBeenLastCalledWith(
+        expect.objectContaining({ containerOnly: true }),
+      ),
+    );
+  });
 });

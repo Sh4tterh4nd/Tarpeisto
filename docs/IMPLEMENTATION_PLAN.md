@@ -544,6 +544,7 @@ Implement:
 - Audit evidence media (implemented with queued upload recovery in Phase 9.3)
 - Completion summaries
 - Client operation IDs/idempotency records
+- Standalone, scanner-launched container batches with no event booking or checkout manifest
 
 ### 11.2 Dependency engine
 
@@ -553,6 +554,8 @@ Implement:
 - Unlock parent only after child clean/reviewed outcomes
 - Invalidate readiness when a child is reopened or seal is broken
 - Present blocked-reason details
+- Reuse an incomplete task for the scanned container; otherwise build the graph from its current
+  descendant containers and reject any subtree with unreleased event custody
 
 ### 11.3 Scanner workflow
 
@@ -572,6 +575,8 @@ Implement in this order:
 12. Consumable requirement confirmation, observed-quantity entry, or missing/low report
 13. Final matching container rescan
 14. Seal confirmation when Phase 10 introduces seal state
+15. On a genuine equipment-scanner result, offer an authorized user a standalone container audit;
+    keep an explicit action after decline and never auto-prompt after refresh/direct navigation
 
 ### 11.4 Deferred work
 

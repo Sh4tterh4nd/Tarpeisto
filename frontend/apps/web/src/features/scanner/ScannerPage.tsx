@@ -79,7 +79,7 @@ export function ScannerPage({ capability = webQrScannerCapability }: ScannerPage
         );
         return;
       }
-      navigate(`/scan/assets/${result.data.id}`);
+      navigate(`/scan/assets/${result.data.id}`, { state: { scannedCode: validation.normalized } });
     },
     [navigate],
   );

@@ -996,6 +996,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/audits/containers/{containerId}/launch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["launch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/assets/{containerAssetId}/packing-templates/{templateId}/apply": {
         parameters: {
             query?: never;
@@ -2310,9 +2326,6 @@ export interface components {
             /** Format: email */
             email?: string;
         };
-        InitialSetupStatusResponse: {
-            setupRequired?: boolean;
-        };
         LoginRequest: {
             username: string;
             password: string;
@@ -2621,6 +2634,11 @@ export interface components {
         StartAuditRequest: {
             containerCode: string;
         };
+        LaunchContainerAuditRequest: {
+            containerCode: string;
+            /** Format: uuid */
+            operationId: string;
+        };
         PackingPreviewRequest: {
             observedConsumableQuantities?: {
                 [key: string]: number;
@@ -2797,6 +2815,9 @@ export interface components {
             /** @enum {string} */
             format: "A4_70X36_24" | "A4_97X42_3_12";
             calibration?: components["schemas"]["AssetLabelCalibrationParameters"];
+        };
+        InitialSetupStatusResponse: {
+            setupRequired?: boolean;
         };
         StreamingResponseBody: unknown;
         StockMovementResponse: {
@@ -4765,6 +4786,32 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["StartAuditRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ContainerAuditResponse"];
+                };
+            };
+        };
+    };
+    launch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                containerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LaunchContainerAuditRequest"];
             };
         };
         responses: {

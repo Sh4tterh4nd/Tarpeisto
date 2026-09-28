@@ -3,10 +3,11 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuditTaskPage } from "./AuditTaskPage";
 
-const api = vi.hoisted(() => ({ getAuditTask: vi.fn() }));
+const api = vi.hoisted(() => ({ getAuditContainer: vi.fn(), getAuditTask: vi.fn() }));
 
 vi.mock("./auditApi", () => ({
   completeAudit: vi.fn(),
+  getAuditContainer: api.getAuditContainer,
   getAuditTask: api.getAuditTask,
   moveAuditScanHere: vi.fn(),
   observeAuditConsumable: vi.fn(),
@@ -20,6 +21,10 @@ vi.mock("../identity/useSession", () => ({ useSession: () => ({ role: "OPERATOR_
 
 describe("AuditTaskPage", () => {
   beforeEach(() => {
+    api.getAuditContainer.mockResolvedValue({
+      kind: "ok",
+      data: { id: "container-1", displayName: "Child case", publicCode: "CHILD1" },
+    });
     api.getAuditTask.mockResolvedValue({
       kind: "ok",
       data: {
@@ -45,6 +50,10 @@ describe("AuditTaskPage", () => {
     );
 
     expect(await screen.findByText(/Online-only/)).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Container audit: Child case" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/CHILD1/)).toBeInTheDocument();
     expect(screen.getByText(/Complete child audit task-child/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Start audit" })).toBeInTheDocument();
   });

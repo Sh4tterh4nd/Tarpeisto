@@ -2698,6 +2698,45 @@
         }
       }
     },
+    "/api/v1/audits/containers/{containerId}/launch": {
+      "post": {
+        "tags": ["audit-controller"],
+        "operationId": "launch",
+        "parameters": [
+          {
+            "name": "containerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LaunchContainerAuditRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContainerAuditResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/assets/{containerAssetId}/packing-templates/{templateId}/apply": {
       "post": {
         "tags": ["packing-requirement-controller"],
@@ -5965,12 +6004,12 @@
           "organizationName": {
             "type": "string",
             "maxLength": 255,
-            "minLength": 1
+            "minLength": 0
           },
           "username": {
             "type": "string",
             "maxLength": 255,
-            "minLength": 1
+            "minLength": 0
           },
           "password": {
             "type": "string",
@@ -5980,23 +6019,16 @@
           "displayName": {
             "type": "string",
             "maxLength": 255,
-            "minLength": 1
+            "minLength": 0
           },
           "email": {
             "type": "string",
             "format": "email",
-            "maxLength": 255
+            "maxLength": 255,
+            "minLength": 0
           }
         },
         "required": ["displayName", "organizationName", "password", "username"]
-      },
-      "InitialSetupStatusResponse": {
-        "type": "object",
-        "properties": {
-          "setupRequired": {
-            "type": "boolean"
-          }
-        }
       },
       "LoginRequest": {
         "type": "object",
@@ -6828,6 +6860,20 @@
         },
         "required": ["containerCode"]
       },
+      "LaunchContainerAuditRequest": {
+        "type": "object",
+        "properties": {
+          "containerCode": {
+            "type": "string",
+            "minLength": 1
+          },
+          "operationId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["containerCode", "operationId"]
+      },
       "PackingPreviewRequest": {
         "type": "object",
         "properties": {
@@ -7315,6 +7361,14 @@
           }
         },
         "required": ["format"]
+      },
+      "InitialSetupStatusResponse": {
+        "type": "object",
+        "properties": {
+          "setupRequired": {
+            "type": "boolean"
+          }
+        }
       },
       "StreamingResponseBody": {},
       "StockMovementResponse": {

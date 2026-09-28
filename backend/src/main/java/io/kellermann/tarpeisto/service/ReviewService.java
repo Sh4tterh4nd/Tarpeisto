@@ -170,14 +170,16 @@ public class ReviewService {
                         .findAllByOrganizationIdAndAssetIdAndAuditReleasedAtIsNull(
                                 principal.organizationId(), asset.getId())
                         .stream()
-                        .anyMatch(item -> !item.getManifestId().equals(sourceManifestId)))
+                        .anyMatch(item -> sourceManifestId == null
+                                || !item.getManifestId().equals(sourceManifestId)))
             throw new ValidationFailedException("This asset is in the custody of another event.");
         if (targetContainerId != null
                 && manifestAssets
                         .findAllByOrganizationIdAndAssetIdAndAuditReleasedAtIsNull(
                                 principal.organizationId(), targetContainerId)
                         .stream()
-                        .anyMatch(item -> !item.getManifestId().equals(sourceManifestId)))
+                        .anyMatch(item -> sourceManifestId == null
+                                || !item.getManifestId().equals(sourceManifestId)))
             throw new ValidationFailedException("The target container is in the custody of another event.");
         Instant now = clock.instant();
         FindingResolution resolution = resolutions.save(new FindingResolution(
@@ -320,9 +322,11 @@ public class ReviewService {
                             principal.organizationId())
                     .orElseThrow()
                     .getManifestId();
-            manifestAssets
-                    .findByOrganizationIdAndManifestIdAndAssetId(principal.organizationId(), manifestId, asset.getId())
-                    .ifPresent(item -> item.markReturned(principal.userId(), operationId, now));
+            if (manifestId != null)
+                manifestAssets
+                        .findByOrganizationIdAndManifestIdAndAssetId(
+                                principal.organizationId(), manifestId, asset.getId())
+                        .ifPresent(item -> item.markReturned(principal.userId(), operationId, now));
         }
         if ((action == FindingResolutionAction.MOVE_TO_CORRECT_CONTAINER
                         || action == FindingResolutionAction.REASSIGN_CURRENT_CONTAINER)

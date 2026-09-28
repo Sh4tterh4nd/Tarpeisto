@@ -16,6 +16,7 @@ import io.kellermann.tarpeisto.model.AuditConsumableStatus;
 import io.kellermann.tarpeisto.model.AuditExpectedRequirement;
 import io.kellermann.tarpeisto.model.AuditFinding;
 import io.kellermann.tarpeisto.model.AuditFindingType;
+import io.kellermann.tarpeisto.model.AuditLaunchOperation;
 import io.kellermann.tarpeisto.model.AuditOperation;
 import io.kellermann.tarpeisto.model.AuditScan;
 import io.kellermann.tarpeisto.model.AuditScanOutcome;
@@ -40,6 +41,7 @@ import io.kellermann.tarpeisto.repository.AuditBatchRepository;
 import io.kellermann.tarpeisto.repository.AuditConsumableObservationRepository;
 import io.kellermann.tarpeisto.repository.AuditExpectedRequirementRepository;
 import io.kellermann.tarpeisto.repository.AuditFindingRepository;
+import io.kellermann.tarpeisto.repository.AuditLaunchOperationRepository;
 import io.kellermann.tarpeisto.repository.AuditOperationRepository;
 import io.kellermann.tarpeisto.repository.AuditScanRepository;
 import io.kellermann.tarpeisto.repository.AuditTaskDependencyRepository;
@@ -54,6 +56,7 @@ import io.kellermann.tarpeisto.repository.PackingRequirementRepository;
 import io.kellermann.tarpeisto.security.TarpeistoPrincipal;
 import java.math.BigDecimal;
 import java.time.Clock;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -79,6 +82,7 @@ public class AuditService {
     private final AuditFindingRepository findings;
     private final AuditConsumableObservationRepository consumables;
     private final AuditOperationRepository operations;
+    private final AuditLaunchOperationRepository launchOperations;
     private final PackingRequirementRepository requirements;
     private final AssetRepository assets;
     private final AssetSealHistoryRepository sealHistory;
@@ -105,6 +109,7 @@ public class AuditService {
             AuditFindingRepository findings,
             AuditConsumableObservationRepository consumables,
             AuditOperationRepository operations,
+            AuditLaunchOperationRepository launchOperations,
             PackingRequirementRepository requirements,
             AssetRepository assets,
             AssetSealHistoryRepository sealHistory,
@@ -129,6 +134,7 @@ public class AuditService {
         this.findings = findings;
         this.consumables = consumables;
         this.operations = operations;
+        this.launchOperations = launchOperations;
         this.requirements = requirements;
         this.assets = assets;
         this.sealHistory = sealHistory;
@@ -200,6 +206,127 @@ public class AuditService {
                 audit.getId(),
                 Map.of("taskId", taskId, "containerAssetId", target.getId()));
         return view(principal.organizationId(), audit);
+    }
+
+    /** Starts or resumes a standalone, bottom-up audit from a scanned container. */
+    @Transactional
+    public ContainerAuditView launchContainerAudit(
+            TarpeistoPrincipal principal, UUID containerId, String containerCode, UUID operationId) {
+        authorizeOperator(principal);
+        lockOrganization(principal);
+        String fingerprint = fingerprint(containerId, containerCode);
+        Optional<AuditLaunchOperation> replay =
+                launchOperations.findByOrganizationIdAndOperationId(principal.organizationId(), operationId);
+        if (replay.isPresent()) {
+            if (!replay.get().getFingerprint().equals(fingerprint)) throw new AuditMutationConflictException();
+            return get(principal, replay.get().getTaskId());
+        }
+        Asset root = assets.findWithLockByIdAndOrganizationId(containerId, principal.organizationId())
+                .orElseThrow(() -> new NotFoundException("Container not found."));
+        Asset scanned = requireAssetCode(principal.organizationId(), containerCode);
+        if (!scanned.getId().equals(root.getId()))
+            throw new ValidationFailedException("Scan the selected container to start its audit.");
+        AssetModel rootModel = models.findByIdAndOrganizationId(root.getAssetModelId(), principal.organizationId())
+                .orElseThrow(() -> new NotFoundException("Asset model not found."));
+        if (!root.isActive() || !rootModel.isCanContainAssets())
+            throw new ValidationFailedException("Choose an active container-capable asset.");
+
+        Optional<AuditTask> existing = tasks
+                .findAllByOrganizationIdAndContainerAssetIdOrderByCreatedAtDesc(principal.organizationId(), containerId)
+                .stream()
+                .filter(task -> task.getState() != AuditTaskState.COMPLETED)
+                .findFirst();
+        if (existing.isPresent()) {
+            AuditTask task = existing.get();
+            AuditTask destination = task.getState() == AuditTaskState.READY
+                    ? task
+                    : firstReadyDescendant(principal.organizationId(), task);
+            launchOperations.save(new AuditLaunchOperation(
+                    UUID.randomUUID(),
+                    principal.organizationId(),
+                    operationId,
+                    fingerprint,
+                    destination.getId(),
+                    clock.instant()));
+            return destination.getId().equals(task.getId())
+                    ? start(principal, task.getId(), containerCode)
+                    : get(principal, destination.getId());
+        }
+
+        List<Asset> allAssets = assets.findAllByOrganizationId(principal.organizationId());
+        Map<UUID, AssetModel> assetModels = new HashMap<>();
+        for (Asset asset : allAssets)
+            assetModels.computeIfAbsent(
+                    asset.getAssetModelId(),
+                    id -> models.findByIdAndOrganizationId(id, principal.organizationId())
+                            .orElseThrow(() -> new NotFoundException("Asset model not found.")));
+        Set<UUID> containerIds = new HashSet<>();
+        containerIds.add(root.getId());
+        boolean changed;
+        do {
+            changed = false;
+            for (Asset asset : allAssets) {
+                if (containerIds.contains(asset.getParentContainerAssetId())
+                        && asset.isActive()
+                        && assetModels.get(asset.getAssetModelId()).isCanContainAssets())
+                    changed |= containerIds.add(asset.getId());
+            }
+        } while (changed);
+        Set<UUID> physicalSubtreeIds = new HashSet<>(List.of(root.getId()));
+        do {
+            changed = false;
+            for (Asset asset : allAssets)
+                if (physicalSubtreeIds.contains(asset.getParentContainerAssetId()))
+                    changed |= physicalSubtreeIds.add(asset.getId());
+        } while (changed);
+        for (UUID candidate : physicalSubtreeIds)
+            if (manifestAssets.existsByOrganizationIdAndAssetIdAndAuditReleasedAtIsNull(
+                    principal.organizationId(), candidate))
+                throw new ValidationFailedException("This container is still in unreleased event custody.");
+        if (containerIds.stream().anyMatch(id -> tasks.hasPendingAudit(principal.organizationId(), id)))
+            throw new ValidationFailedException(
+                    "This container or one of its parents already has an incomplete audit.");
+
+        Instant now = clock.instant();
+        AuditBatch batch = batches.save(
+                AuditBatch.standalone(UUID.randomUUID(), principal.organizationId(), principal.userId(), now));
+        Map<UUID, AuditTask> graph = new HashMap<>();
+        for (UUID id : containerIds) {
+            boolean hasContainerChild = allAssets.stream()
+                    .anyMatch(child ->
+                            id.equals(child.getParentContainerAssetId()) && containerIds.contains(child.getId()));
+            graph.put(
+                    id,
+                    tasks.save(new AuditTask(
+                            UUID.randomUUID(),
+                            principal.organizationId(),
+                            batch.getId(),
+                            id,
+                            hasContainerChild ? AuditTaskState.BLOCKED : AuditTaskState.READY,
+                            now)));
+        }
+        for (Asset child : allAssets)
+            if (containerIds.contains(child.getId()) && containerIds.contains(child.getParentContainerAssetId()))
+                dependencies.save(new AuditTaskDependency(
+                        principal.organizationId(),
+                        graph.get(child.getParentContainerAssetId()).getId(),
+                        graph.get(child.getId()).getId()));
+        AuditTask rootTask = graph.get(root.getId());
+        AuditTask destination = rootTask.getState() == AuditTaskState.READY
+                ? rootTask
+                : firstReadyDescendant(principal.organizationId(), rootTask);
+        launchOperations.save(new AuditLaunchOperation(
+                UUID.randomUUID(), principal.organizationId(), operationId, fingerprint, destination.getId(), now));
+        activity.record(
+                principal.organizationId(),
+                principal.userId(),
+                "CONTAINER_AUDIT_LAUNCHED",
+                "AUDIT_TASK",
+                rootTask.getId(),
+                Map.of("containerAssetId", root.getId(), "batchId", batch.getId()));
+        return destination.getId().equals(rootTask.getId())
+                ? start(principal, rootTask.getId(), containerCode)
+                : pendingView(principal.organizationId(), destination);
     }
 
     @Transactional
@@ -586,7 +713,7 @@ public class AuditService {
                                 : AuditFindingType.MISPLACED,
                         "Unexpected direct content.",
                         Map.of("scanId", scan.getId(), "scanContext", scan.getContextSnapshot()));
-            if (!isManifestAsset(principal.organizationId(), audit, scan.getAssetId()))
+            if (isEventReturnBatch(audit) && !isManifestAsset(principal.organizationId(), audit, scan.getAssetId()))
                 addFinding(
                         principal,
                         auditId,
@@ -595,7 +722,7 @@ public class AuditService {
                         "This asset was not on the checkout manifest.",
                         Map.of("eventManifest", false, "scanContext", scan.getContextSnapshot()));
         }
-        reconcileManifest(principal, audit);
+        if (isEventReturnBatch(audit)) reconcileManifest(principal, audit);
         // Missing direct contents are detached; verified observations become the current physical placement.
         Set<UUID> presentIds = active.stream().map(AuditScan::getAssetId).collect(java.util.stream.Collectors.toSet());
         for (Asset previous : assets.findAllByOrganizationIdAndParentContainerAssetIdOrderByUnitNumberAsc(
@@ -645,19 +772,24 @@ public class AuditService {
                                     clock.instant(),
                                     principal.userId()));
                         });
-            for (UUID assetId : verifiedIds)
-                manifestAssets
-                        .findAllByOrganizationIdAndManifestIdOrderById(
-                                principal.organizationId(),
-                                batches.findById(audit.getAuditBatchId())
-                                        .orElseThrow()
-                                        .getManifestId())
-                        .stream()
-                        .filter(item -> item.getAssetId().equals(assetId) && item.getReturnedAt() != null)
-                        .forEach(item -> item.releaseAfterAudit(clock.instant()));
+            if (isEventReturnBatch(audit))
+                for (UUID assetId : verifiedIds)
+                    manifestAssets
+                            .findAllByOrganizationIdAndManifestIdOrderById(
+                                    principal.organizationId(),
+                                    batches.findById(audit.getAuditBatchId())
+                                            .orElseThrow()
+                                            .getManifestId())
+                            .stream()
+                            .filter(item -> item.getAssetId().equals(assetId) && item.getReturnedAt() != null)
+                            .forEach(item -> item.releaseAfterAudit(clock.instant()));
         }
-        returnStates.confirmReviewedAudit(principal, auditId);
-        returnStates.recalculateForBatch(principal.organizationId(), audit.getAuditBatchId());
+        if (isEventReturnBatch(audit)) {
+            returnStates.confirmReviewedAudit(principal, auditId);
+            returnStates.recalculateForBatch(principal.organizationId(), audit.getAuditBatchId());
+        } else if (!hasFindings) {
+            unlockParents(principal.organizationId(), task.getId());
+        }
         activity.record(
                 principal.organizationId(),
                 principal.userId(),
@@ -715,6 +847,7 @@ public class AuditService {
     private boolean isManifestAsset(UUID organizationId, ContainerAudit audit, UUID assetId) {
         UUID manifestId =
                 batches.findById(audit.getAuditBatchId()).orElseThrow().getManifestId();
+        if (manifestId == null) return false;
         return manifestAssets.findAllByOrganizationIdAndManifestIdOrderById(organizationId, manifestId).stream()
                 .anyMatch(item -> item.getAssetId().equals(assetId));
     }
@@ -853,6 +986,7 @@ public class AuditService {
     }
 
     private void reconcileManifest(TarpeistoPrincipal principal, ContainerAudit current) {
+        if (!isEventReturnBatch(current)) return;
         List<AuditTask> batchTasks = tasks.findAllByOrganizationIdAndAuditBatchIdOrderById(
                 principal.organizationId(), current.getAuditBatchId());
         if (batchTasks.stream()
@@ -899,6 +1033,29 @@ public class AuditService {
                 List.of(),
                 List.of(),
                 blocked);
+    }
+
+    private boolean isEventReturnBatch(ContainerAudit audit) {
+        return batches.findById(audit.getAuditBatchId())
+                .map(AuditBatch::isEventReturnBatch)
+                .orElse(false);
+    }
+
+    private AuditTask firstReadyDescendant(UUID organizationId, AuditTask root) {
+        List<AuditTask> candidates =
+                tasks.findAllByOrganizationIdAndAuditBatchIdOrderById(organizationId, root.getAuditBatchId());
+        Set<UUID> reachable = new HashSet<>(List.of(root.getId()));
+        boolean changed;
+        do {
+            changed = false;
+            for (AuditTaskDependency dependency :
+                    dependencies.findAllByOrganizationIdAndIdTaskIdIn(organizationId, List.copyOf(reachable)))
+                changed |= reachable.add(dependency.getId().getDependsOnTaskId());
+        } while (changed);
+        return candidates.stream()
+                .filter(task -> reachable.contains(task.getId()) && task.getState() == AuditTaskState.READY)
+                .findFirst()
+                .orElseThrow(() -> new ValidationFailedException("No ready child audit is available yet."));
     }
 
     private ContainerAuditView view(UUID org, ContainerAudit audit) {

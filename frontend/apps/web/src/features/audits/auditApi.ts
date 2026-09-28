@@ -5,6 +5,7 @@ type GeneratedExpected = components["schemas"]["AuditExpectedRequirementResponse
 type GeneratedScan = components["schemas"]["AuditScanResponse"];
 type GeneratedFinding = components["schemas"]["AuditFindingResponse"];
 type GeneratedAudit = components["schemas"]["ContainerAuditResponse"];
+type GeneratedAsset = Required<components["schemas"]["AssetResponse"]>;
 
 export type AuditExpectedRequirement = Omit<
   Required<GeneratedExpected>,
@@ -26,6 +27,7 @@ export type ContainerAudit = Omit<
 export type AuditFindingType = components["schemas"]["RecordAuditFindingRequest"]["type"];
 export type AuditConsumableStatus =
   components["schemas"]["ObserveAuditConsumableRequest"]["status"];
+export type AuditContainer = Pick<GeneratedAsset, "id" | "displayName" | "publicCode">;
 export type AuditResult<T> = { kind: "ok"; data: T } | { kind: "error"; error: AppError };
 
 interface Outcome {
@@ -48,6 +50,10 @@ async function read<T>(operation: () => Promise<Outcome>): Promise<AuditResult<T
 export const getAuditTask = (taskId: string) =>
   read<ContainerAudit>(() =>
     apiClient.GET("/api/v1/audits/tasks/{taskId}", { params: { path: { taskId } } }),
+  );
+export const getAuditContainer = (assetId: string) =>
+  read<AuditContainer>(() =>
+    apiClient.GET("/api/v1/assets/{assetId}", { params: { path: { assetId } } }),
   );
 export const startAudit = (taskId: string, containerCode: string) =>
   read<ContainerAudit>(() =>

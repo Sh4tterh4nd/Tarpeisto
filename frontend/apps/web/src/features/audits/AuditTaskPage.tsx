@@ -17,6 +17,7 @@ import { useSession } from "../identity/useSession";
 import { webQrScannerCapability } from "../../platform/web/WebQrScannerCapability";
 import {
   completeAudit,
+  getAuditContainer,
   getAuditTask,
   moveAuditScanHere,
   observeAuditConsumable,
@@ -25,6 +26,7 @@ import {
   startAudit,
   undoAuditScan,
   type AuditResult,
+  type AuditContainer,
   type ContainerAudit,
 } from "./auditApi";
 
@@ -63,6 +65,7 @@ export function AuditTaskPage() {
   const { role } = useSession();
   const { taskId = "" } = useParams();
   const [audit, setAudit] = useState<ContainerAudit>();
+  const [container, setContainer] = useState<AuditContainer>();
   const [code, setCode] = useState("");
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
@@ -77,10 +80,15 @@ export function AuditTaskPage() {
   const [observationReasons, setObservationReasons] = useState<Record<string, string>>({});
   useEffect(() => {
     let active = true;
-    void getAuditTask(taskId).then((result) => {
+    void getAuditTask(taskId).then(async (result) => {
       if (!active) return;
-      if (result.kind === "ok") setAudit(result.data);
-      else setError(result.error.problem?.detail ?? result.error.message);
+      if (result.kind === "error") {
+        setError(result.error.problem?.detail ?? result.error.message);
+        return;
+      }
+      setAudit(result.data);
+      const containerResult = await getAuditContainer(result.data.containerAssetId);
+      if (active && containerResult.kind === "ok") setContainer(containerResult.data);
     });
     return () => {
       active = false;
@@ -116,8 +124,8 @@ export function AuditTaskPage() {
   return (
     <Stack spacing={2}>
       <PageHeading
-        title="Return audit"
-        description="Online-only: submissions are sent now. If one fails, retry it before completing."
+        title={container ? `Container audit: ${container.displayName}` : "Container audit"}
+        description={`${container ? `${container.publicCode}. ` : ""}Online-only: submissions are sent now. If one fails, retry it before completing.`}
       />
       {error ? (
         <Alert

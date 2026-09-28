@@ -148,6 +148,16 @@ export function AppRoutes() {
         }
       />
       <Route
+        path="/inventory/containers"
+        element={
+          <RequireRole allow={[...INVENTORY_ROLES]}>
+            <Suspense fallback={<LoadingPage />}>
+              <AssetsPage containersOnly />
+            </Suspense>
+          </RequireRole>
+        }
+      />
+      <Route
         path="/inventory/models/:assetModelId"
         element={
           <RequireRole allow={[...INVENTORY_ROLES]}>

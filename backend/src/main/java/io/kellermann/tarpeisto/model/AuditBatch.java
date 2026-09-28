@@ -41,6 +41,15 @@ public class AuditBatch {
         this.createdAt = createdAt;
     }
 
+    /** A standalone inventory audit has no event booking or checkout manifest. */
+    public static AuditBatch standalone(UUID id, UUID org, UUID actor, Instant createdAt) {
+        return new AuditBatch(id, org, null, null, actor, createdAt);
+    }
+
+    public boolean isEventReturnBatch() {
+        return bookingId != null;
+    }
+
     public UUID getId() {
         return id;
     }

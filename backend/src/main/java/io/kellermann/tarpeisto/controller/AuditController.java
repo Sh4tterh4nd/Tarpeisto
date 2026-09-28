@@ -35,6 +35,15 @@ public class AuditController {
         return ContainerAuditResponse.from(audits.start(principal, taskId, request.containerCode()));
     }
 
+    @PostMapping("/containers/{containerId}/launch")
+    public ContainerAuditResponse launch(
+            @AuthenticationPrincipal TarpeistoPrincipal principal,
+            @PathVariable UUID containerId,
+            @Valid @RequestBody LaunchContainerAuditRequest request) {
+        return ContainerAuditResponse.from(
+                audits.launchContainerAudit(principal, containerId, request.containerCode(), request.operationId()));
+    }
+
     @PostMapping("/{auditId}/scans")
     public ContainerAuditResponse scan(
             @AuthenticationPrincipal TarpeistoPrincipal principal,

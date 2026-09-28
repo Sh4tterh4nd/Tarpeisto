@@ -28,13 +28,17 @@ import {
 
 type SortKey = "name" | "code" | "condition" | "lifecycle";
 
-export function AssetsPage() {
+export interface AssetsPageProps {
+  readonly containersOnly?: boolean;
+}
+
+export function AssetsPage({ containersOnly = false }: AssetsPageProps) {
   const [assets, setAssets] = useState<AssetSearchRecord[]>([]);
   const [categories, setCategories] = useState<CategoryRecord[]>([]);
   const [nextCursor, setNextCursor] = useState<string>();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
-  const [containerOnly, setContainerOnly] = useState<string>("");
+  const [containerOnly, setContainerOnly] = useState<string>(containersOnly ? "containers" : "");
   const [includeInactive, setIncludeInactive] = useState(false);
   const [sort, setSort] = useState<SortKey>("name");
   const [direction, setDirection] = useState<"asc" | "desc">("asc");
@@ -103,8 +107,8 @@ export function AssetsPage() {
   }, [invalidateRequests, load]);
   const title = useMemo(
     () =>
-      `Assets${currentAssets.length ? ` (${currentAssets.length}${currentCursor ? "+" : ""})` : ""}`,
-    [currentAssets.length, currentCursor],
+      `${containersOnly ? "Containers" : "Assets"}${currentAssets.length ? ` (${currentAssets.length}${currentCursor ? "+" : ""})` : ""}`,
+    [containersOnly, currentAssets.length, currentCursor],
   );
   const changeSort = (key: SortKey) => {
     if (key === sort) setDirection((d) => (d === "asc" ? "desc" : "asc"));
@@ -127,7 +131,11 @@ export function AssetsPage() {
     <>
       <PageHeading
         title={title}
-        description="Every individually tracked physical unit, including containers."
+        description={
+          containersOnly
+            ? "Every container available in this inventory."
+            : "Every individually tracked physical unit, including containers."
+        }
       />
       <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
@@ -152,17 +160,19 @@ export function AssetsPage() {
               </MenuItem>
             ))}
           </TextField>
-          <TextField
-            select
-            label="Type"
-            value={containerOnly}
-            onChange={(e) => setContainerOnly(e.target.value)}
-            sx={{ minWidth: 170 }}
-          >
-            <MenuItem value="">Equipment and containers</MenuItem>
-            <MenuItem value="equipment">Equipment</MenuItem>
-            <MenuItem value="containers">Containers</MenuItem>
-          </TextField>
+          {!containersOnly ? (
+            <TextField
+              select
+              label="Type"
+              value={containerOnly}
+              onChange={(e) => setContainerOnly(e.target.value)}
+              sx={{ minWidth: 170 }}
+            >
+              <MenuItem value="">Equipment and containers</MenuItem>
+              <MenuItem value="equipment">Equipment</MenuItem>
+              <MenuItem value="containers">Containers</MenuItem>
+            </TextField>
+          ) : null}
           <FormControlLabel
             control={
               <Switch
@@ -231,7 +241,9 @@ export function AssetsPage() {
         </TableContainer>
         {!refreshing && currentAssets.length === 0 ? (
           <Typography color="text.secondary" sx={{ p: 3 }}>
-            No assets match these filters.
+            {containersOnly
+              ? "No containers match these filters."
+              : "No assets match these filters."}
           </Typography>
         ) : null}
         {currentCursor ? (
