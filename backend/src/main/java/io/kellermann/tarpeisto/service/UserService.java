@@ -145,6 +145,7 @@ public class UserService {
         requireOwner(principal);
         organizations.findWithLockById(principal.organizationId()).orElseThrow();
         OrganizationMembership membership = requireMembership(principal.organizationId(), targetUserId);
+        archives.requireSingleOrganizationUser(principal.organizationId(), targetUserId);
         User user = userRepository.findById(targetUserId).orElseThrow(UserService::userNotFound);
 
         if (!enabled && membership.getRole() == OrganizationRole.OWNER) {

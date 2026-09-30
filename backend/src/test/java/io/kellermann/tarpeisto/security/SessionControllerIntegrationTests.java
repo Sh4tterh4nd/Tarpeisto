@@ -165,7 +165,7 @@ class SessionControllerIntegrationTests extends AbstractIntegrationTest {
     }
 
     @Test
-    void aSuccessfulLoginResetsTheRateLimitCounterForItsKey() {
+    void aSuccessfulLoginStillConsumesTheRateLimitCounterForItsKey() {
         Organization organization = organization();
         User user = createUser(organization, "reset-after-success-user", OrganizationRole.VIEWER);
 
@@ -174,10 +174,13 @@ class SessionControllerIntegrationTests extends AbstractIntegrationTest {
         AuthenticatedSession session = PermissionTestSupport.login(restTemplate, user.getUsername(), PASSWORD);
         assertThat(session.sessionCookieValue()).isNotBlank();
 
-        // The counter was reset by the successful login above, so further failed attempts start
-        // from zero again rather than immediately hitting the limit left over from before.
-        var response = PermissionTestSupport.attemptLogin(restTemplate, user.getUsername(), "wrong-password");
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        for (int attempt = 3; attempt < rateLimitProperties.maxAttempts(); attempt++) {
+            assertThat(PermissionTestSupport.attemptLogin(restTemplate, user.getUsername(), "wrong-password")
+                            .getStatusCode())
+                    .isEqualTo(HttpStatus.UNAUTHORIZED);
+        }
+        var response = PermissionTestSupport.attemptLogin(restTemplate, user.getUsername(), PASSWORD);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
     }
 
     private Organization organization() {

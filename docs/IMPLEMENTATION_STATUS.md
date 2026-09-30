@@ -1,6 +1,6 @@
 # Tarpeisto Implementation Status
 
-Status: Living record of what exists, as of 2026-09-30
+Status: Living record of what exists, as of 2026-10-01
 
 Purpose: This document records **what is actually built and verified**, so that a contributor (human
 or agent) can continue the work without rediscovering it.
@@ -32,7 +32,7 @@ Read it together with [`DEVELOPMENT_POLICIES.md`](DEVELOPMENT_POLICIES.md) and t
 | 9.2-9.3 | Persistent scan outbox and queued audit photographs                             | Complete, automated verification passed                                                |
 | 12      | Scoped temporary volunteer access and persistent permanent sign-in              | Complete, automated verification passed                                                |
 | 13      | Archive, bounded search, operational workboard and complete CSV reports          | Complete, automated verification passed                                                |
-| 14      | Production hardening and first stable release                                   | Not started                                                                            |
+| 14      | Production hardening and first stable release                                   | In progress; first security hardening task verified                                     |
 
 Verified at the Phase 8 checkpoint:
 
@@ -162,6 +162,37 @@ Verified at the Phase 13 checkpoint:
 - Optional activity/history CSV remains deferred. The four required reporting exports are complete;
   PostgreSQL and media backups remain necessary. Container queue counts reuse the existing packing
   and reservation evaluator, whose inventory snapshots need production-volume profiling in Phase 14.
+
+Verified at the first Phase 14 security checkpoint:
+
+- Backend: **539 tests in 75 suites, 0 failures, errors or skips**, with `spotlessCheck check`
+  passing against PostgreSQL. Coverage includes concurrent admission ceilings, exact expiry,
+  bounded-state exhaustion/reclamation, client/user rotation, successful-login accounting, valid
+  missing and foreign codes, GET/HEAD budgets and temporary-access denial before admission.
+- Global account enable/disable and external-identity reads/link/unlink reject shared accounts
+  after resolving the owned membership. Regressions preserve a real indexed session, persisted
+  account/identity state and the other organization's earliest Owner OIDC outcome. Nested unlink
+  rejects missing, foreign and mismatched targets with the same error semantics; the request URI
+  remains reflected in the RFC 9457 `instance` field. Inactive identity reassignment also checks
+  the previous user's organization ownership and shared-account status before exposing retained
+  profile claims. Permitted local reassignment persists the new user mapping after reload.
+- The [authorization matrix](SECURITY_AUTHORIZATION_MATRIX.md) reviews **168 concrete routes from
+  166 declared method/path patterns**, including permanent roles, temporary scope, public access,
+  CSRF and admission budgets. Its runtime MVC gate detects missing/stale/duplicate entries,
+  regex widening, explicit methods and application handlers in subpackages without REST annotations.
+- The corrected permanent-user fixture passes all **10 affected desktop/mobile Playwright tests**;
+  frontend formatting, lint and workspace typechecks pass. The Phase 13 checkpoint above records
+  the full frontend unit and browser suites. `jibBuildTar` passes with the matching frontend
+  embedded; this security task requires no database migration or API contract change.
+- Login admission defaults to 5 attempts per normalized username/client and 60 per client in
+  15 minutes, counting successful attempts. Checked-code GET/HEAD defaults to 120 per org/user and
+  600 per client per minute. Each store retains at most 10,000 digest keys, reclaims expired state
+  and rejects admission at live capacity. Budgets are configurable and apply per JVM; restart and
+  additional instances reset or separate rate state. Persistent JDBC sign-in remains independent.
+- Remaining Phase 14 work includes dependency/container scanning, CI browser gates and immutable
+  image-publication checks; reliability/index profiling, media orphan tooling and backup/restore
+  and migration rehearsals; physical browser/camera/printer checks and the complete event rehearsal.
+  Publication and deployment remain separate operator actions.
 
 ## 2. How to verify this yourself
 

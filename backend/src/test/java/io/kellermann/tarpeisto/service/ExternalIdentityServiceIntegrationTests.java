@@ -66,6 +66,9 @@ class ExternalIdentityServiceIntegrationTests extends AbstractIntegrationTest {
     @Autowired
     private io.kellermann.tarpeisto.repository.OrganizationRepository organizations;
 
+    @Autowired
+    private io.kellermann.tarpeisto.repository.JdbcArchiveRepository archives;
+
     private ExternalIdentityService autoLinkEnabledService() {
         return new ExternalIdentityService(
                 identityRepository,
@@ -74,7 +77,8 @@ class ExternalIdentityServiceIntegrationTests extends AbstractIntegrationTest {
                 activityLogService,
                 new AuthenticationProperties(AuthenticationMode.LOCAL_ONLY, null, true),
                 organizations,
-                clock);
+                clock,
+                archives);
     }
 
     @Test

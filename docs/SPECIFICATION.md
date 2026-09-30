@@ -74,6 +74,7 @@ Tarpeisto is a responsive web application and installable Progressive Web App (P
 - The organization concept is not shown in normal initial-product navigation.
 - Every organization-owned record contains `organization_id`.
 - All reads and writes are scoped by the organization from the authenticated server-side context.
+- An organization Owner cannot change global account access or external sign-in methods for a user who also belongs to another organization. Membership role changes affect only the current organization.
 
 ### 3.2 Database requirements
 

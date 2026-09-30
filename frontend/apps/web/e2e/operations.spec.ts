@@ -262,7 +262,7 @@ test("restoring an archived user requires an explicit enable action", async ({ p
                 username: "equipment-helper",
                 displayName: "Equipment helper",
                 email: null,
-                role: "VOLUNTEER",
+                role: "OPERATOR_AUDITOR",
                 enabled,
                 archived,
                 version,

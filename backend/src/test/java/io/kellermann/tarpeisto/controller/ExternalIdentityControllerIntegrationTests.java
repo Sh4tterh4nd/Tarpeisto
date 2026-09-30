@@ -123,6 +123,47 @@ class ExternalIdentityControllerIntegrationTests extends AbstractIntegrationTest
         assertThat(listAfterUnlink.getBody()).contains("\"active\":false");
     }
 
+    @Test
+    void nestedWrongTargetForeignTargetAndMissingIdentityHaveIdenticalHttp404WithoutUnlinking() {
+        Fixture own = fixture();
+        Fixture foreign = fixture();
+        var owner = own.sessionFor(OrganizationRole.OWNER);
+        var create = exchange(
+                owner,
+                HttpMethod.POST,
+                path(own.viewer().getId()),
+                Map.of(
+                        "issuer",
+                        "https://nested-http.example.org",
+                        "subject",
+                        UUID.randomUUID().toString()));
+        assertThat(create.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        String identity = extractField(create.getBody(), "id");
+        var missing = exchange(owner, HttpMethod.DELETE, path(own.viewer().getId()) + "/" + UUID.randomUUID(), null);
+        var wrongTarget = exchange(
+                owner,
+                HttpMethod.DELETE,
+                path(own.usersByRole().get(OrganizationRole.OWNER).getId()) + "/" + identity,
+                null);
+        var foreignTarget =
+                exchange(owner, HttpMethod.DELETE, path(foreign.viewer().getId()) + "/" + identity, null);
+        assertThat(missing.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(wrongTarget.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(foreignTarget.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(problemWithoutRequestPath(wrongTarget.getBody()))
+                .isEqualTo(problemWithoutRequestPath(missing.getBody()));
+        assertThat(problemWithoutRequestPath(foreignTarget.getBody()))
+                .isEqualTo(problemWithoutRequestPath(missing.getBody()));
+        assertThat(exchange(owner, HttpMethod.GET, path(own.viewer().getId()), null)
+                        .getBody())
+                .contains(identity, "\"active\":true");
+    }
+
+    private String problemWithoutRequestPath(String body) {
+        // RFC 9457 instance echoes the already-known request URI; all error semantics must match.
+        return body.replaceAll("\"instance\":\"[^\"]*\"", "\"instance\":\"requested-path\"");
+    }
+
     private static String path(UUID userId) {
         return "/api/v1/users/" + userId + "/external-identities";
     }

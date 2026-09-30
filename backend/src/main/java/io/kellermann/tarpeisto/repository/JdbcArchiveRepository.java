@@ -129,7 +129,8 @@ public class JdbcArchiveRepository {
                 "SELECT NOT EXISTS(SELECT 1 FROM organization_membership WHERE user_id=:id AND organization_id<>:org)",
                 org,
                 id))
-            throw new ArchiveConflictException("An account belonging to another organization cannot be archived here.");
+            throw new ArchiveConflictException(
+                    "An account belonging to another organization cannot be administered here.");
     }
 
     public void requireOwnerRemains(UUID org, UUID id) {

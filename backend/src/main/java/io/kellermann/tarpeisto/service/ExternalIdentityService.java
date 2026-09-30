@@ -44,6 +44,7 @@ public class ExternalIdentityService {
     private final AuthenticationProperties authenticationProperties;
     private final io.kellermann.tarpeisto.repository.OrganizationRepository organizations;
     private final Clock clock;
+    private final io.kellermann.tarpeisto.repository.JdbcArchiveRepository archives;
 
     public ExternalIdentityService(
             ExternalIdentityRepository identityRepository,
@@ -52,13 +53,15 @@ public class ExternalIdentityService {
             ActivityLogService activityLogService,
             AuthenticationProperties authenticationProperties,
             io.kellermann.tarpeisto.repository.OrganizationRepository organizations,
-            Clock clock) {
+            Clock clock,
+            io.kellermann.tarpeisto.repository.JdbcArchiveRepository archives) {
         this.identityRepository = identityRepository;
         this.userRepository = userRepository;
         this.membershipRepository = membershipRepository;
         this.activityLogService = activityLogService;
         this.authenticationProperties = authenticationProperties;
         this.clock = clock;
+        this.archives = archives;
         this.organizations = organizations;
     }
 
@@ -208,6 +211,7 @@ public class ExternalIdentityService {
         if (principal != null) principal.requirePermanent();
         requireOwner(principal);
         requireMembership(principal.organizationId(), targetUserId);
+        archives.requireSingleOrganizationUser(principal.organizationId(), targetUserId);
         return identityRepository.findAllByUserIdOrderByCreatedAtAsc(targetUserId).stream()
                 .map(ExternalIdentityService::toView)
                 .toList();
@@ -221,6 +225,7 @@ public class ExternalIdentityService {
         requireOwner(principal);
         organizations.findWithLockById(principal.organizationId()).orElseThrow();
         requireMembership(principal.organizationId(), targetUserId);
+        archives.requireSingleOrganizationUser(principal.organizationId(), targetUserId);
         if (userRepository
                 .findById(targetUserId)
                 .orElseThrow(ExternalIdentityService::userNotFound)
@@ -236,6 +241,10 @@ public class ExternalIdentityService {
                             : "This external identity is already linked to a different user.");
         } else if (existing.isPresent()) {
             identity = existing.get();
+            membershipRepository
+                    .findByOrganizationIdAndUserId(principal.organizationId(), identity.getUserId())
+                    .orElseThrow(ExternalIdentityService::identityNotFound);
+            archives.requireSingleOrganizationUser(principal.organizationId(), identity.getUserId());
             identity.relink(targetUserId, now);
         } else {
             identity = new ExternalIdentity(UUID.randomUUID(), targetUserId, issuer, subject, null, null, now);
@@ -261,13 +270,35 @@ public class ExternalIdentityService {
      */
     @Transactional
     public void unlink(TarpeistoPrincipal principal, UUID externalIdentityId) {
-        if (principal != null)
-            organizations.findWithLockById(principal.organizationId()).orElseThrow();
         if (principal != null) principal.requirePermanent();
         requireOwner(principal);
+        organizations.findWithLockById(principal.organizationId()).orElseThrow();
         ExternalIdentity identity =
                 identityRepository.findById(externalIdentityId).orElseThrow(ExternalIdentityService::identityNotFound);
-        OrganizationMembership targetMembership = requireMembership(principal.organizationId(), identity.getUserId());
+        membershipRepository
+                .findByOrganizationIdAndUserId(principal.organizationId(), identity.getUserId())
+                .orElseThrow(ExternalIdentityService::identityNotFound);
+        unlinkOwned(principal, identity.getUserId(), identity);
+    }
+
+    @Transactional
+    public void unlink(TarpeistoPrincipal principal, UUID targetUserId, UUID externalIdentityId) {
+        if (principal != null) principal.requirePermanent();
+        requireOwner(principal);
+        organizations.findWithLockById(principal.organizationId()).orElseThrow();
+        membershipRepository
+                .findByOrganizationIdAndUserId(principal.organizationId(), targetUserId)
+                .orElseThrow(ExternalIdentityService::identityNotFound);
+        ExternalIdentity identity = identityRepository
+                .findById(externalIdentityId)
+                .filter(value -> value.getUserId().equals(targetUserId))
+                .orElseThrow(ExternalIdentityService::identityNotFound);
+        unlinkOwned(principal, targetUserId, identity);
+    }
+
+    private void unlinkOwned(TarpeistoPrincipal principal, UUID targetUserId, ExternalIdentity identity) {
+        OrganizationMembership targetMembership = requireMembership(principal.organizationId(), targetUserId);
+        archives.requireSingleOrganizationUser(principal.organizationId(), targetUserId);
         User targetUser =
                 userRepository.findById(identity.getUserId()).orElseThrow(ExternalIdentityService::userNotFound);
 

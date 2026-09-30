@@ -56,7 +56,7 @@ public class ExternalIdentityController {
             @AuthenticationPrincipal TarpeistoPrincipal principal,
             @PathVariable UUID userId,
             @PathVariable UUID externalIdentityId) {
-        externalIdentityService.unlink(principal, externalIdentityId);
+        externalIdentityService.unlink(principal, userId, externalIdentityId);
         return ResponseEntity.noContent().build();
     }
 }

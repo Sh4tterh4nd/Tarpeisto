@@ -55,6 +55,7 @@ public class SecurityConfiguration {
             Environment environment,
             ProblemDetailSecurityResponseWriter responseWriter,
             AuthenticationProperties authenticationProperties,
+            AssetCodeRateLimiter codeRateLimiter,
             TarpeistoOidcUserService oidcUserService,
             OidcAuthenticationSuccessHandler oidcAuthenticationSuccessHandler,
             OidcAuthenticationFailureHandler oidcAuthenticationFailureHandler,
@@ -71,6 +72,9 @@ public class SecurityConfiguration {
                         org.springframework.security.web.access.intercept.AuthorizationFilter.class)
                 .addFilterAfter(
                         new ExpectedAuditActorFilter(responseWriter),
+                        org.springframework.security.web.access.intercept.AuthorizationFilter.class)
+                .addFilterAfter(
+                        new AssetCodeRateLimitFilter(codeRateLimiter, responseWriter),
                         org.springframework.security.web.access.intercept.AuthorizationFilter.class)
                 .sessionManagement(session ->
                         // Rotates the session identifier on authentication to defeat session

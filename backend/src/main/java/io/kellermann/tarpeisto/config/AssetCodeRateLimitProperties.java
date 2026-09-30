@@ -7,21 +7,14 @@ import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
-/** Fixed-window local sign-in admission budgets; successful authentication does not reset them. */
-@ConfigurationProperties(prefix = "tarpeisto.security.login-rate-limit")
+/** Admission budgets for permanent checked-code lookups, including malformed and missing codes. */
+@ConfigurationProperties(prefix = "tarpeisto.security.asset-code-rate-limit")
 @Validated
-public record LoginRateLimitProperties(
+public record AssetCodeRateLimitProperties(
         @Positive int maxAttempts,
         @NotNull Duration window,
         @Positive int maxClientAttempts,
         @Positive int maxEntries) {
-    @org.springframework.boot.context.properties.bind.ConstructorBinding
-    public LoginRateLimitProperties {}
-
-    public LoginRateLimitProperties(int maxAttempts, Duration window) {
-        this(maxAttempts, window, 60, 10_000);
-    }
-
     @AssertTrue(message = "Rate-limit window must be positive.") public boolean isWindowPositive() {
         return window != null && !window.isZero() && !window.isNegative();
     }

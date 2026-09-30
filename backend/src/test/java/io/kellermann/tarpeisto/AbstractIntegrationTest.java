@@ -31,7 +31,11 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
  * reaps it when the JVM exits, so nothing is leaked - which matters here because integration
  * tests may run against a shared remote Docker host.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+// Ordinary integration fixtures share one loopback client across hundreds of unrelated logins.
+// Dedicated security admission tests use isolated, deliberately low budgets.
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = "tarpeisto.security.login-rate-limit.max-client-attempts=10000")
 @AutoConfigureTestRestTemplate
 public abstract class AbstractIntegrationTest {
 

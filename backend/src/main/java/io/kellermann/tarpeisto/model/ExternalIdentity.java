@@ -34,7 +34,7 @@ public class ExternalIdentity {
     @Column(name = "id", nullable = false, updatable = false)
     private UUID id;
 
-    @Column(name = "user_id", nullable = false, updatable = false)
+    @Column(name = "user_id", nullable = false)
     private UUID userId;
 
     @Column(name = "issuer", nullable = false, updatable = false)

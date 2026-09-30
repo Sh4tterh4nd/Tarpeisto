@@ -5,7 +5,6 @@ import io.kellermann.tarpeisto.service.ActivityLogService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
-import java.util.Locale;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -63,15 +62,13 @@ public class SessionAuthenticationService {
     public TarpeistoPrincipal login(
             String username, String password, HttpServletRequest request, HttpServletResponse response) {
         String normalizedUsername = username == null ? "" : username.trim();
-        String key = rateLimitKey(normalizedUsername, request);
-        rateLimiter.checkAllowed(key);
+        rateLimiter.admit(normalizedUsername, request.getRemoteAddr());
 
         Authentication authenticated;
         try {
             authenticated = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(normalizedUsername, password));
         } catch (AuthenticationException exception) {
-            rateLimiter.recordFailedAttempt(key);
             throw new InvalidCredentialsException("Invalid username or password.");
         }
 
@@ -84,7 +81,6 @@ public class SessionAuthenticationService {
                 details.role());
         establish(principal, request, response);
 
-        rateLimiter.reset(key);
         activityLogService.record(
                 principal.organizationId(),
                 principal.userId(),
@@ -119,14 +115,5 @@ public class SessionAuthenticationService {
                 securityContextHolderStrategy.getContext().getAuthentication();
         new SecurityContextLogoutHandler().logout(request, response, authentication);
         securityContextHolderStrategy.clearContext();
-    }
-
-    /**
-     * The rate-limit key is computed identically regardless of whether {@code username} belongs
-     * to a real account, so the limiter itself never reveals account existence: only the number of
-     * prior failed attempts for this exact (username, client-address) pair matters.
-     */
-    private String rateLimitKey(String normalizedUsername, HttpServletRequest request) {
-        return normalizedUsername.toLowerCase(Locale.ROOT) + "|" + request.getRemoteAddr();
     }
 }

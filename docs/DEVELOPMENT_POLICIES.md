@@ -213,6 +213,7 @@ Additional rules:
 - Concurrent mutable operations use expected versions or ETags and return `409 Conflict` for stale writes.
 - Potentially unbounded collections use cursor pagination.
 - Authorization failures and missing records do not reveal another organization's data.
+- Keep [`SECURITY_AUTHORIZATION_MATRIX.md`](SECURITY_AUTHORIZATION_MATRIX.md) current when application handler routes or authorization rules change. The runtime mapping gate and focused permission tests must pass.
 
 ## 6. Frontend structure and naming
 
