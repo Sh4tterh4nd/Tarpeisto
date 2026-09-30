@@ -174,6 +174,51 @@ describe("PackingPanel", () => {
     );
   });
 
+  it("retains archived model labels and existing selections without offering new archived selections", async () => {
+    const user = userEvent.setup();
+    api.listAssetModels.mockResolvedValue(
+      ok([
+        {
+          id: "cable-model",
+          name: "Archived cable",
+          trackingMode: "SERIALIZED_ASSET",
+          archived: true,
+        },
+        {
+          id: "active-model",
+          name: "Active cable",
+          trackingMode: "SERIALIZED_ASSET",
+          archived: false,
+        },
+        {
+          id: "other-archived",
+          name: "Other archived model",
+          trackingMode: "SERIALIZED_ASSET",
+          archived: true,
+        },
+        { id: "tape-model", name: "Gaffer tape", trackingMode: "QUANTITY_STOCK", archived: false },
+      ]),
+    );
+    render(<PackingPanel containerAssetId="container-1" canManage />);
+    await expandPacking(user);
+    const requirements = await screen.findByRole("region", { name: "Interchangeable serialized" });
+    expect(within(requirements).getByText("Archived cable")).toBeInTheDocument();
+    expect(api.listAssetModels).toHaveBeenCalledWith(true);
+    await user.click(within(requirements).getByRole("button", { name: "Edit" }));
+    expect(screen.getByRole("combobox", { name: "Model" })).toHaveTextContent("Archived cable");
+    await user.click(screen.getByRole("combobox", { name: "Model" }));
+    expect(screen.getByRole("option", { name: "Archived cable" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Other archived model" })).not.toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await user.click(screen.getByRole("button", { name: "Add requirement" }));
+    await user.click(screen.getByRole("combobox", { name: "Model" }));
+    expect(screen.getByRole("option", { name: "Active cable" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Archived cable" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Other archived model" })).not.toBeInTheDocument();
+  });
+
   it("keeps manager actions hidden from a viewer", async () => {
     const user = userEvent.setup();
     render(<PackingPanel containerAssetId="container-1" canManage={false} />);

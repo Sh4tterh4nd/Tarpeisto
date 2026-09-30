@@ -38,8 +38,12 @@ public class UserController {
     }
 
     @GetMapping
-    public List<UserResponse> list(@AuthenticationPrincipal TarpeistoPrincipal principal) {
-        return userService.listUsers(principal).stream().map(UserResponse::from).toList();
+    public List<UserResponse> list(
+            @AuthenticationPrincipal TarpeistoPrincipal principal,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "false") boolean includeArchived) {
+        return userService.listUsers(principal, includeArchived).stream()
+                .map(UserResponse::from)
+                .toList();
     }
 
     @PostMapping

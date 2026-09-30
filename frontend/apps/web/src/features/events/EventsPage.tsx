@@ -4,6 +4,8 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Switch from "@mui/material/Switch";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -159,6 +161,7 @@ function NewEventDialog({
 export function EventsPage() {
   const { role } = useSession();
   const navigate = useNavigate();
+  const [includeArchived, setIncludeArchived] = useState(false);
   const [month, setMonth] = useState(() => new Date());
   const [bookings, setBookings] = useState<BookingRecord[]>();
   const [error, setError] = useState<string>();
@@ -168,13 +171,13 @@ export function EventsPage() {
   const load = useCallback(async () => {
     setError(undefined);
     const bounds = monthBounds(month);
-    const result = await listBookings(bounds.from, bounds.until);
+    const result = await listBookings(bounds.from, bounds.until, includeArchived);
     if (result.kind === "error") {
       setError(eventErrorMessage(result.error));
       return;
     }
     setBookings(result.data);
-  }, [month]);
+  }, [month, includeArchived]);
   useEffect(() => {
     const timer = window.setTimeout(() => void load());
     return () => window.clearTimeout(timer);
@@ -208,6 +211,15 @@ export function EventsPage() {
           </Button>
         ) : null}
       </Stack>
+      <FormControlLabel
+        label="Include archived"
+        control={
+          <Switch
+            checked={includeArchived}
+            onChange={(event) => setIncludeArchived(event.target.checked)}
+          />
+        }
+      />
       {error ? <Alert severity="error">{error}</Alert> : null}
       <Paper sx={{ p: 1.5 }}>
         <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center" }}>

@@ -19,4 +19,6 @@ public record AssetSearchView(
         LifecycleState lifecycleState,
         boolean archived,
         UUID parentContainerAssetId,
-        long placementVersion) {}
+        long placementVersion,
+        UUID effectiveLocationId,
+        String placePath) {}

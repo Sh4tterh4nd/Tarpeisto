@@ -60,7 +60,7 @@ function FieldOptions({
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
-    const result = await listCustomFieldOptions(assetModelId, field.id);
+    const result = await listCustomFieldOptions(assetModelId, field.id, true);
     if (result.kind === "ok") {
       setOptions([...result.data].sort((left, right) => left.displayOrder - right.displayOrder));
       setError(undefined);
@@ -266,7 +266,7 @@ export function ModelFieldsPanel({
   const [editing, setEditing] = useState<CustomFieldRecord>();
 
   const load = useCallback(async () => {
-    const result = await listCustomFields(assetModelId);
+    const result = await listCustomFields(assetModelId, true);
     if (result.kind === "error") setLoadError(errorMessage(result.error));
     else {
       setFields([...result.data].sort((a, b) => a.displayOrder - b.displayOrder));

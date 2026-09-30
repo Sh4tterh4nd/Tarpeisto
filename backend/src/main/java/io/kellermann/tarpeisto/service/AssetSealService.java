@@ -35,6 +35,7 @@ public class AssetSealService {
     private final AuditTaskRepository tasks;
     private final AuditTaskDependencyRepository dependencies;
     private final ContainerAuditRepository audits;
+    private final io.kellermann.tarpeisto.repository.JdbcArchiveRepository archives;
     private final Clock clock;
     private final OrganizationRepository organizations;
     private final AssetVerificationHistoryRepository verificationHistory;
@@ -56,6 +57,7 @@ public class AssetSealService {
             ActivityLogService activity,
             AuditScanRepository scans,
             BookingImpactService bookingImpact,
+            io.kellermann.tarpeisto.repository.JdbcArchiveRepository archives,
             Clock clock) {
         this.assets = assets;
         this.models = models;
@@ -64,6 +66,7 @@ public class AssetSealService {
         this.dependencies = dependencies;
         this.audits = audits;
         this.clock = clock;
+        this.archives = archives;
         this.organizations = organizations;
         this.verificationHistory = verificationHistory;
         this.returnStates = returnStates;
@@ -120,6 +123,7 @@ public class AssetSealService {
                                 principal.organizationId(), task.getId())
                         .isPresent())
                 .findFirst()
+                .filter(task -> !archives.taskArchived(principal.organizationId(), task.getId()))
                 .ifPresent(task -> {
                     reopenAttempt(principal, task, false, new java.util.HashSet<>());
                     audits.flush();
@@ -139,6 +143,7 @@ public class AssetSealService {
     @Transactional
     public void invalidate(TarpeistoPrincipal principal, UUID assetId, String note) {
         if (principal != null) principal.requirePermanent();
+        organizations.findWithLockById(principal.organizationId()).orElseThrow();
         Asset asset = asset(principal.organizationId(), assetId);
         if (asset.getLastVerifiedAuditId() != null) invalidateVerification(principal, asset);
         if (asset.isSealable()
@@ -164,6 +169,7 @@ public class AssetSealService {
                                 current.getState() == io.kellermann.tarpeisto.model.ContainerAuditState.COMPLETED)
                         .orElse(false))
                 .findFirst()
+                .filter(task -> !archives.taskArchived(principal.organizationId(), task.getId()))
                 .ifPresent(task -> {
                     reopenAttempt(principal, task, false, new java.util.HashSet<>());
                     audits.flush();
@@ -210,7 +216,7 @@ public class AssetSealService {
             boolean blocked,
             java.util.Set<UUID> visited) {
         UUID organizationId = principal.organizationId();
-        if (!visited.add(task.getId())) return;
+        if (!visited.add(task.getId()) || archives.taskArchived(organizationId, task.getId())) return;
         audits.findByOrganizationIdAndAuditTaskIdAndCurrentAttemptTrue(organizationId, task.getId())
                 .ifPresent(current -> {
                     scans.findAllByOrganizationIdAndAuditIdOrderByScannedAtAsc(organizationId, current.getId()).stream()

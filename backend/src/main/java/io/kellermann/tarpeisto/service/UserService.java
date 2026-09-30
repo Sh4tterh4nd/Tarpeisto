@@ -34,6 +34,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class UserService {
 
+    private final io.kellermann.tarpeisto.repository.OrganizationRepository organizations;
+    private final io.kellermann.tarpeisto.repository.JdbcArchiveRepository archives;
     private final UserRepository userRepository;
     private final OrganizationMembershipRepository membershipRepository;
     private final PasswordEncoder passwordEncoder;
@@ -43,12 +45,16 @@ public class UserService {
 
     public UserService(
             UserRepository userRepository,
+            io.kellermann.tarpeisto.repository.OrganizationRepository organizations,
+            io.kellermann.tarpeisto.repository.JdbcArchiveRepository archives,
             OrganizationMembershipRepository membershipRepository,
             PasswordEncoder passwordEncoder,
             ActivityLogService activityLogService,
             Clock clock,
             FindByIndexNameSessionRepository<?> sessionRepository) {
         this.userRepository = userRepository;
+        this.organizations = organizations;
+        this.archives = archives;
         this.membershipRepository = membershipRepository;
         this.passwordEncoder = passwordEncoder;
         this.activityLogService = activityLogService;
@@ -58,6 +64,11 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public List<UserSummaryView> listUsers(TarpeistoPrincipal principal) {
+        return listUsers(principal, false);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserSummaryView> listUsers(TarpeistoPrincipal principal, boolean includeArchived) {
         if (principal != null) principal.requirePermanent();
         requireOwner(principal);
         List<OrganizationMembership> memberships =
@@ -67,6 +78,8 @@ public class UserService {
         Map<UUID, User> usersById = userRepository.findAllById(userIds).stream()
                 .collect(java.util.stream.Collectors.toMap(User::getId, u -> u));
         return memberships.stream()
+                .filter(membership -> includeArchived
+                        || !usersById.get(membership.getUserId()).isArchived())
                 .map(membership -> toView(usersById.get(membership.getUserId()), membership))
                 .toList();
     }
@@ -107,11 +120,13 @@ public class UserService {
     public void changeRole(TarpeistoPrincipal principal, UUID targetUserId, OrganizationRole newRole) {
         if (principal != null) principal.requirePermanent();
         requireOwner(principal);
+        organizations.findWithLockById(principal.organizationId()).orElseThrow();
         OrganizationMembership membership = requireMembership(principal.organizationId(), targetUserId);
 
         OrganizationRole previousRole = membership.getRole();
         if (previousRole == OrganizationRole.OWNER && newRole != OrganizationRole.OWNER) {
             requireAnotherEnabledOwnerRemains(principal.organizationId(), targetUserId);
+            archives.requireOwnerRemains(principal.organizationId(), targetUserId);
         }
 
         membership.changeRole(newRole, clock.instant());
@@ -128,11 +143,13 @@ public class UserService {
     public void setEnabled(TarpeistoPrincipal principal, UUID targetUserId, boolean enabled) {
         if (principal != null) principal.requirePermanent();
         requireOwner(principal);
+        organizations.findWithLockById(principal.organizationId()).orElseThrow();
         OrganizationMembership membership = requireMembership(principal.organizationId(), targetUserId);
         User user = userRepository.findById(targetUserId).orElseThrow(UserService::userNotFound);
 
         if (!enabled && membership.getRole() == OrganizationRole.OWNER) {
             requireAnotherEnabledOwnerRemains(principal.organizationId(), targetUserId);
+            archives.requireOwnerRemains(principal.organizationId(), targetUserId);
         }
 
         var now = clock.instant();
@@ -199,6 +216,8 @@ public class UserService {
                 user.getEmail(),
                 user.isEnabled(),
                 membership.getRole(),
-                user.getCreatedAt());
+                user.getCreatedAt(),
+                user.isArchived(),
+                user.getVersion());
     }
 }

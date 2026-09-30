@@ -17,7 +17,9 @@ public record ConsumableStockResponse(
         String locationDisplayName,
         BigDecimal quantity,
         Instant createdAt,
-        Instant updatedAt) {
+        Instant updatedAt,
+        boolean archived,
+        long version) {
 
     public static ConsumableStockResponse from(ConsumableStockView view) {
         return new ConsumableStockResponse(
@@ -31,6 +33,8 @@ public record ConsumableStockResponse(
                 view.locationDisplayName(),
                 view.quantity(),
                 view.createdAt(),
-                view.updatedAt());
+                view.updatedAt(),
+                view.archived(),
+                view.version());
     }
 }

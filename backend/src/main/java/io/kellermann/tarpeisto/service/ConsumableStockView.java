@@ -20,4 +20,34 @@ public record ConsumableStockView(
         String locationDisplayName,
         BigDecimal quantity,
         Instant createdAt,
-        Instant updatedAt) {}
+        Instant updatedAt,
+        boolean archived,
+        long version) {
+    public ConsumableStockView(
+            UUID id,
+            UUID assetModelId,
+            String assetModelName,
+            String stockUnitLabel,
+            UUID containerAssetId,
+            String containerAssetDisplayName,
+            UUID locationId,
+            String locationDisplayName,
+            BigDecimal quantity,
+            Instant createdAt,
+            Instant updatedAt) {
+        this(
+                id,
+                assetModelId,
+                assetModelName,
+                stockUnitLabel,
+                containerAssetId,
+                containerAssetDisplayName,
+                locationId,
+                locationDisplayName,
+                quantity,
+                createdAt,
+                updatedAt,
+                false,
+                0);
+    }
+}

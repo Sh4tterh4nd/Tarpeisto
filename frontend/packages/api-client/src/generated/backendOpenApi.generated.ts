@@ -36,6 +36,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/users/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["changeUser"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/packing-templates/{templateId}": {
         parameters: {
             query?: never;
@@ -116,6 +132,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/consumable-stock/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["changeStock"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/categories/{categoryId}": {
         parameters: {
             query?: never;
@@ -132,6 +164,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/bookings/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["changeBooking"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/bookings/{bookingId}": {
         parameters: {
             query?: never;
@@ -141,6 +189,22 @@ export interface paths {
         };
         get: operations["get_1"];
         put: operations["update_2"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audits/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["changeAudit"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1588,6 +1652,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports/stock-movements.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["movements"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/inventory.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["inventory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/consumable-balances.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["balances"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/audits/{auditId}.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["audit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/audits.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["audits"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/packing-requirements/{id}/reservation-impact": {
         parameters: {
             query?: never;
@@ -1700,7 +1844,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/consumable-stock/{balanceId}": {
+    "/api/v1/dashboard": {
         parameters: {
             query?: never;
             header?: never;
@@ -1716,6 +1860,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dashboard/{queue}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["page"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/consumable-stock/{balanceId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_5"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/consumable-stock/{balanceId}/movements": {
         parameters: {
             query?: never;
@@ -1723,7 +1899,23 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["movements"];
+        get: operations["movements_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/consumable-stock/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["searchStock"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1819,7 +2011,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get_5"];
+        get: operations["get_6"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1867,7 +2059,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get_6"];
+        get: operations["get_7"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2004,6 +2196,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/asset-models/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["searchModels"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/application": {
         parameters: {
             query?: never;
@@ -2011,7 +2219,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get_7"];
+        get: operations["get_8"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2062,6 +2270,18 @@ export interface components {
         };
         SetEnabledRequest: {
             enabled: boolean;
+        };
+        ChangeArchiveRequest: {
+            archived?: boolean;
+            /** Format: int64 */
+            expectedVersion?: number;
+        };
+        ArchiveResponse: {
+            /** Format: uuid */
+            id?: string;
+            archived?: boolean;
+            /** Format: int64 */
+            version?: number;
         };
         PackingTemplateMutationRequest: {
             /** Format: int64 */
@@ -2238,6 +2458,7 @@ export interface components {
             /** Format: int64 */
             version?: number;
             lines?: components["schemas"]["BookingLineResponse"][];
+            archived?: boolean;
         };
         AssetCustomFieldValueRequest: {
             /** Format: uuid */
@@ -2434,6 +2655,9 @@ export interface components {
             role?: "OWNER" | "DEPUTY" | "OPERATOR_AUDITOR" | "VIEWER";
             /** Format: date-time */
             createdAt?: string;
+            archived?: boolean;
+            /** Format: int64 */
+            version?: number;
         };
         CreateExternalIdentityLinkRequest: {
             issuer: string;
@@ -2788,6 +3012,9 @@ export interface components {
             scans?: components["schemas"]["AuditScanResponse"][];
             findings?: components["schemas"]["AuditFindingResponse"][];
             blockingReasons?: string[];
+            archived?: boolean;
+            /** Format: int64 */
+            archiveVersion?: number;
         };
         UndoAuditScanRequest: {
             /** Format: uuid */
@@ -2917,6 +3144,9 @@ export interface components {
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
+            archived?: boolean;
+            /** Format: int64 */
+            version?: number;
         };
         StockTransferResponse: {
             source?: components["schemas"]["ConsumableStockResponse"];
@@ -3024,6 +3254,28 @@ export interface components {
             setupRequired?: boolean;
         };
         StreamingResponseBody: unknown;
+        DashboardQueueResponse: {
+            /** @enum {string} */
+            queue?: "UPCOMING_EVENTS" | "OUTSTANDING_CUSTODY" | "AUDITS" | "REVIEW" | "REPAIRS" | "METADATA" | "CONTAINERS" | "LOW_STOCK";
+            /** Format: int64 */
+            count?: number;
+            items?: components["schemas"]["DashboardRowResponse"][];
+            nextCursor?: string;
+        };
+        DashboardResponse: {
+            queues?: components["schemas"]["DashboardQueueResponse"][];
+        };
+        DashboardRowResponse: {
+            /** Format: uuid */
+            id?: string;
+            label?: string;
+            code?: string;
+            state?: string;
+            reason?: string;
+            actionLabel?: string;
+            actionPath?: string;
+            readOnly?: boolean;
+        };
         StockMovementResponse: {
             /** Format: uuid */
             id?: string;
@@ -3045,6 +3297,33 @@ export interface components {
             auditReferenceId?: string;
             /** Format: date-time */
             occurredAt?: string;
+        };
+        StockSearchPageResponse: {
+            items?: components["schemas"]["StockSearchResponse"][];
+            nextCursor?: string;
+        };
+        StockSearchResponse: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            assetModelId?: string;
+            assetModelName?: string;
+            /** Format: uuid */
+            categoryId?: string;
+            categoryName?: string;
+            stockUnitLabel?: string;
+            /** Format: uuid */
+            containerAssetId?: string;
+            /** Format: uuid */
+            locationId?: string;
+            placePath?: string;
+            quantity?: number;
+            totalOnHand?: number;
+            lowStockThreshold?: number;
+            lowStock?: boolean;
+            archived?: boolean;
+            /** Format: int64 */
+            version?: number;
         };
         AssetModelStockSummaryResponse: {
             /** Format: uuid */
@@ -3099,6 +3378,9 @@ export interface components {
             parentContainerAssetId?: string;
             /** Format: int64 */
             placementVersion?: number;
+            /** Format: uuid */
+            effectiveLocationId?: string;
+            placePath?: string;
         };
         SealHistoryView: {
             /** @enum {string} */
@@ -3118,6 +3400,21 @@ export interface components {
             actorUserId?: string;
             /** Format: date-time */
             changedAt?: string;
+        };
+        ModelSearchPageResponse: {
+            items?: components["schemas"]["ModelSearchResponse"][];
+            nextCursor?: string;
+        };
+        ModelSearchResponse: {
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+            trackingMode?: string;
+            /** Format: uuid */
+            categoryId?: string;
+            categoryName?: string;
+            stockUnitLabel?: string;
+            archived?: boolean;
         };
         ApplicationInfoResponse: {
             applicationName?: string;
@@ -3187,6 +3484,32 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    changeUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeArchiveRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ArchiveResponse"];
+                };
             };
         };
     };
@@ -3342,6 +3665,32 @@ export interface operations {
             };
         };
     };
+    changeStock: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeArchiveRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ArchiveResponse"];
+                };
+            };
+        };
+    };
     rename: {
         parameters: {
             query?: never;
@@ -3385,6 +3734,32 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    changeBooking: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeArchiveRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ArchiveResponse"];
+                };
             };
         };
     };
@@ -3432,6 +3807,32 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["BookingResponse"];
+                };
+            };
+        };
+    };
+    changeAudit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeArchiveRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ArchiveResponse"];
                 };
             };
         };
@@ -3929,7 +4330,9 @@ export interface operations {
     };
     list: {
         parameters: {
-            query?: never;
+            query?: {
+                includeArchived?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -4242,7 +4645,9 @@ export interface operations {
     };
     templates: {
         parameters: {
-            query?: never;
+            query?: {
+                includeArchived?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -4436,7 +4841,9 @@ export interface operations {
     };
     list_3: {
         parameters: {
-            query?: never;
+            query?: {
+                includeArchived?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -4554,7 +4961,9 @@ export interface operations {
     };
     list_4: {
         parameters: {
-            query?: never;
+            query?: {
+                includeArchived?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -4643,6 +5052,7 @@ export interface operations {
                 until?: string;
                 cursor?: string;
                 limit?: number;
+                includeArchived?: boolean;
             };
             header?: never;
             path?: never;
@@ -5500,7 +5910,9 @@ export interface operations {
     };
     list_7: {
         parameters: {
-            query?: never;
+            query?: {
+                includeArchived?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -5615,7 +6027,9 @@ export interface operations {
     };
     list_8: {
         parameters: {
-            query?: never;
+            query?: {
+                includeArchived?: boolean;
+            };
             header?: never;
             path: {
                 assetModelId: string;
@@ -5684,7 +6098,9 @@ export interface operations {
     };
     list_9: {
         parameters: {
-            query?: never;
+            query?: {
+                includeArchived?: boolean;
+            };
             header?: never;
             path: {
                 assetModelId: string;
@@ -6141,6 +6557,110 @@ export interface operations {
             };
         };
     };
+    movements: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description UTF-8 CSV report download */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+        };
+    };
+    inventory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description UTF-8 CSV report download */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+        };
+    };
+    balances: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description UTF-8 CSV report download */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+        };
+    };
+    audit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                auditId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description UTF-8 CSV report download */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+        };
+    };
+    audits: {
+        parameters: {
+            query?: {
+                auditId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description UTF-8 CSV report download */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+        };
+    };
     reservationImpact: {
         parameters: {
             query?: never;
@@ -6319,6 +6839,51 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DashboardResponse"];
+                };
+            };
+        };
+    };
+    page: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                queue: "UPCOMING_EVENTS" | "OUTSTANDING_CUSTODY" | "AUDITS" | "REVIEW" | "REPAIRS" | "METADATA" | "CONTAINERS" | "LOW_STOCK";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DashboardQueueResponse"];
+                };
+            };
+        };
+    };
+    get_5: {
+        parameters: {
+            query?: never;
+            header?: never;
             path: {
                 balanceId: string;
             };
@@ -6337,7 +6902,7 @@ export interface operations {
             };
         };
     };
-    movements: {
+    movements_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -6355,6 +6920,37 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["StockMovementResponse"][];
+                };
+            };
+        };
+    };
+    searchStock: {
+        parameters: {
+            query?: {
+                query?: string;
+                category?: string;
+                locationId?: string;
+                containerId?: string;
+                includeArchived?: boolean;
+                lowStock?: boolean;
+                minimumQuantity?: number;
+                maximumQuantity?: number;
+                limit?: number;
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["StockSearchPageResponse"];
                 };
             };
         };
@@ -6470,7 +7066,7 @@ export interface operations {
             };
         };
     };
-    get_5: {
+    get_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -6525,6 +7121,16 @@ export interface operations {
                 direction?: string;
                 limit?: number;
                 cursor?: string;
+                includeArchived?: boolean;
+                locationId?: string;
+                condition?: "GOOD" | "DAMAGED";
+                lifecycle?: "ACTIVE" | "LOST" | "DESTROYED" | "RETIRED";
+                bookingId?: string;
+                bookingStatus?: "DRAFT" | "RESERVED" | "CHECKED_OUT" | "RETURNED_AUDITS_PENDING" | "REVIEW_REQUIRED" | "COMPLETED" | "CANCELLED";
+                openRepair?: boolean;
+                auditStatus?: string;
+                metadataIncomplete?: boolean;
+                availability?: string;
             };
             header?: never;
             path?: never;
@@ -6543,7 +7149,7 @@ export interface operations {
             };
         };
     };
-    get_6: {
+    get_7: {
         parameters: {
             query?: never;
             header?: never;
@@ -6699,7 +7305,9 @@ export interface operations {
     };
     listByModel: {
         parameters: {
-            query?: never;
+            query?: {
+                includeArchived?: boolean;
+            };
             header?: never;
             path: {
                 assetModelId: string;
@@ -6741,7 +7349,36 @@ export interface operations {
             };
         };
     };
-    get_7: {
+    searchModels: {
+        parameters: {
+            query?: {
+                query?: string;
+                category?: string;
+                trackingMode?: "SERIALIZED_ASSET" | "QUANTITY_STOCK";
+                includeArchived?: boolean;
+                limit?: number;
+                cursor?: string;
+                sort?: string;
+                direction?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ModelSearchPageResponse"];
+                };
+            };
+        };
+    };
+    get_8: {
         parameters: {
             query?: never;
             header?: never;

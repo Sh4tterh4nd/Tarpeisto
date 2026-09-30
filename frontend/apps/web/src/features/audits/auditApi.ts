@@ -24,9 +24,15 @@ export type AuditFinding = Omit<
   Partial<GeneratedFinding>;
 export type ContainerAudit = Omit<
   Required<GeneratedAudit>,
-  "id" | "completionOutcome" | "expectedRequirements" | "scans" | "findings"
+  | "id"
+  | "completionOutcome"
+  | "expectedRequirements"
+  | "scans"
+  | "findings"
+  | "archived"
+  | "archiveVersion"
 > &
-  Pick<GeneratedAudit, "id" | "completionOutcome"> & {
+  Pick<GeneratedAudit, "id" | "completionOutcome" | "archived" | "archiveVersion"> & {
     expectedRequirements: AuditExpectedRequirement[];
     scans: AuditScan[];
     findings: AuditFinding[];

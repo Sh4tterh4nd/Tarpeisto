@@ -39,8 +39,10 @@ public class CategoryController {
     }
 
     @GetMapping
-    public List<CategoryResponse> list(@AuthenticationPrincipal TarpeistoPrincipal principal) {
-        return categoryService.list(principal).stream()
+    public List<CategoryResponse> list(
+            @AuthenticationPrincipal TarpeistoPrincipal principal,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "false") boolean includeArchived) {
+        return categoryService.list(principal, includeArchived).stream()
                 .map(CategoryResponse::from)
                 .toList();
     }

@@ -16,12 +16,20 @@ export type AssetRecord = Omit<Required<components["schemas"]["AssetResponse"]>,
   values: AssetValueRecord[];
 };
 export type AssetHistoryRecord = Required<components["schemas"]["AssetStateChangeResponse"]>;
-export type StockBalanceRecord = Required<components["schemas"]["ConsumableStockResponse"]>;
+export type StockBalanceRecord = Omit<
+  Required<components["schemas"]["ConsumableStockResponse"]>,
+  "archived" | "version"
+> &
+  Pick<components["schemas"]["ConsumableStockResponse"], "archived" | "version">;
 export type StockSummaryRecord = Required<components["schemas"]["AssetModelStockSummaryResponse"]>;
 export type StockMovementRecord = Required<components["schemas"]["StockMovementResponse"]>;
 export type LocationRecord = Required<components["schemas"]["LocationResponse"]>;
 export type AssetPlacementRecord = Required<components["schemas"]["AssetPlacementResponse"]>;
-export type AssetSearchRecord = Required<components["schemas"]["AssetSearchResponse"]>;
+export type AssetSearchRecord = Omit<
+  Required<components["schemas"]["AssetSearchResponse"]>,
+  "effectiveLocationId" | "placePath"
+> &
+  Pick<components["schemas"]["AssetSearchResponse"], "effectiveLocationId" | "placePath">;
 export type AssetSearchPage = Omit<
   Required<components["schemas"]["AssetSearchPageResponse"]>,
   "items"
@@ -69,8 +77,10 @@ export function errorMessage(error: AppError): string {
   return error.problem?.detail ?? error.message;
 }
 
-export function listCategories(): Promise<ApiResult<CategoryRecord[]>> {
-  return read(() => apiClient.GET("/api/v1/categories"));
+export function listCategories(includeArchived = false): Promise<ApiResult<CategoryRecord[]>> {
+  return read(() =>
+    apiClient.GET("/api/v1/categories", { params: { query: { includeArchived } } }),
+  );
 }
 
 export function createCategory(input: CreateCategoryInput): Promise<ApiResult<CategoryRecord>> {
@@ -102,8 +112,10 @@ export function deleteCategory(categoryId: string) {
   );
 }
 
-export function listAssetModels(): Promise<ApiResult<AssetModelRecord[]>> {
-  return read(() => apiClient.GET("/api/v1/asset-models"));
+export function listAssetModels(includeArchived = false): Promise<ApiResult<AssetModelRecord[]>> {
+  return read(() =>
+    apiClient.GET("/api/v1/asset-models", { params: { query: { includeArchived } } }),
+  );
 }
 
 export function getAssetModel(assetModelId: string): Promise<ApiResult<AssetModelRecord>> {
@@ -183,10 +195,13 @@ export function setAssetModelArchived(assetModelId: string, archived: boolean) {
   return command(() => apiClient.POST(path, { params: { path: { assetModelId } } }));
 }
 
-export function listCustomFields(assetModelId: string): Promise<ApiResult<CustomFieldRecord[]>> {
+export function listCustomFields(
+  assetModelId: string,
+  includeArchived = false,
+): Promise<ApiResult<CustomFieldRecord[]>> {
   return read(() =>
     apiClient.GET("/api/v1/asset-models/{assetModelId}/custom-fields", {
-      params: { path: { assetModelId } },
+      params: { path: { assetModelId }, query: { includeArchived } },
     }),
   );
 }
@@ -244,10 +259,11 @@ export function setCustomFieldArchived(assetModelId: string, fieldId: string, ar
 export function listCustomFieldOptions(
   assetModelId: string,
   fieldId: string,
+  includeArchived = false,
 ): Promise<ApiResult<CustomFieldOptionRecord[]>> {
   return read(() =>
     apiClient.GET("/api/v1/asset-models/{assetModelId}/custom-fields/{fieldId}/options", {
-      params: { path: { assetModelId, fieldId } },
+      params: { path: { assetModelId, fieldId }, query: { includeArchived } },
     }),
   );
 }
@@ -415,8 +431,8 @@ export function listAssetHistory(assetId: string): Promise<ApiResult<AssetHistor
   );
 }
 
-export function listLocations(): Promise<ApiResult<LocationRecord[]>> {
-  return read(() => apiClient.GET("/api/v1/locations"));
+export function listLocations(includeArchived = false): Promise<ApiResult<LocationRecord[]>> {
+  return read(() => apiClient.GET("/api/v1/locations", { params: { query: { includeArchived } } }));
 }
 
 export function createLocation(input: components["schemas"]["LocationRequest"]) {
@@ -541,8 +557,12 @@ export function listPackingRequirements(
     }),
   );
 }
-export function listPackingTemplates(): Promise<ApiResult<PackingTemplateRecord[]>> {
-  return read(() => apiClient.GET("/api/v1/packing-templates"));
+export function listPackingTemplates(
+  includeArchived = false,
+): Promise<ApiResult<PackingTemplateRecord[]>> {
+  return read(() =>
+    apiClient.GET("/api/v1/packing-templates", { params: { query: { includeArchived } } }),
+  );
 }
 
 export function addPackingRequirement(containerAssetId: string, input: PackingRequirementInput) {

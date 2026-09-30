@@ -25,12 +25,15 @@ function PrimaryNav() {
   const entries = principal?.temporaryAccess
     ? ([["Your audits", "/volunteer"]] as const)
     : ([
-        ["Status", "/"],
+        ["Workboard", "/"],
+        ["Status", "/status"],
         ["Inventory models", "/inventory"],
         ["Assets", "/inventory/assets"],
+        ["Consumables", "/inventory/stock"],
         ["Containers", "/inventory/containers"],
         ["Locations", "/inventory/locations"],
         ["Events", "/events"],
+        ["Reports", "/reports"],
         ["Scan equipment", "/scan"],
       ] as const);
   const activeDestination = entries

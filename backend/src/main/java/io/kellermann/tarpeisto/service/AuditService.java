@@ -92,6 +92,7 @@ public class AuditService {
     private final ConsumableStockService stock;
     private final CheckoutManifestAssetRepository manifestAssets;
     private final ActivityLogService activity;
+    private final io.kellermann.tarpeisto.repository.JdbcArchiveRepository archives;
     private final Clock clock;
     private final ObjectMapper mapper;
     private final OrganizationRepository organizations;
@@ -121,6 +122,7 @@ public class AuditService {
             ConsumableStockService stock,
             CheckoutManifestAssetRepository manifestAssets,
             ActivityLogService activity,
+            io.kellermann.tarpeisto.repository.JdbcArchiveRepository archives,
             Clock clock,
             ObjectMapper mapper,
             OrganizationRepository organizations,
@@ -149,6 +151,7 @@ public class AuditService {
         this.manifestAssets = manifestAssets;
         this.activity = activity;
         this.clock = clock;
+        this.archives = archives;
         this.mapper = mapper;
         this.organizations = organizations;
         this.bookings = bookings;
@@ -1121,6 +1124,7 @@ public class AuditService {
         UUID org = principal.organizationId();
         List<AuditScan> all = scans.findAllByOrganizationIdAndAuditIdOrderByScannedAtAsc(org, audit.getId());
         List<AuditFinding> observations = findings.findAllByOrganizationIdAndAuditIdOrderById(org, audit.getId());
+        var archiveState = archives.auditState(org, audit.getId());
         Map<UUID, String> actors = auditActors.displayNames(org, audit.getId());
         List<AuditExpectedRequirement> rows =
                 expected.findAllByOrganizationIdAndAuditIdOrderByDisplayOrderAsc(org, audit.getId());
@@ -1172,7 +1176,9 @@ public class AuditService {
                                 f.getActor(),
                                 actors.get(f.getActor())))
                         .toList(),
-                List.of());
+                List.of(),
+                archiveState.archived(),
+                archiveState.version());
     }
 
     private String requirementSnapshot(PackingRequirement r) {

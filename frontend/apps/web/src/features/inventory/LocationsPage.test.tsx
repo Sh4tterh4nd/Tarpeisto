@@ -62,4 +62,36 @@ describe("LocationsPage", () => {
     await waitFor(() => expect(screen.getByRole("dialog")).toHaveTextContent("Add location"));
     expect(screen.getAllByRole("textbox")[0]).toHaveValue("");
   });
+  it("retains an archived historical parent without offering it for a new location", async () => {
+    const user = userEvent.setup();
+    const parent = {
+      id: "parent",
+      name: "Old warehouse",
+      archived: true,
+      effectivePath: "Old warehouse",
+      version: 1,
+    };
+    const child = {
+      id: "child",
+      name: "Shelf",
+      parentLocationId: "parent",
+      archived: false,
+      effectivePath: "Old warehouse / Shelf",
+      version: 0,
+    };
+    api.listLocations.mockImplementation((includeArchived = false) =>
+      Promise.resolve({ kind: "ok", data: includeArchived ? [parent, child] : [child] }),
+    );
+    render(<LocationsPage />);
+    await screen.findByText("Old warehouse / Shelf");
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    expect(await screen.findByText("Old warehouse (archived)")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await user.click(screen.getByRole("button", { name: "Add location" }));
+    await user.click(screen.getByRole("combobox", { name: "Parent location" }));
+    expect(
+      screen.queryByRole("option", { name: "Old warehouse (archived)" }),
+    ).not.toBeInTheDocument();
+  });
 });

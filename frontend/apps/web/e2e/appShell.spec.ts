@@ -68,7 +68,7 @@ test("app shell loads and a valid public code resolves to an asset", async ({ pa
     route.fulfill({ json: { canContainAssets: false } }),
   );
 
-  await page.goto("/");
+  await page.goto("/status");
 
   await expect(page.getByRole("heading", { name: "Tarpeisto" })).toBeVisible();
   await expect(page.getByRole("status").first()).toBeVisible();

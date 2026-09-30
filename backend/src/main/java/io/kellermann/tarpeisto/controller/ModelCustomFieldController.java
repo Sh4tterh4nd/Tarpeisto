@@ -33,8 +33,10 @@ public class ModelCustomFieldController {
 
     @GetMapping
     public List<ModelCustomFieldResponse> list(
-            @AuthenticationPrincipal TarpeistoPrincipal principal, @PathVariable UUID assetModelId) {
-        return modelCustomFieldService.list(principal, assetModelId).stream()
+            @AuthenticationPrincipal TarpeistoPrincipal principal,
+            @PathVariable UUID assetModelId,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "false") boolean includeArchived) {
+        return modelCustomFieldService.list(principal, assetModelId, includeArchived).stream()
                 .map(ModelCustomFieldResponse::from)
                 .toList();
     }

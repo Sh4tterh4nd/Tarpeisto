@@ -268,7 +268,7 @@ export function AssetModelPage() {
     if (!assetModelId) return;
     const [modelResult, categoryResult] = await Promise.all([
       getAssetModel(assetModelId),
-      listCategories(),
+      listCategories(true),
     ]);
     if (request !== loadRequest.current) return;
     if (modelResult.kind === "error") {
@@ -386,7 +386,7 @@ export function AssetModelPage() {
               <ModelFieldsPanel
                 key={`fields-${model.id}-${definitionRevision}`}
                 assetModelId={assetModelId}
-                canManage={canManage}
+                canManage={canManage && !model.archived}
                 onDefinitionsChanged={() => setDefinitionRevision((revision) => revision + 1)}
               />
             ) : null}
@@ -402,14 +402,14 @@ export function AssetModelPage() {
               assetModelId={assetModelId}
               modelName={model.name}
               containerCapable={model.canContainAssets}
-              canManage={canManage}
+              canManage={canManage && !model.archived}
             />
           </>
         ) : (
           <ConsumableStockPanel
             key={`stock-${model.id}-${definitionRevision}`}
             assetModelId={assetModelId}
-            canManage={canManage}
+            canManage={canManage && !model.archived}
           />
         )}
       </Stack>

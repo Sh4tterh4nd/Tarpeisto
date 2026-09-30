@@ -63,9 +63,38 @@ public class AssetController {
             @RequestParam(defaultValue = "name") String sort,
             @RequestParam(defaultValue = "asc") String direction,
             @RequestParam(defaultValue = "50") int limit,
-            @RequestParam(required = false) String cursor) {
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = "false") boolean includeArchived,
+            @RequestParam(required = false) UUID locationId,
+            @RequestParam(required = false) io.kellermann.tarpeisto.model.Condition condition,
+            @RequestParam(required = false) io.kellermann.tarpeisto.model.LifecycleState lifecycle,
+            @RequestParam(required = false) UUID bookingId,
+            @RequestParam(required = false) io.kellermann.tarpeisto.model.BookingStatus bookingStatus,
+            @RequestParam(required = false) Boolean openRepair,
+            @RequestParam(required = false) String auditStatus,
+            @RequestParam(required = false) Boolean metadataIncomplete,
+            @RequestParam(required = false) String availability) {
         return AssetSearchPageResponse.from(assetService.search(
-                principal, query, category, containerOnly, includeInactive, sort, direction, limit, cursor));
+                principal,
+                query,
+                category,
+                containerOnly,
+                includeInactive,
+                sort,
+                direction,
+                limit,
+                cursor,
+                new io.kellermann.tarpeisto.model.AssetSearchFilter(
+                        includeArchived,
+                        locationId,
+                        condition,
+                        lifecycle,
+                        bookingId,
+                        bookingStatus,
+                        openRepair,
+                        auditStatus,
+                        metadataIncomplete,
+                        availability)));
     }
 
     @PostMapping("/asset-models/{assetModelId}/assets")

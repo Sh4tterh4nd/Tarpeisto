@@ -35,8 +35,9 @@ public class ModelCustomFieldOptionController {
     public List<ModelCustomFieldOptionResponse> list(
             @AuthenticationPrincipal TarpeistoPrincipal principal,
             @PathVariable UUID assetModelId,
-            @PathVariable UUID fieldId) {
-        return optionService.list(principal, assetModelId, fieldId).stream()
+            @PathVariable UUID fieldId,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "false") boolean includeArchived) {
+        return optionService.list(principal, assetModelId, fieldId, includeArchived).stream()
                 .map(ModelCustomFieldOptionResponse::from)
                 .toList();
     }

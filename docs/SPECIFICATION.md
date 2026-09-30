@@ -228,7 +228,7 @@ Disabling containment is prohibited while any unit of the model currently contai
 - A transfer transactionally decrements the source and increments the destination while preserving one linked movement operation.
 - No operation may make a balance negative. Owner/Deputy adjustments require an explicit reason and activity entry.
 - Consumables inside a container appear when that container is opened or scanned; no QR label is required on the consumable itself. Optional bin/shelf labels may be added later without changing the stock identity model.
-- Low-stock status is calculated from the model threshold across the organization's active on-hand balances. A future extension may add per-location thresholds.
+- Low-stock status is calculated from the model threshold across the organization's active on-hand balances. The threshold is reached when the total is at or below it. A future extension may add per-location thresholds.
 
 ## 7. Model-defined unit fields
 
@@ -1035,6 +1035,15 @@ Full offline inventory operation is not required. During an active audit:
 - Activity history records actor, timestamp, action, target, and relevant before/after information.
 - Important state changes and their audit log entry must be committed atomically.
 
+Archive eligibility preserves operational work:
+
+- A quantity-stock balance may be archived only when its quantity is exactly zero and no active operation requires it. Restoration reactivates the same balance and retains its movement ledger; stock mutations require an archived balance to be restored first.
+- Archiving a permanent user disables sign-in and revokes sessions while retaining their name and history. Restoration leaves the account disabled until an Owner enables it. Disabling alone does not archive the user. Last-Owner and local recovery protection still apply.
+- Only completed events with no outstanding custody, audit, review or consumable-return work may be archived. Their status and frozen manifests do not change.
+- Only completed audits with no unresolved operational work may be archived. Separate archive metadata controls their visibility; completed observations and their appended resolutions remain unchanged.
+- Later packing, placement or seal changes still invalidate current physical verification, but do not reopen archived event/audit history. New verification work uses a fresh audit rather than silently creating pending work behind archived filters.
+- Archive state is distinct from asset lifecycle. Historical detail reads retain archived names and relationships; normal selection requires active records.
+
 History includes at least:
 
 - Asset creation and metadata changes
@@ -1074,7 +1083,9 @@ Operational views should include:
 - Lost/destroyed/retired archive filters
 - Containers with incomplete packing requirements
 - Assets with incomplete custom-field metadata
-- Consumables below their low-stock threshold
+- Consumables at or below their low-stock threshold
+
+CSV reporting exports include organization-scoped inventory, consumable balances and movements, and audit results. They include retained archive/history information, exact decimal quantities and actor attribution where applicable. Textual cells are protected against spreadsheet formulas. Reporting exports complement PostgreSQL and media backups; they do not replace them.
 
 ## 27. Deployment and storage
 

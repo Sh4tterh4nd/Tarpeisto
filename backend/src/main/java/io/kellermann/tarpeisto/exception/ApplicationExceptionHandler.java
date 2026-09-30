@@ -19,6 +19,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  */
 @RestControllerAdvice
 public class ApplicationExceptionHandler {
+    @ExceptionHandler(ArchiveConflictException.class)
+    public ProblemDetail handleArchiveConflict(ArchiveConflictException exception) {
+        return problemDetail(HttpStatus.CONFLICT, "Archive conflict", exception);
+    }
+
     @ExceptionHandler(ReviewMutationConflictException.class)
     public ProblemDetail handleReviewMutationConflict(ReviewMutationConflictException exception) {
         return problemDetail(HttpStatus.CONFLICT, "Review mutation conflict", exception);

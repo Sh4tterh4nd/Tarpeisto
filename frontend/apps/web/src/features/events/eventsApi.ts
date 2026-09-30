@@ -2,9 +2,13 @@ import { AppError, apiClient, toAppError } from "@tarpeisto/api-client";
 import type { components, ProblemDetails } from "@tarpeisto/api-client";
 
 export type BookingLineRecord = Required<components["schemas"]["BookingLineResponse"]>;
-export type BookingRecord = Omit<Required<components["schemas"]["BookingResponse"]>, "lines"> & {
-  lines: BookingLineRecord[];
-};
+export type BookingRecord = Omit<
+  Required<components["schemas"]["BookingResponse"]>,
+  "lines" | "archived"
+> &
+  Pick<components["schemas"]["BookingResponse"], "archived"> & {
+    lines: BookingLineRecord[];
+  };
 export type BookingConflict = Required<components["schemas"]["BookingConflictResponse"]>;
 export type BookingPreview = Required<
   components["schemas"]["BookingReservationPreviewResponse"]
@@ -55,9 +59,15 @@ export function eventErrorMessage(error: AppError): string {
   return error.problem?.detail ?? error.message;
 }
 
-export function listBookings(from: string, until: string): Promise<ApiResult<BookingRecord[]>> {
+export function listBookings(
+  from: string,
+  until: string,
+  includeArchived = false,
+): Promise<ApiResult<BookingRecord[]>> {
   return read(() =>
-    apiClient.GET("/api/v1/bookings", { params: { query: { from, until, limit: 100 } } }),
+    apiClient.GET("/api/v1/bookings", {
+      params: { query: { from, until, limit: 100, includeArchived } },
+    }),
   );
 }
 export function getBooking(bookingId: string): Promise<ApiResult<BookingRecord>> {

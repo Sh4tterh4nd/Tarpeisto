@@ -19,4 +19,7 @@ public record AssetSearchProjection(
         LifecycleState lifecycleState,
         boolean archived,
         UUID parentContainerAssetId,
-        long placementVersion) {}
+        long placementVersion,
+        String sortAnchor,
+        UUID effectiveLocationId,
+        String placePath) {}

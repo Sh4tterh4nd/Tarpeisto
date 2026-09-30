@@ -84,7 +84,7 @@ function AssetDetailsDialog({ asset, onClose, onSaved }: AssetDetailsDialogProps
           .filter((field) => field.dataType === "DROPDOWN")
           .map(
             async (field) =>
-              [field.id, await listCustomFieldOptions(asset.assetModelId, field.id)] as const,
+              [field.id, await listCustomFieldOptions(asset.assetModelId, field.id, true)] as const,
           ),
       );
       const next: Record<string, CustomFieldOptionRecord[]> = {};
@@ -93,11 +93,15 @@ function AssetDetailsDialog({ asset, onClose, onSaved }: AssetDetailsDialogProps
           setError(errorMessage(optionResult.error));
           return;
         }
-        next[fieldId] = optionResult.data.filter((option) => !option.archived);
+        next[fieldId] = optionResult.data.filter(
+          (option) =>
+            !option.archived ||
+            option.id === asset.values.find((value) => value.fieldId === fieldId)?.optionId,
+        );
       }
       setOptions(next);
     })();
-  }, [asset.assetModelId]);
+  }, [asset.assetModelId, asset.values]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();

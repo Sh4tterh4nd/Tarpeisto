@@ -15,4 +15,17 @@ public record UserSummaryView(
         String email,
         boolean enabled,
         OrganizationRole role,
-        Instant createdAt) {}
+        Instant createdAt,
+        boolean archived,
+        long version) {
+    public UserSummaryView(
+            UUID id,
+            String username,
+            String displayName,
+            String email,
+            boolean enabled,
+            OrganizationRole role,
+            Instant createdAt) {
+        this(id, username, displayName, email, enabled, role, createdAt, false, 0);
+    }
+}

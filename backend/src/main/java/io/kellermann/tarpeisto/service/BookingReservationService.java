@@ -238,8 +238,46 @@ public class BookingReservationService {
         b.applyRevision(revisionId, result.reservable(), clock.instant());
     }
 
+    @Transactional(readOnly = true)
+    public BookingReservationPreviewView previewContainer(TarpeistoPrincipal p, UUID containerId) {
+        if (p == null) throw new org.springframework.security.access.AccessDeniedException("Authentication required.");
+        p.requirePermanent();
+        var now = clock.instant();
+        Booking hypothetical = new Booking(
+                UUID.randomUUID(),
+                p.organizationId(),
+                "Current container availability",
+                null,
+                null,
+                null,
+                now,
+                now.plusSeconds(1),
+                p.userId(),
+                now);
+        BookingLine line = new BookingLine(
+                UUID.randomUUID(),
+                p.organizationId(),
+                hypothetical.getId(),
+                BookingLineType.CONTAINER,
+                containerId,
+                null,
+                BigDecimal.ONE,
+                now);
+        return evaluate(p.organizationId(), hypothetical, load(p.organizationId()), List.of(line));
+    }
+
     private BookingReservationPreviewView evaluate(UUID org, Booking b, Inventory inventory) {
-        List<BookingClaimCandidate> candidates = expand(org, b, inventory);
+        return evaluate(org, b, inventory, activeLines(org, b.getId()));
+    }
+
+    private BookingReservationPreviewView evaluate(
+            UUID org, Booking b, Inventory inventory, List<BookingLine> requestedLines) {
+        List<BookingClaimCandidate> candidates = calculator.expand(
+                requestedLines,
+                inventory.assets().values(),
+                inventory.requirements(),
+                inventory.stocks().values(),
+                inventory.models().values());
         Map<UUID, Booking> otherByRevision = new HashMap<>();
         for (Booking other : bookings.findAllByOrganizationIdAndStatus(org, BookingStatus.RESERVED))
             if (!other.getId().equals(b.getId())) otherByRevision.put(other.getCurrentRevisionId(), other);
@@ -247,7 +285,7 @@ public class BookingReservationService {
                 .filter(c -> otherByRevision.containsKey(c.getRevisionId()))
                 .toList();
         List<BookingConflictView> conflicts = new ArrayList<>(), warnings = new ArrayList<>();
-        for (BookingLine line : activeLines(org, b.getId()))
+        for (BookingLine line : requestedLines)
             if (line.getAssetId() != null) {
                 Asset selected = inventory.assets().get(line.getAssetId());
                 AssetModel model = selected == null ? null : inventory.models().get(selected.getAssetModelId());
@@ -494,7 +532,7 @@ public class BookingReservationService {
                             r.getRequiredQuantity(),
                             available.max(BigDecimal.ZERO)));
             }
-        for (BookingLine line : activeLines(org, b.getId()))
+        for (BookingLine line : requestedLines)
             if (line.getLineType() == BookingLineType.ASSET && inventory.pins().containsKey(line.getAssetId())) {
                 PackingRequirement pin = inventory.pins().get(line.getAssetId());
                 warnings.add(conflict(
@@ -595,7 +633,8 @@ public class BookingReservationService {
         Map<UUID, AssetModel> modelMap = new HashMap<>();
         for (AssetModel m : models.findAllByOrganizationIdOrderByNameAsc(org)) modelMap.put(m.getId(), m);
         Map<UUID, ConsumableStock> stockMap = new HashMap<>();
-        for (ConsumableStock s : stocks.findAllByOrganizationIdOrderByCreatedAtAsc(org)) stockMap.put(s.getId(), s);
+        for (ConsumableStock s : stocks.findAllByOrganizationIdOrderByCreatedAtAsc(org))
+            if (!s.isArchived()) stockMap.put(s.getId(), s);
         List<PackingRequirement> req = requirements.findAllByOrganizationIdAndArchivedAtIsNull(org);
         Map<UUID, PackingRequirement> pins = new HashMap<>();
         for (PackingRequirement r : req) if (r.getSpecificAssetId() != null) pins.put(r.getSpecificAssetId(), r);

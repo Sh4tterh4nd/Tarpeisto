@@ -20,7 +20,9 @@ public record AssetSearchResponse(
         LifecycleState lifecycleState,
         boolean archived,
         UUID parentContainerAssetId,
-        long placementVersion) {
+        long placementVersion,
+        UUID effectiveLocationId,
+        String placePath) {
     public static AssetSearchResponse from(AssetSearchView view) {
         return new AssetSearchResponse(
                 view.id(),
@@ -36,6 +38,8 @@ public record AssetSearchResponse(
                 view.lifecycleState(),
                 view.archived(),
                 view.parentContainerAssetId(),
-                view.placementVersion());
+                view.placementVersion(),
+                view.effectiveLocationId(),
+                view.placePath());
     }
 }

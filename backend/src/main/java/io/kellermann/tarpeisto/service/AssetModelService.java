@@ -96,9 +96,15 @@ public class AssetModelService {
 
     @Transactional(readOnly = true)
     public List<AssetModelView> list(TarpeistoPrincipal principal) {
+        return list(principal, false);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AssetModelView> list(TarpeistoPrincipal principal, boolean includeArchived) {
         if (principal != null) principal.requirePermanent();
         requireAuthenticated(principal);
         return assetModelRepository.findAllByOrganizationIdOrderByNameAsc(principal.organizationId()).stream()
+                .filter(row -> includeArchived || !row.isArchived())
                 .map(AssetModelView::from)
                 .toList();
     }
@@ -337,7 +343,7 @@ public class AssetModelService {
      */
     @Transactional(readOnly = true)
     AssetModel requireSerializedAssetModelForCustomFields(UUID organizationId, UUID assetModelId) {
-        return requireSerializedAssetModel(organizationId, assetModelId);
+        return requireActiveSerializedAssetModelForSelection(organizationId, assetModelId);
     }
 
     /**
@@ -370,6 +376,26 @@ public class AssetModelService {
             throw new ValidationFailedException("A SERIALIZED_ASSET model must never have a consumable stock balance.");
         }
         return assetModel;
+    }
+
+    /** New selections serialize with archival; historical resolvers remain readable. */
+    @Transactional
+    AssetModel requireActiveSerializedAssetModelForSelection(UUID organizationId, UUID assetModelId) {
+        lockOrganization(organizationId);
+        return requireActiveForSelection(requireSerializedAssetModel(organizationId, assetModelId));
+    }
+
+    @Transactional
+    AssetModel requireActiveQuantityStockAssetModelForSelection(UUID organizationId, UUID assetModelId) {
+        lockOrganization(organizationId);
+        return requireActiveForSelection(requireQuantityStockAssetModel(organizationId, assetModelId));
+    }
+
+    private AssetModel requireActiveForSelection(AssetModel model) {
+        if (model.isArchived()) {
+            throw new ValidationFailedException("An archived asset model cannot be selected. Restore it first.");
+        }
+        return model;
     }
 
     private AssetModel requireAssetModel(UUID organizationId, UUID assetModelId) {

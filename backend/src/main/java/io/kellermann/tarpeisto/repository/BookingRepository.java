@@ -22,6 +22,11 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
     List<Booking> findAllByOrganizationIdAndStatus(UUID organizationId, BookingStatus status);
 
     @Query(
-            "select b from Booking b where b.organizationId = :organizationId and b.endsAt > :from and b.startsAt < :until and (:cursor is null or b.id > :cursor) order by b.id")
-    List<Booking> listWindow(UUID organizationId, Instant from, Instant until, UUID cursor, Pageable page);
+            "select b from Booking b where b.organizationId = :organizationId and (:includeArchived = true or b.archivedAt is null) and b.endsAt > :from and b.startsAt < :until and (:cursor is null or b.id > :cursor) order by b.id")
+    List<Booking> listWindow(
+            UUID organizationId, Instant from, Instant until, UUID cursor, boolean includeArchived, Pageable page);
+
+    default List<Booking> listWindow(UUID organizationId, Instant from, Instant until, UUID cursor, Pageable page) {
+        return listWindow(organizationId, from, until, cursor, false, page);
+    }
 }

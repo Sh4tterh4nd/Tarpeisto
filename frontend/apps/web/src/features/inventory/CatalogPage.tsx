@@ -313,7 +313,10 @@ export function CatalogPage() {
   const [deleteCandidate, setDeleteCandidate] = useState<CategoryRecord>();
 
   const load = useCallback(async () => {
-    const [categoryResult, modelResult] = await Promise.all([listCategories(), listAssetModels()]);
+    const [categoryResult, modelResult] = await Promise.all([
+      listCategories(true),
+      listAssetModels(true),
+    ]);
     if (categoryResult.kind === "error") {
       setState({ status: "error", error: categoryResult.error });
       return;

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Alert from "@mui/material/Alert";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import { ArchiveButton } from "../archive/ArchiveButton";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import IconButton from "@mui/material/IconButton";
@@ -8,6 +10,7 @@ import Paper from "@mui/material/Paper";
 import Select, { type SelectChangeEvent } from "@mui/material/Select";
 import Stack from "@mui/material/Stack";
 import Switch from "@mui/material/Switch";
+import TableContainer from "@mui/material/TableContainer";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
@@ -61,6 +64,7 @@ function describeActionFailure(error: AppError): string {
  * another tab) is handled inline rather than assumed impossible.
  */
 export function UsersPage() {
+  const [includeArchived, setIncludeArchived] = useState(false);
   const [state, setState] = useState<ListState>({ status: "loading" });
   const [actionError, setActionError] = useState<string | undefined>(undefined);
   const [pendingUserId, setPendingUserId] = useState<string | undefined>(undefined);
@@ -69,13 +73,13 @@ export function UsersPage() {
 
   const load = useCallback(async () => {
     setState({ status: "loading" });
-    const result = await listUsers();
+    const result = await listUsers(includeArchived);
     if (result.kind === "error") {
       setState({ status: "error", error: result.error });
       return;
     }
     setState({ status: "loaded", users: result.data });
-  }, []);
+  }, [includeArchived]);
 
   useEffect(() => {
     void (async () => {
@@ -129,6 +133,19 @@ export function UsersPage() {
         }
       />
 
+      <FormControlLabel
+        label="Include archived"
+        control={
+          <Switch
+            checked={includeArchived}
+            onChange={(event) => setIncludeArchived(event.target.checked)}
+          />
+        }
+      />
+      <Typography variant="body2" color="text.secondary">
+        Archiving disables sign-in and revokes sessions. Restored accounts remain disabled until
+        enabled.
+      </Typography>
       {actionError ? (
         <Alert
           severity="error"
@@ -154,7 +171,7 @@ export function UsersPage() {
       ) : null}
 
       {state.status === "loaded" ? (
-        <Paper variant="outlined">
+        <TableContainer component={Paper} variant="outlined" sx={{ overflowX: "auto" }}>
           <Table>
             <TableHead>
               <TableRow>
@@ -164,6 +181,7 @@ export function UsersPage() {
                 <TableCell>Role</TableCell>
                 <TableCell>Enabled</TableCell>
                 <TableCell>External identities</TableCell>
+                <TableCell>Archive</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -178,7 +196,7 @@ export function UsersPage() {
                       onChange={(event: SelectChangeEvent) =>
                         void handleRoleChange(user, event.target.value as Role)
                       }
-                      disabled={pendingUserId === user.id}
+                      disabled={pendingUserId === user.id || user.archived}
                       size="small"
                       aria-label={`Role for ${user.username}`}
                     >
@@ -193,23 +211,34 @@ export function UsersPage() {
                     <Switch
                       checked={user.enabled}
                       onChange={(event) => void handleEnabledChange(user, event.target.checked)}
-                      disabled={pendingUserId === user.id}
+                      disabled={pendingUserId === user.id || user.archived}
                       slotProps={{ input: { "aria-label": `Enabled for ${user.username}` } }}
                     />
                   </TableCell>
                   <TableCell>
                     <IconButton
                       aria-label={`Manage external identities for ${user.username}`}
+                      disabled={user.archived}
                       onClick={() => setIdentitiesUser(user)}
                     >
                       <BadgeIcon />
                     </IconButton>
                   </TableCell>
+                  <TableCell>
+                    <ArchiveButton
+                      kind="user"
+                      id={user.id}
+                      archived={user.archived ?? false}
+                      version={user.version ?? 0}
+                      label="user"
+                      onChanged={load}
+                    />
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-        </Paper>
+        </TableContainer>
       ) : null}
 
       <CreateUserDialog

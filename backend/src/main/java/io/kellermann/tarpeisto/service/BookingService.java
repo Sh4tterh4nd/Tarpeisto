@@ -66,11 +66,19 @@ public class BookingService {
 
     @Transactional(readOnly = true)
     public List<BookingView> list(TarpeistoPrincipal p, Instant from, Instant until, UUID cursor, int limit) {
+        return list(p, from, until, cursor, limit, false);
+    }
+
+    @Transactional(readOnly = true)
+    public List<BookingView> list(
+            TarpeistoPrincipal p, Instant from, Instant until, UUID cursor, int limit, boolean includeArchived) {
         if (p != null) p.requirePermanent();
         auth(p);
         if (limit < 1 || limit > 100 || !from.isBefore(until))
             throw new ValidationFailedException("Select a valid date window and a limit from 1 to 100.");
-        return bookings.listWindow(p.organizationId(), from, until, cursor, PageRequest.of(0, limit)).stream()
+        return bookings
+                .listWindow(p.organizationId(), from, until, cursor, includeArchived, PageRequest.of(0, limit))
+                .stream()
                 .map(b -> view(p.organizationId(), b))
                 .toList();
     }
@@ -255,6 +263,12 @@ public class BookingService {
                     || stockId == null
                     || stocks.findByIdAndOrganizationId(stockId, org).isEmpty())
                 throw new ValidationFailedException("Select a consumable source in this organization.");
+            var balance = stocks.findByIdAndOrganizationId(stockId, org).orElseThrow();
+            var model = models.findByIdAndOrganizationId(balance.getAssetModelId(), org)
+                    .orElseThrow();
+            if (balance.isArchived() || model.isArchived())
+                throw new ValidationFailedException(
+                        "Restore archived consumable stock and its model before selecting it.");
             return;
         }
         if (stockId != null || assetId == null || qty.compareTo(BigDecimal.ONE) != 0)
@@ -296,7 +310,8 @@ public class BookingService {
                                 l.getConsumableStockId(),
                                 l.getQuantity(),
                                 l.getVersion()))
-                        .toList());
+                        .toList(),
+                b.isArchived());
     }
 
     private Booking requireBooking(UUID org, UUID id) {

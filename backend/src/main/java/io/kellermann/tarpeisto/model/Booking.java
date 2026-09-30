@@ -59,6 +59,13 @@ public class Booking {
     @Column(name = "updated_at")
     private Instant updatedAt;
 
+    @Column(name = "archived_at")
+    private Instant archivedAt;
+
+    public boolean isArchived() {
+        return archivedAt != null;
+    }
+
     @Version
     @Column(name = "version")
     private long version;

@@ -18,6 +18,7 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { Link as RouterLink, useParams } from "react-router-dom";
 import { PageHeading } from "@tarpeisto/shared-ui";
+import { ArchiveButton } from "../archive/ArchiveButton";
 import { useSession } from "../identity/useSession";
 import {
   listAssetModels,
@@ -492,7 +493,18 @@ export function EventDetailPage() {
             label={booking.status.replaceAll("_", " ")}
             color={booking.status === "RESERVED" ? "success" : "default"}
           />
-          {booking.status === "REVIEW_REQUIRED" ? (
+          {booking.archived ? <Chip label="Archived" /> : null}
+          {canMutate && booking.status === "COMPLETED" ? (
+            <ArchiveButton
+              kind="booking"
+              id={booking.id}
+              archived={booking.archived ?? false}
+              version={booking.version}
+              label="event"
+              onChanged={load}
+            />
+          ) : null}
+          {canMutate && booking.status === "REVIEW_REQUIRED" ? (
             <Button component={RouterLink} to="/review" size="small">
               Review findings
             </Button>

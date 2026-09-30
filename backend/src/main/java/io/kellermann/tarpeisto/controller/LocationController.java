@@ -20,8 +20,12 @@ public class LocationController {
     }
 
     @GetMapping
-    public List<LocationResponse> list(@AuthenticationPrincipal TarpeistoPrincipal p) {
-        return service.list(p).stream().map(LocationResponse::from).toList();
+    public List<LocationResponse> list(
+            @AuthenticationPrincipal TarpeistoPrincipal p,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "false") boolean includeArchived) {
+        return service.list(p, includeArchived).stream()
+                .map(LocationResponse::from)
+                .toList();
     }
 
     @GetMapping("/{locationId}")

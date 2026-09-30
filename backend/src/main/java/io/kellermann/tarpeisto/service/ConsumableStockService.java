@@ -112,6 +112,12 @@ public class ConsumableStockService {
 
     @Transactional(readOnly = true)
     public List<ConsumableStockView> listByModel(TarpeistoPrincipal principal, UUID assetModelId) {
+        return listByModel(principal, assetModelId, false);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ConsumableStockView> listByModel(
+            TarpeistoPrincipal principal, UUID assetModelId, boolean includeArchived) {
         if (principal != null) principal.requirePermanent();
         requireAuthenticated(principal);
         AssetModel assetModel =
@@ -119,6 +125,7 @@ public class ConsumableStockService {
         return consumableStockRepository
                 .findAllByOrganizationIdAndAssetModelIdOrderByCreatedAtAsc(principal.organizationId(), assetModelId)
                 .stream()
+                .filter(balance -> includeArchived || !balance.isArchived())
                 .map(balance -> toView(balance, assetModel))
                 .toList();
     }
@@ -142,6 +149,7 @@ public class ConsumableStockService {
                 .findAllByOrganizationIdAndContainerAssetIdOrderByCreatedAtAsc(
                         principal.organizationId(), containerAssetId)
                 .stream()
+                .filter(balance -> !balance.isArchived())
                 .map(balance -> toView(
                         balance,
                         assetModelService.requireQuantityStockAssetModel(
@@ -159,6 +167,7 @@ public class ConsumableStockService {
         return consumableStockRepository
                 .findAllByOrganizationIdAndLocationIdOrderByCreatedAtAsc(principal.organizationId(), locationId)
                 .stream()
+                .filter(balance -> !balance.isArchived())
                 .map(balance -> toView(
                         balance,
                         assetModelService.requireQuantityStockAssetModel(
@@ -186,8 +195,8 @@ public class ConsumableStockService {
         if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         lockOrganization(principal.organizationId());
-        AssetModel assetModel =
-                assetModelService.requireQuantityStockAssetModel(principal.organizationId(), assetModelId);
+        AssetModel assetModel = assetModelService.requireActiveQuantityStockAssetModelForSelection(
+                principal.organizationId(), assetModelId);
         requireContainerAsset(principal.organizationId(), containerAssetId);
         BigDecimal validQuantity = requirePositiveQuantity(quantity);
 
@@ -215,8 +224,8 @@ public class ConsumableStockService {
         if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         lockOrganization(principal.organizationId());
-        AssetModel assetModel =
-                assetModelService.requireQuantityStockAssetModel(principal.organizationId(), assetModelId);
+        AssetModel assetModel = assetModelService.requireActiveQuantityStockAssetModelForSelection(
+                principal.organizationId(), assetModelId);
         requireContainerAsset(principal.organizationId(), containerAssetId);
         BigDecimal validQuantity = requirePositiveQuantity(quantity);
 
@@ -244,8 +253,8 @@ public class ConsumableStockService {
         if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         lockOrganization(principal.organizationId());
-        AssetModel assetModel =
-                assetModelService.requireQuantityStockAssetModel(principal.organizationId(), assetModelId);
+        AssetModel assetModel = assetModelService.requireActiveQuantityStockAssetModelForSelection(
+                principal.organizationId(), assetModelId);
         requireContainerAsset(principal.organizationId(), containerAssetId);
         BigDecimal validQuantity = requirePositiveQuantity(quantity);
 
@@ -268,8 +277,8 @@ public class ConsumableStockService {
         if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         lockOrganization(principal.organizationId());
-        AssetModel assetModel =
-                assetModelService.requireQuantityStockAssetModel(principal.organizationId(), assetModelId);
+        AssetModel assetModel = assetModelService.requireActiveQuantityStockAssetModelForSelection(
+                principal.organizationId(), assetModelId);
         requireContainerAsset(principal.organizationId(), containerAssetId);
         BigDecimal validQuantity = requirePositiveQuantity(quantity);
 
@@ -302,8 +311,8 @@ public class ConsumableStockService {
         if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         lockOrganization(principal.organizationId());
-        AssetModel assetModel =
-                assetModelService.requireQuantityStockAssetModel(principal.organizationId(), assetModelId);
+        AssetModel assetModel = assetModelService.requireActiveQuantityStockAssetModelForSelection(
+                principal.organizationId(), assetModelId);
         if (sourceContainerAssetId.equals(destinationContainerAssetId)) {
             throw new ValidationFailedException("Cannot transfer stock to the same stock place.");
         }
@@ -375,7 +384,9 @@ public class ConsumableStockService {
                 null,
                 newSourceQuantity,
                 lock.source().createdAt(),
-                now);
+                now,
+                false,
+                lock.source().version() + 1);
         ConsumableStockView destinationView = new ConsumableStockView(
                 lock.destination().balanceId(),
                 assetModelId,
@@ -387,7 +398,9 @@ public class ConsumableStockService {
                 null,
                 newDestinationQuantity,
                 lock.destination().createdAt(),
-                now);
+                now,
+                false,
+                lock.destination().version() + 1);
         return new StockTransferView(sourceView, destinationView);
     }
 
@@ -415,8 +428,8 @@ public class ConsumableStockService {
         if (explicitReason == null || explicitReason.isBlank()) {
             throw new ValidationFailedException("An adjustment requires an explicit reason.");
         }
-        AssetModel assetModel =
-                assetModelService.requireQuantityStockAssetModel(principal.organizationId(), assetModelId);
+        AssetModel assetModel = assetModelService.requireActiveQuantityStockAssetModelForSelection(
+                principal.organizationId(), assetModelId);
         requireContainerAsset(principal.organizationId(), containerAssetId);
         BigDecimal validDelta = requireNonZeroValidScale(delta);
         if (reason == StockMovementReason.AUDIT_ADJUSTMENT)
@@ -449,7 +462,8 @@ public class ConsumableStockService {
         if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         lockOrganization(principal.organizationId());
-        AssetModel model = assetModelService.requireQuantityStockAssetModel(principal.organizationId(), assetModelId);
+        AssetModel model = assetModelService.requireActiveQuantityStockAssetModelForSelection(
+                principal.organizationId(), assetModelId);
         if (reason == StockMovementReason.AUDIT_ADJUSTMENT)
             requireActiveAudit(principal.organizationId(), auditReferenceId, containerAssetId);
         StockPlace place = requirePlace(principal.organizationId(), containerAssetId, locationId);
@@ -519,7 +533,8 @@ public class ConsumableStockService {
         if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         lockOrganization(principal.organizationId());
-        AssetModel model = assetModelService.requireQuantityStockAssetModel(principal.organizationId(), assetModelId);
+        AssetModel model = assetModelService.requireActiveQuantityStockAssetModelForSelection(
+                principal.organizationId(), assetModelId);
         StockPlace source = requirePlace(principal.organizationId(), sourceContainerAssetId, sourceLocationId);
         StockPlace destination =
                 requirePlace(principal.organizationId(), destinationContainerAssetId, destinationLocationId);
@@ -570,7 +585,8 @@ public class ConsumableStockService {
                 assetModelId,
                 Map.of("quantity", amount.toPlainString()));
         return new StockTransferView(
-                placeView(lock.source(), model, source), placeView(lock.destination(), model, destination));
+                placeView(lock.source().after(sourceAfter, now), model, source),
+                placeView(lock.destination().after(destinationAfter, now), model, destination));
     }
 
     @Transactional(readOnly = true)
@@ -587,7 +603,8 @@ public class ConsumableStockService {
         if (principal != null) principal.requirePermanent();
         requireAuthenticated(principal);
         return assetModelRepository.findAllByOrganizationIdOrderByNameAsc(principal.organizationId()).stream()
-                .filter(model -> model.isQuantityTracked() && model.getLowStockThreshold() != null)
+                .filter(model ->
+                        !model.isArchived() && model.isQuantityTracked() && model.getLowStockThreshold() != null)
                 .map(this::toSummary)
                 .filter(AssetModelStockSummaryView::lowStock)
                 .toList();
@@ -601,6 +618,8 @@ public class ConsumableStockService {
     @Transactional
     public void issueForCheckout(TarpeistoPrincipal principal, UUID balanceId, BigDecimal quantity, UUID bookingId) {
         if (principal != null) principal.requirePermanent();
+        requireAuthenticated(principal);
+        lockOrganization(principal.organizationId());
         moveForEvent(principal, balanceId, quantity.negate(), StockMovementReason.EVENT_ISSUE, bookingId);
     }
 
@@ -613,6 +632,8 @@ public class ConsumableStockService {
             UUID destinationContainerAssetId,
             UUID destinationLocationId) {
         if (principal != null) principal.requirePermanent();
+        requireAuthenticated(principal);
+        lockOrganization(principal.organizationId());
         moveForEvent(
                 principal,
                 balanceId,
@@ -651,8 +672,8 @@ public class ConsumableStockService {
         }
         BigDecimal valid = requireNonZeroValidScale(delta);
         ConsumableStock balance = requireBalance(principal.organizationId(), balanceId);
-        AssetModel model =
-                assetModelService.requireQuantityStockAssetModel(principal.organizationId(), balance.getAssetModelId());
+        AssetModel model = assetModelService.requireActiveQuantityStockAssetModelForSelection(
+                principal.organizationId(), balance.getAssetModelId());
         BalanceState result = ledgerRepository
                 .applyDeltaToPlace(principal.organizationId(), model.getId(), place, valid, clock.instant())
                 .orElseThrow(() -> new InsufficientStockException("Insufficient stock for this event."));
@@ -688,6 +709,7 @@ public class ConsumableStockService {
                 .findAllByOrganizationIdAndAssetModelIdOrderByCreatedAtAsc(
                         assetModel.getOrganizationId(), assetModel.getId())
                 .stream()
+                .filter(balance -> !balance.isArchived())
                 .map(ConsumableStock::getQuantity)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         boolean isLow =
@@ -753,7 +775,9 @@ public class ConsumableStockService {
                 null,
                 result.quantity(),
                 result.createdAt(),
-                result.updatedAt());
+                result.updatedAt(),
+                false,
+                result.version());
     }
 
     private ConsumableStockView applyPlaceMovement(
@@ -828,7 +852,9 @@ public class ConsumableStockService {
                     l.getName(),
                     result.quantity(),
                     result.createdAt(),
-                    result.updatedAt());
+                    result.updatedAt(),
+                    false,
+                    result.version());
         }
         Asset a = assetRepository
                 .findByIdAndOrganizationId(place.containerAssetId(), model.getOrganizationId())
@@ -844,7 +870,9 @@ public class ConsumableStockService {
                 null,
                 result.quantity(),
                 result.createdAt(),
-                result.updatedAt());
+                result.updatedAt(),
+                false,
+                result.version());
     }
 
     private void rejectCustodyPlace(UUID org, UUID container) {
@@ -956,7 +984,9 @@ public class ConsumableStockService {
                     location.getName(),
                     balance.getQuantity(),
                     balance.getCreatedAt(),
-                    balance.getUpdatedAt());
+                    balance.getUpdatedAt(),
+                    balance.isArchived(),
+                    balance.getVersion());
         }
         Asset containerAsset = assetRepository
                 .findByIdAndOrganizationId(balance.getContainerAssetId(), balance.getOrganizationId())
@@ -972,7 +1002,9 @@ public class ConsumableStockService {
                 null,
                 balance.getQuantity(),
                 balance.getCreatedAt(),
-                balance.getUpdatedAt());
+                balance.getUpdatedAt(),
+                balance.isArchived(),
+                balance.getVersion());
     }
 
     private ConsumableStock requireBalance(UUID organizationId, UUID balanceId) {

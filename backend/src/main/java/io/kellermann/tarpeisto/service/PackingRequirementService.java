@@ -450,9 +450,15 @@ public class PackingRequirementService {
 
     @Transactional(readOnly = true)
     public List<PackingTemplateView> listTemplates(TarpeistoPrincipal p) {
+        return listTemplates(p, false);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PackingTemplateView> listTemplates(TarpeistoPrincipal p, boolean includeArchived) {
         if (p != null) p.requirePermanent();
         auth(p);
         return templates.findAllByOrganizationIdOrderByNameAsc(p.organizationId()).stream()
+                .filter(t -> includeArchived || !t.isArchived())
                 .map(t -> templateView(p.organizationId(), t))
                 .toList();
     }

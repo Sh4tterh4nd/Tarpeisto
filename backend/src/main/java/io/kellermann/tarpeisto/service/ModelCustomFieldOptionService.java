@@ -42,12 +42,19 @@ public class ModelCustomFieldOptionService {
 
     @Transactional(readOnly = true)
     public List<ModelCustomFieldOptionView> list(TarpeistoPrincipal principal, UUID assetModelId, UUID fieldId) {
+        return list(principal, assetModelId, fieldId, false);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ModelCustomFieldOptionView> list(
+            TarpeistoPrincipal principal, UUID assetModelId, UUID fieldId, boolean includeArchived) {
         if (principal != null) principal.requirePermanent();
         requireAuthenticated(principal);
         modelCustomFieldService.requireFieldForOptionAccess(principal.organizationId(), assetModelId, fieldId);
         return optionRepository
                 .findAllByOrganizationIdAndModelCustomFieldIdOrderByDisplayOrderAsc(principal.organizationId(), fieldId)
                 .stream()
+                .filter(row -> includeArchived || !row.isArchived())
                 .map(ModelCustomFieldOptionView::from)
                 .toList();
     }

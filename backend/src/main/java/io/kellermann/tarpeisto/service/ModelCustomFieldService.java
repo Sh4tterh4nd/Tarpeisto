@@ -53,6 +53,11 @@ public class ModelCustomFieldService {
 
     @Transactional(readOnly = true)
     public List<ModelCustomFieldView> list(TarpeistoPrincipal principal, UUID assetModelId) {
+        return list(principal, assetModelId, false);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ModelCustomFieldView> list(TarpeistoPrincipal principal, UUID assetModelId, boolean includeArchived) {
         if (principal != null) principal.requirePermanent();
         requireAuthenticated(principal);
         // A field list is meaningful even for an archived model (historical review), so this does
@@ -62,6 +67,7 @@ public class ModelCustomFieldService {
         return modelCustomFieldRepository
                 .findAllByOrganizationIdAndAssetModelIdOrderByDisplayOrderAsc(principal.organizationId(), assetModelId)
                 .stream()
+                .filter(row -> includeArchived || !row.isArchived())
                 .map(ModelCustomFieldView::from)
                 .toList();
     }

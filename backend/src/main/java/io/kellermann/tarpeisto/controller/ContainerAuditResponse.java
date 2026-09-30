@@ -14,7 +14,9 @@ public record ContainerAuditResponse(
         List<AuditExpectedRequirementResponse> expectedRequirements,
         List<AuditScanResponse> scans,
         List<AuditFindingResponse> findings,
-        List<String> blockingReasons) {
+        List<String> blockingReasons,
+        boolean archived,
+        long archiveVersion) {
     static ContainerAuditResponse from(ContainerAuditView v) {
         return new ContainerAuditResponse(
                 v.id(),
@@ -28,6 +30,8 @@ public record ContainerAuditResponse(
                         .toList(),
                 v.scans().stream().map(AuditScanResponse::from).toList(),
                 v.findings().stream().map(AuditFindingResponse::from).toList(),
-                v.blockingReasons());
+                v.blockingReasons(),
+                v.archived(),
+                v.archiveVersion());
     }
 }

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import AddLocationAltOutlinedIcon from "@mui/icons-material/AddLocationAltOutlined";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Switch from "@mui/material/Switch";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import Dialog from "@mui/material/Dialog";
@@ -54,22 +56,27 @@ function LocationStock({ locationId }: { locationId: string }) {
 export function LocationsPage() {
   const { role } = useSession();
   const canManage = role === "OWNER" || role === "DEPUTY";
+  const [includeArchived, setIncludeArchived] = useState(false);
   const [locations, setLocations] = useState<LocationRecord[]>();
   const [error, setError] = useState<string>();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<LocationRecord>();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [historicalParent, setHistoricalParent] = useState<LocationRecord>();
   const [parentLocationId, setParentLocationId] = useState("");
-  const load = useCallback(async (isCurrent: () => boolean = () => true) => {
-    const result = await listLocations();
-    if (!isCurrent()) return;
-    if (result.kind === "error") setError(errorMessage(result.error));
-    else {
-      setLocations(result.data);
-      setError(undefined);
-    }
-  }, []);
+  const load = useCallback(
+    async (isCurrent: () => boolean = () => true) => {
+      const result = await listLocations(includeArchived);
+      if (!isCurrent()) return;
+      if (result.kind === "error") setError(errorMessage(result.error));
+      else {
+        setLocations(result.data);
+        setError(undefined);
+      }
+    },
+    [includeArchived],
+  );
   useEffect(() => {
     let stale = false;
     void (async () => {
@@ -109,6 +116,18 @@ export function LocationsPage() {
     setName(location.name);
     setDescription(location.description ?? "");
     setParentLocationId(location.parentLocationId ?? "");
+    setHistoricalParent(undefined);
+    if (
+      location.parentLocationId &&
+      !locations?.some((parent) => parent.id === location.parentLocationId)
+    ) {
+      void listLocations(true).then((result) => {
+        if (result.kind === "ok")
+          setHistoricalParent(
+            result.data.find((parent) => parent.id === location.parentLocationId),
+          );
+      });
+    }
     setOpen(true);
   }
   async function toggleArchive(location: LocationRecord) {
@@ -118,6 +137,15 @@ export function LocationsPage() {
   }
   return (
     <Stack spacing={3}>
+      <FormControlLabel
+        label="Include archived"
+        control={
+          <Switch
+            checked={includeArchived}
+            onChange={(event) => setIncludeArchived(event.target.checked)}
+          />
+        }
+      />
       <PageHeading
         title="Locations"
         description="Physical places, arranged as a breadcrumb hierarchy."
@@ -230,8 +258,19 @@ export function LocationsPage() {
                 onChange={(event) => setParentLocationId(event.target.value)}
               >
                 <MenuItem value="">Top level</MenuItem>
+                {editing?.parentLocationId === parentLocationId &&
+                parentLocationId &&
+                !locations?.some((parent) => parent.id === parentLocationId) ? (
+                  <MenuItem value={parentLocationId}>
+                    {historicalParent?.effectivePath
+                      ? `${historicalParent.effectivePath} (archived)`
+                      : "Loading current parent..."}
+                  </MenuItem>
+                ) : null}
                 {locations
-                  ?.filter((location) => !location.archived)
+                  ?.filter(
+                    (location) => !location.archived || location.id === editing?.parentLocationId,
+                  )
                   .filter((location) => location.id !== editing?.id)
                   .map((location) => (
                     <MenuItem key={location.id} value={location.id}>

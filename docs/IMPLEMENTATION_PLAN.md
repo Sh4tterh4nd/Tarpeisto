@@ -788,6 +788,7 @@ This focused milestone improves established inventory workflows without changing
 - Archive-safe pickers and references
 - Explicit archived filters
 - No loss of historical labels in event/audit displays
+- Zero-balance and completed-event/audit eligibility follows specification section 25. Completed audits use separate archive metadata; user restoration leaves the account disabled until explicitly enabled.
 
 ### 18.2 Search
 
@@ -807,7 +808,7 @@ This focused milestone improves established inventory workflows without changing
 - In repair
 - Metadata incomplete
 - Containers incomplete/unavailable
-- Consumables below low-stock threshold
+- Consumables at or below the model's low-stock threshold across active on-hand balances
 
 ### 18.4 Data exports
 
@@ -817,6 +818,7 @@ This focused milestone improves established inventory workflows without changing
 - Event manifest download
 - Audit result download
 - Activity/history export if required
+- Reporting exports read every organization-scoped row through bounded queries, preserve exact quantities/history and protect textual spreadsheet cells. They are not a database/media backup replacement.
 
 ### 18.5 Exit criteria
 

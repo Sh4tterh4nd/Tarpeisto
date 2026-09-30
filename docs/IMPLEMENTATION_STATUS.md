@@ -31,7 +31,8 @@ Read it together with [`DEVELOPMENT_POLICIES.md`](DEVELOPMENT_POLICIES.md) and t
 | QoL     | Inventory navigation, browsing, exact assignment, layouts and safer catalog UX  | Complete, verified                                                                     |
 | 9.2-9.3 | Persistent scan outbox and queued audit photographs                             | Complete, automated verification passed                                                |
 | 12      | Scoped temporary volunteer access and persistent permanent sign-in              | Complete, automated verification passed                                                |
-| 13-14   | Archive, search, dashboard, exports and hardening                                | Not started                                                                            |
+| 13      | Archive, bounded search, operational workboard and complete CSV reports          | Complete, automated verification passed                                                |
+| 14      | Production hardening and first stable release                                   | Not started                                                                            |
 
 Verified at the Phase 8 checkpoint:
 
@@ -131,6 +132,37 @@ Verified at the Phase 12 checkpoint:
   cookies and session rows retain their prior lifetime. Physical phone/camera acceptance remains
   manual.
 
+Verified at the Phase 13 checkpoint:
+
+- Backend: **519 tests in 69 suites, 0 failures, errors or skips**, with `spotlessCheck check`
+  passing against PostgreSQL. Archive checks cover zero stock, active operation dependencies,
+  independent tenant boundaries, concurrent local-Owner protection, retry versions, closed event
+  accounting and immutable audit history. Nine report checks also pass after the final contract-only
+  CSV response annotation change.
+- Frontend: **213 unit tests, 0 failures** (195 web in 42 files, 11 api-client, 7 shared-ui), with
+  `format:check`, `lint`, workspace typechecks and production PWA build passing. All **38 Playwright
+  tests pass** across desktop and mobile browser profiles. New journeys cover queue continuation,
+  report retry/download bytes, archive/restore, preserved model sorting and filter continuations,
+  and explicit account enabling after restoration.
+- Live PostgreSQL checks traversed 605 serialized units without duplicates, exercised mutable
+  cursor anchors, literal wildcard escaping, active string-field lookup and recursive location
+  paths. Inventory CSV exported 609 model/asset rows across the 500-row boundary; the stock exports
+  retained exact decimal quantities, and audit CSV retained scans, undo, findings and appended
+  resolutions. The four export endpoints return UTF-8 CSV successfully. Live desktop/mobile
+  profile renders of workboard, reports, asset filters, stock and users have no page overflow or
+  browser errors; these are not physical phone or printer acceptance.
+- The workboard provides eight organization-scoped action queues. Normal browsing and new
+  selections exclude archives, while detail/history views preserve names. Completed audits use a
+  separate archive record; later physical changes invalidate verification without reopening
+  archived operational history. Restored permanent accounts remain disabled.
+- The captured OpenAPI document describes the new filters, archive versions, queues and binary CSV
+  downloads; regeneration produces no drift. `jibBuildTar` succeeds with the matching frontend
+  embedded. The matching image applies additive V20 at startup during the normal backed-up upgrade;
+  V1-V19 remain unchanged.
+- Optional activity/history CSV remains deferred. The four required reporting exports are complete;
+  PostgreSQL and media backups remain necessary. Container queue counts reuse the existing packing
+  and reservation evaluator, whose inventory snapshots need production-volume profiling in Phase 14.
+
 ## 2. How to verify this yourself
 
 Docker Desktop does not work on the primary development workstation (no WSL2 backend), so backend
@@ -199,6 +231,7 @@ Migrations (Flyway owns all schema; applied migrations are immutable):
 | `V17`     | Standalone container-audit batches                                                                                         |
 | `V18`     | Immutable finding-linked audit evidence, tenant-safe associations and source-operation linkage                             |
 | `V19`     | Tenant-owned fixed-expiry invitations, attributable volunteer sessions and credential/membership-free temporary users      |
+| `V20`     | Stock/user/event archive state, immutable-audit archive sidecar and archived stock/account database guards                  |
 
 API surface is under `/api/v1`. The OpenAPI document at `/v3/api-docs` (enabled only under the `dev`
 profile) is the machine-readable contract; treat it as authoritative over any list here. Broadly:
@@ -377,7 +410,6 @@ exist yet, and each is documented at its call site in code.
 | Deferred                                         | Where it plugs in                                                                                         |
 | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
 | Automatic email linking toggle                   | A static environment variable, not a runtime Owner-toggled setting, because no settings store exists yet. |
-| Cross-model "metadata incomplete" dashboard view | Per-asset and per-model visibility exists; the organization-wide operational view belongs to Phase 13.    |
 
 ## 6. Known characteristics worth knowing before changing things
 
@@ -457,7 +489,7 @@ what was verified. Treat the history as a readable grouping, not a bisectable ti
 
 1. Complete remaining physical label-stock/mobile/P-touch acceptance.
 2. Perform the remaining Phase 11 physical print and camera acceptance.
-3. **Phase 13** - archive behavior, search, operational dashboards and exports.
+3. **Phase 14** - security, reliability, deployment rehearsals and stable-release acceptance.
 
 Phase 9.1 is implemented end to end for online operation: audits freeze direct expectations at start,
 enforce bottom-up execution, match exact requirements before model quantities, retain corrections,

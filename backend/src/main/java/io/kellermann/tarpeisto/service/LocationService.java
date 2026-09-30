@@ -49,9 +49,16 @@ public class LocationService {
 
     @Transactional(readOnly = true)
     public List<LocationView> list(TarpeistoPrincipal principal) {
+        return list(principal, false);
+    }
+
+    @Transactional(readOnly = true)
+    public List<LocationView> list(TarpeistoPrincipal principal, boolean includeArchived) {
         if (principal != null) principal.requirePermanent();
         requireAuthenticated(principal);
-        return views(principal.organizationId());
+        return views(principal.organizationId()).stream()
+                .filter(row -> includeArchived || !row.archived())
+                .toList();
     }
 
     @Transactional(readOnly = true)

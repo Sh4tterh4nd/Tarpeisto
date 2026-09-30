@@ -50,9 +50,15 @@ public class CategoryService {
 
     @Transactional(readOnly = true)
     public List<CategoryView> list(TarpeistoPrincipal principal) {
+        return list(principal, false);
+    }
+
+    @Transactional(readOnly = true)
+    public List<CategoryView> list(TarpeistoPrincipal principal, boolean includeArchived) {
         if (principal != null) principal.requirePermanent();
         requireOrganizationMember(principal);
         return categoryRepository.findAllByOrganizationIdOrderByNameAsc(principal.organizationId()).stream()
+                .filter(row -> includeArchived || !row.isArchived())
                 .map(CategoryView::from)
                 .toList();
     }

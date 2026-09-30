@@ -35,8 +35,10 @@ public class AssetModelController {
     }
 
     @GetMapping
-    public List<AssetModelResponse> list(@AuthenticationPrincipal TarpeistoPrincipal principal) {
-        return assetModelService.list(principal).stream()
+    public List<AssetModelResponse> list(
+            @AuthenticationPrincipal TarpeistoPrincipal principal,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "false") boolean includeArchived) {
+        return assetModelService.list(principal, includeArchived).stream()
                 .map(AssetModelResponse::from)
                 .toList();
     }

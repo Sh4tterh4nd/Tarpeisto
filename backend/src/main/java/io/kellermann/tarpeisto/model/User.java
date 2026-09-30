@@ -50,6 +50,13 @@ public class User {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Column(name = "archived_at")
+    private Instant archivedAt;
+
+    public boolean isArchived() {
+        return archivedAt != null;
+    }
+
     @Version
     @Column(name = "version", nullable = false)
     private long version;
@@ -77,6 +84,9 @@ public class User {
     }
 
     public void enable(Instant now) {
+        if (isArchived())
+            throw new io.kellermann.tarpeisto.exception.ValidationFailedException(
+                    "Restore archived user before enabling.");
         this.enabled = true;
         this.updatedAt = Objects.requireNonNull(now, "now must not be null");
     }

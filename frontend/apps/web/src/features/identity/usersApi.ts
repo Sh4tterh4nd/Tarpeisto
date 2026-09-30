@@ -11,7 +11,11 @@ import type { Role } from "./sessionApi";
  * package's `errors.ts` for the same gap). `Required<...>` narrows the
  * generated type rather than duplicating its shape.
  */
-export type UserRecord = Required<components["schemas"]["UserResponse"]>;
+export type UserRecord = Omit<
+  Required<components["schemas"]["UserResponse"]>,
+  "archived" | "version"
+> &
+  Pick<components["schemas"]["UserResponse"], "archived" | "version">;
 export type CreateUserInput = components["schemas"]["CreateUserRequest"];
 export type ExternalIdentityRecord = Required<components["schemas"]["ExternalIdentityResponse"]>;
 export type LinkExternalIdentityInput = components["schemas"]["CreateExternalIdentityLinkRequest"];
@@ -19,9 +23,11 @@ export type LinkExternalIdentityInput = components["schemas"]["CreateExternalIde
 export type ApiResult<T> = { kind: "ok"; data: T } | { kind: "error"; error: AppError };
 
 /** GET /api/v1/users: Owner-only (spec 4.1). */
-export async function listUsers(): Promise<ApiResult<UserRecord[]>> {
+export async function listUsers(includeArchived = false): Promise<ApiResult<UserRecord[]>> {
   try {
-    const { data, error, response } = await apiClient.GET("/api/v1/users");
+    const { data, error, response } = await apiClient.GET("/api/v1/users", {
+      params: { query: { includeArchived } },
+    });
     // Read the status before the guard below narrows anything -- see the
     // note on this exact pattern in ApplicationInfoPage.tsx and sessionApi.ts.
     const status = response.status;

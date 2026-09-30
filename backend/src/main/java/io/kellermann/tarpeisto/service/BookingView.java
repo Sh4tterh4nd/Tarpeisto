@@ -19,4 +19,5 @@ public record BookingView(
         UUID currentRevisionId,
         UUID createdByUserId,
         long version,
-        List<BookingLineView> lines) {}
+        List<BookingLineView> lines,
+        boolean archived) {}

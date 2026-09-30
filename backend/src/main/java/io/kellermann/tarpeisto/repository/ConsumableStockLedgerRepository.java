@@ -1,5 +1,6 @@
 package io.kellermann.tarpeisto.repository;
 
+import io.kellermann.tarpeisto.exception.ArchiveConflictException;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -60,7 +61,12 @@ public class ConsumableStockLedgerRepository {
     }
 
     /** One balance row's identity, quantity, and timestamps, as read or locked by this repository. */
-    public record BalanceState(UUID balanceId, BigDecimal quantity, Instant createdAt, Instant updatedAt) {}
+    public record BalanceState(
+            UUID balanceId, BigDecimal quantity, Instant createdAt, Instant updatedAt, long version) {
+        public BalanceState after(BigDecimal quantity, Instant now) {
+            return new BalanceState(balanceId, quantity, createdAt, now, version + 1);
+        }
+    }
 
     /** Both sides of a transfer, locked in the canonical order documented on the class Javadoc. */
     public record TransferLock(BalanceState source, BalanceState destination) {}
@@ -96,11 +102,12 @@ public class ConsumableStockLedgerRepository {
             return applyDeltaToContainerBalance(organizationId, assetModelId, place.containerAssetId(), delta, now);
         }
         if (delta.signum() > 0) ensureLocationBalanceExists(organizationId, assetModelId, place.locationId(), now);
+        requireActivePlace(organizationId, assetModelId, place);
         return jdbcClient
                 .sql("""
                 UPDATE consumable_stock_balance SET quantity=quantity + :delta, updated_at=:now, version=version+1
                 WHERE organization_id=:organizationId AND asset_model_id=:assetModelId AND location_id=:locationId
-                  AND quantity + :delta >= 0 RETURNING id, quantity, created_at, updated_at
+                  AND archived_at IS NULL AND quantity + :delta >= 0 RETURNING id, quantity, created_at, updated_at, version
                 """)
                 .param("delta", delta)
                 .param("now", toOffsetDateTime(now))
@@ -122,14 +129,15 @@ public class ConsumableStockLedgerRepository {
     }
 
     public void setBalanceQuantity(UUID balanceId, UUID organizationId, BigDecimal quantity, Instant now) {
-        jdbcClient
+        int changed = jdbcClient
                 .sql(
-                        "UPDATE consumable_stock_balance SET quantity=:quantity,updated_at=:now,version=version+1 WHERE id=:id AND organization_id=:organizationId")
+                        "UPDATE consumable_stock_balance SET quantity=:quantity,updated_at=:now,version=version+1 WHERE id=:id AND organization_id=:organizationId AND archived_at IS NULL")
                 .param("quantity", quantity)
                 .param("now", toOffsetDateTime(now))
                 .param("id", balanceId)
                 .param("organizationId", organizationId)
                 .update();
+        if (changed != 1) throw new ArchiveConflictException("Restore archived balance before changing stock.");
     }
 
     private BalanceState ensureAndLockPlace(UUID org, UUID model, StockPlace place, Instant now) {
@@ -138,14 +146,16 @@ public class ConsumableStockLedgerRepository {
         ensureLocationBalanceExists(org, model, place.locationId(), now);
         return jdbcClient
                 .sql("""
-                SELECT id,quantity,created_at,updated_at FROM consumable_stock_balance
-                WHERE organization_id=:organizationId AND asset_model_id=:assetModelId AND location_id=:locationId FOR UPDATE
+                SELECT id,quantity,created_at,updated_at,version FROM consumable_stock_balance
+                WHERE organization_id=:organizationId AND asset_model_id=:assetModelId AND location_id=:locationId AND archived_at IS NULL FOR UPDATE
                 """)
                 .param("organizationId", org)
                 .param("assetModelId", model)
                 .param("locationId", place.locationId())
                 .query(ConsumableStockLedgerRepository::mapBalanceState)
-                .single();
+                .optional()
+                .orElseThrow(() -> new io.kellermann.tarpeisto.exception.ArchiveConflictException(
+                        "Restore archived balance before moving stock."));
     }
 
     /**
@@ -162,6 +172,7 @@ public class ConsumableStockLedgerRepository {
             // an absent balance should simply fail below rather than manufacture a zero row first.
             ensureContainerBalanceExists(organizationId, assetModelId, containerAssetId, now);
         }
+        requireActivePlace(organizationId, assetModelId, StockPlace.container(containerAssetId));
         return jdbcClient
                 .sql("""
                         UPDATE consumable_stock_balance
@@ -169,8 +180,8 @@ public class ConsumableStockLedgerRepository {
                         WHERE organization_id = :organizationId
                           AND asset_model_id = :assetModelId
                           AND container_asset_id = :containerAssetId
-                          AND quantity + :delta >= 0
-                        RETURNING id, quantity, created_at, updated_at
+                          AND archived_at IS NULL AND quantity + :delta >= 0
+                        RETURNING id, quantity, created_at, updated_at, version
                         """)
                 .param("delta", delta)
                 .param("now", toOffsetDateTime(now))
@@ -206,17 +217,18 @@ public class ConsumableStockLedgerRepository {
 
     /** Writes a new quantity for a balance already locked by this transaction (see the transfer path above). */
     public void setContainerBalanceQuantity(UUID balanceId, UUID organizationId, BigDecimal newQuantity, Instant now) {
-        jdbcClient
+        int changed = jdbcClient
                 .sql("""
                         UPDATE consumable_stock_balance
                         SET quantity = :quantity, updated_at = :now, version = version + 1
-                        WHERE id = :id AND organization_id = :organizationId
+                        WHERE id = :id AND organization_id = :organizationId AND archived_at IS NULL
                         """)
                 .param("quantity", newQuantity)
                 .param("now", toOffsetDateTime(now))
                 .param("id", balanceId)
                 .param("organizationId", organizationId)
                 .update();
+        if (changed != 1) throw new ArchiveConflictException("Restore archived balance before changing stock.");
     }
 
     private BalanceState ensureAndLockContainerBalance(
@@ -224,17 +236,19 @@ public class ConsumableStockLedgerRepository {
         ensureContainerBalanceExists(organizationId, assetModelId, containerAssetId, now);
         return jdbcClient
                 .sql("""
-                        SELECT id, quantity, created_at, updated_at FROM consumable_stock_balance
+                        SELECT id, quantity, created_at, updated_at, version FROM consumable_stock_balance
                         WHERE organization_id = :organizationId
                           AND asset_model_id = :assetModelId
-                          AND container_asset_id = :containerAssetId
+                          AND container_asset_id = :containerAssetId AND archived_at IS NULL
                         FOR UPDATE
                         """)
                 .param("organizationId", organizationId)
                 .param("assetModelId", assetModelId)
                 .param("containerAssetId", containerAssetId)
                 .query(ConsumableStockLedgerRepository::mapBalanceState)
-                .single();
+                .optional()
+                .orElseThrow(() -> new io.kellermann.tarpeisto.exception.ArchiveConflictException(
+                        "Restore archived balance before moving stock."));
     }
 
     /**
@@ -247,7 +261,8 @@ public class ConsumableStockLedgerRepository {
                 rs.getObject("id", UUID.class),
                 rs.getBigDecimal("quantity"),
                 rs.getObject("created_at", OffsetDateTime.class).toInstant(),
-                rs.getObject("updated_at", OffsetDateTime.class).toInstant());
+                rs.getObject("updated_at", OffsetDateTime.class).toInstant(),
+                rs.getLong("version"));
     }
 
     /**
@@ -291,5 +306,22 @@ public class ConsumableStockLedgerRepository {
                 .param("locationId", locationId)
                 .param("now", toOffsetDateTime(now))
                 .update();
+    }
+
+    private void requireActivePlace(UUID org, UUID model, StockPlace place) {
+        boolean archived = jdbcClient
+                .sql(
+                        "SELECT archived_at IS NOT NULL FROM consumable_stock_balance WHERE organization_id=:org AND asset_model_id=:model AND "
+                                + (place.containerAssetId() != null ? "container_asset_id" : "location_id")
+                                + "=:place FOR UPDATE")
+                .param("org", org)
+                .param("model", model)
+                .param("place", place.id())
+                .query(Boolean.class)
+                .optional()
+                .orElse(false);
+        if (archived)
+            throw new io.kellermann.tarpeisto.exception.ArchiveConflictException(
+                    "Restore archived balance before changing stock.");
     }
 }

@@ -8,6 +8,7 @@ backend/bin/
 
 # Node / pnpm
 node_modules/
+.pnpm-store/
 frontend/**/dist/
 frontend/**/.vite/
 frontend/**/coverage/

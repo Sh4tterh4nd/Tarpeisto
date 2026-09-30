@@ -75,6 +75,45 @@
         }
       }
     },
+    "/api/v1/users/{id}/archive": {
+      "put": {
+        "tags": ["archive-controller"],
+        "operationId": "changeUser",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeArchiveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArchiveResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/packing-templates/{templateId}": {
       "put": {
         "tags": ["packing-requirement-controller"],
@@ -300,6 +339,45 @@
         }
       }
     },
+    "/api/v1/consumable-stock/{id}/archive": {
+      "put": {
+        "tags": ["archive-controller"],
+        "operationId": "changeStock",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeArchiveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArchiveResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/categories/{categoryId}": {
       "put": {
         "tags": ["category-controller"],
@@ -355,6 +433,45 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/{id}/archive": {
+      "put": {
+        "tags": ["archive-controller"],
+        "operationId": "changeBooking",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeArchiveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArchiveResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -418,6 +535,45 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/BookingResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audits/{id}/archive": {
+      "put": {
+        "tags": ["archive-controller"],
+        "operationId": "changeAudit",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeArchiveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArchiveResponse"
                 }
               }
             }
@@ -1205,6 +1361,17 @@
       "get": {
         "tags": ["user-controller"],
         "operationId": "list",
+        "parameters": [
+          {
+            "name": "includeArchived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1567,6 +1734,17 @@
       "get": {
         "tags": ["packing-requirement-controller"],
         "operationId": "templates",
+        "parameters": [
+          {
+            "name": "includeArchived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1840,6 +2018,17 @@
       "get": {
         "tags": ["location-controller"],
         "operationId": "list_3",
+        "parameters": [
+          {
+            "name": "includeArchived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1990,6 +2179,17 @@
       "get": {
         "tags": ["category-controller"],
         "operationId": "list_4",
+        "parameters": [
+          {
+            "name": "includeArchived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -2119,6 +2319,15 @@
               "type": "integer",
               "format": "int32",
               "default": 50
+            }
+          },
+          {
+            "name": "includeArchived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
             }
           }
         ],
@@ -3407,6 +3616,17 @@
       "get": {
         "tags": ["asset-model-controller"],
         "operationId": "list_7",
+        "parameters": [
+          {
+            "name": "includeArchived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -3557,6 +3777,15 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "includeArchived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
           }
         ],
         "responses": {
@@ -3665,6 +3894,15 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "includeArchived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
             }
           }
         ],
@@ -4326,6 +4564,123 @@
         }
       }
     },
+    "/api/v1/reports/stock-movements.csv": {
+      "get": {
+        "tags": ["operational-report-controller"],
+        "operationId": "movements",
+        "responses": {
+          "200": {
+            "description": "UTF-8 CSV report download",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/inventory.csv": {
+      "get": {
+        "tags": ["operational-report-controller"],
+        "operationId": "inventory",
+        "responses": {
+          "200": {
+            "description": "UTF-8 CSV report download",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/consumable-balances.csv": {
+      "get": {
+        "tags": ["operational-report-controller"],
+        "operationId": "balances",
+        "responses": {
+          "200": {
+            "description": "UTF-8 CSV report download",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/audits/{auditId}.csv": {
+      "get": {
+        "tags": ["operational-report-controller"],
+        "operationId": "audit",
+        "parameters": [
+          {
+            "name": "auditId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "UTF-8 CSV report download",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/audits.csv": {
+      "get": {
+        "tags": ["operational-report-controller"],
+        "operationId": "audits",
+        "parameters": [
+          {
+            "name": "auditId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "UTF-8 CSV report download",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/packing-requirements/{id}/reservation-impact": {
       "get": {
         "tags": ["packing-requirement-controller"],
@@ -4562,10 +4917,84 @@
         }
       }
     },
+    "/api/v1/dashboard": {
+      "get": {
+        "tags": ["dashboard-controller"],
+        "operationId": "get_4",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dashboard/{queue}": {
+      "get": {
+        "tags": ["dashboard-controller"],
+        "operationId": "page",
+        "parameters": [
+          {
+            "name": "queue",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "UPCOMING_EVENTS",
+                "OUTSTANDING_CUSTODY",
+                "AUDITS",
+                "REVIEW",
+                "REPAIRS",
+                "METADATA",
+                "CONTAINERS",
+                "LOW_STOCK"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 25
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardQueueResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/consumable-stock/{balanceId}": {
       "get": {
         "tags": ["consumable-stock-controller"],
-        "operationId": "get_4",
+        "operationId": "get_5",
         "parameters": [
           {
             "name": "balanceId",
@@ -4594,7 +5023,7 @@
     "/api/v1/consumable-stock/{balanceId}/movements": {
       "get": {
         "tags": ["consumable-stock-controller"],
-        "operationId": "movements",
+        "operationId": "movements_1",
         "parameters": [
           {
             "name": "balanceId",
@@ -4616,6 +5045,112 @@
                   "items": {
                     "$ref": "#/components/schemas/StockMovementResponse"
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/consumable-stock/search": {
+      "get": {
+        "tags": ["catalog-search-controller"],
+        "operationId": "searchStock",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "locationId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "containerId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "includeArchived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "lowStock",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "minimumQuantity",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "maximumQuantity",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/StockSearchPageResponse"
                 }
               }
             }
@@ -4789,7 +5324,7 @@
     "/api/v1/audits/tasks/{taskId}": {
       "get": {
         "tags": ["audit-controller"],
-        "operationId": "get_5",
+        "operationId": "get_6",
         "parameters": [
           {
             "name": "taskId",
@@ -4917,6 +5452,100 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "includeArchived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "locationId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "condition",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["GOOD", "DAMAGED"]
+            }
+          },
+          {
+            "name": "lifecycle",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ACTIVE", "LOST", "DESTROYED", "RETIRED"]
+            }
+          },
+          {
+            "name": "bookingId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "bookingStatus",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "DRAFT",
+                "RESERVED",
+                "CHECKED_OUT",
+                "RETURNED_AUDITS_PENDING",
+                "REVIEW_REQUIRED",
+                "COMPLETED",
+                "CANCELLED"
+              ]
+            }
+          },
+          {
+            "name": "openRepair",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "auditStatus",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "metadataIncomplete",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "availability",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -4936,7 +5565,7 @@
     "/api/v1/assets/{assetId}": {
       "get": {
         "tags": ["asset-controller"],
-        "operationId": "get_6",
+        "operationId": "get_7",
         "parameters": [
           {
             "name": "assetId",
@@ -5161,6 +5790,15 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "includeArchived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
           }
         ],
         "responses": {
@@ -5209,10 +5847,101 @@
         }
       }
     },
+    "/api/v1/asset-models/search": {
+      "get": {
+        "tags": ["catalog-search-controller"],
+        "operationId": "searchModels",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "trackingMode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["SERIALIZED_ASSET", "QUANTITY_STOCK"]
+            }
+          },
+          {
+            "name": "includeArchived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "name"
+            }
+          },
+          {
+            "name": "direction",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "asc"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelSearchPageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/application": {
       "get": {
         "tags": ["application-info-controller"],
-        "operationId": "get_7",
+        "operationId": "get_8",
         "responses": {
           "200": {
             "description": "OK",
@@ -5327,6 +6056,35 @@
           }
         },
         "required": ["enabled"]
+      },
+      "ChangeArchiveRequest": {
+        "type": "object",
+        "properties": {
+          "archived": {
+            "type": "boolean"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "ArchiveResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
       },
       "PackingTemplateMutationRequest": {
         "type": "object",
@@ -5773,6 +6531,9 @@
             "items": {
               "$ref": "#/components/schemas/BookingLineResponse"
             }
+          },
+          "archived": {
+            "type": "boolean"
           }
         }
       },
@@ -6255,6 +7016,13 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -7200,6 +7968,13 @@
             "items": {
               "type": "string"
             }
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "archiveVersion": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -7560,6 +8335,13 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -7848,6 +8630,78 @@
         }
       },
       "StreamingResponseBody": {},
+      "DashboardQueueResponse": {
+        "type": "object",
+        "properties": {
+          "queue": {
+            "type": "string",
+            "enum": [
+              "UPCOMING_EVENTS",
+              "OUTSTANDING_CUSTODY",
+              "AUDITS",
+              "REVIEW",
+              "REPAIRS",
+              "METADATA",
+              "CONTAINERS",
+              "LOW_STOCK"
+            ]
+          },
+          "count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardRowResponse"
+            }
+          },
+          "nextCursor": {
+            "type": "string"
+          }
+        }
+      },
+      "DashboardResponse": {
+        "type": "object",
+        "properties": {
+          "queues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardQueueResponse"
+            }
+          }
+        }
+      },
+      "DashboardRowResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "label": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "actionLabel": {
+            "type": "string"
+          },
+          "actionPath": {
+            "type": "string"
+          },
+          "readOnly": {
+            "type": "boolean"
+          }
+        }
+      },
       "StockMovementResponse": {
         "type": "object",
         "properties": {
@@ -7902,6 +8756,76 @@
           "occurredAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "StockSearchPageResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StockSearchResponse"
+            }
+          },
+          "nextCursor": {
+            "type": "string"
+          }
+        }
+      },
+      "StockSearchResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetModelId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetModelName": {
+            "type": "string"
+          },
+          "categoryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "categoryName": {
+            "type": "string"
+          },
+          "stockUnitLabel": {
+            "type": "string"
+          },
+          "containerAssetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "locationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "placePath": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "totalOnHand": {
+            "type": "number"
+          },
+          "lowStockThreshold": {
+            "type": "number"
+          },
+          "lowStock": {
+            "type": "boolean"
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -8033,6 +8957,13 @@
           "placementVersion": {
             "type": "integer",
             "format": "int64"
+          },
+          "effectiveLocationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "placePath": {
+            "type": "string"
           }
         }
       },
@@ -8076,6 +9007,48 @@
           "changedAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "ModelSearchPageResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModelSearchResponse"
+            }
+          },
+          "nextCursor": {
+            "type": "string"
+          }
+        }
+      },
+      "ModelSearchResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "trackingMode": {
+            "type": "string"
+          },
+          "categoryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "categoryName": {
+            "type": "string"
+          },
+          "stockUnitLabel": {
+            "type": "string"
+          },
+          "archived": {
+            "type": "boolean"
           }
         }
       },

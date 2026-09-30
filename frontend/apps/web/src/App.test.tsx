@@ -15,6 +15,32 @@ vi.mock("virtual:pwa-register/react", () => ({
   }),
 }));
 
+function applicationReadFixture(url: string) {
+  if (url.includes("/api/v1/dashboard"))
+    return {
+      queues: [
+        "UPCOMING_EVENTS",
+        "OUTSTANDING_CUSTODY",
+        "AUDITS",
+        "REVIEW",
+        "REPAIRS",
+        "METADATA",
+        "CONTAINERS",
+        "LOW_STOCK",
+      ].map((queue) => ({ queue, count: 0, items: [] })),
+    };
+  if (url.includes("/api/v1/assets") || url.includes("/api/v1/asset-models/search"))
+    return { items: [], nextCursor: undefined };
+  if (
+    ["/api/v1/categories", "/api/v1/locations", "/api/v1/bookings"].some((path) =>
+      url.includes(path),
+    )
+  )
+    return [];
+  if (url.includes("/api/v1/setup")) return { setupRequired: false };
+  return { applicationName: "Tarpeisto", version: "0.1.0", oidcConfigured: false };
+}
+
 describe("App shell", () => {
   beforeEach(() => {
     global.fetch = vi.fn().mockImplementation((input: RequestInfo | URL) => {
@@ -27,11 +53,7 @@ describe("App shell", () => {
             organizationId: "22222222-2222-2222-2222-222222222222",
             role: "OWNER",
           }
-        : url.includes("/api/v1/assets")
-          ? { items: [], nextCursor: undefined }
-          : url.includes("/api/v1/categories")
-            ? []
-            : { applicationName: "Tarpeisto", version: "0.1.0", oidcConfigured: false };
+        : applicationReadFixture(url);
       return Promise.resolve(
         new Response(JSON.stringify(body), {
           status: 200,
@@ -45,9 +67,9 @@ describe("App shell", () => {
     vi.restoreAllMocks();
   });
 
-  it("renders the app title, a connectivity indicator, and the home route", async () => {
+  it("renders the public status page, app title and connectivity indicator", async () => {
     render(
-      <MemoryRouter initialEntries={["/"]}>
+      <MemoryRouter initialEntries={["/status"]}>
         <App />
       </MemoryRouter>,
     );
@@ -126,10 +148,10 @@ describe("App shell", () => {
           { status: 200, headers: { "content-type": "application/json" } },
         );
       }
-      return new Response(
-        JSON.stringify({ applicationName: "Tarpeisto", version: "0.1.0", oidcConfigured: false }),
-        { status: 200, headers: { "content-type": "application/json" } },
-      );
+      return new Response(JSON.stringify(applicationReadFixture(url)), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
     });
 
     const user = userEvent.setup();

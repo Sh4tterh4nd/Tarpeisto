@@ -10,6 +10,10 @@ import { UsersPage } from "../features/identity/UsersPage";
 import { NotFoundPage } from "./NotFoundPage";
 import { VolunteerJoinPage } from "../features/temporary-access/VolunteerJoinPage";
 import { VolunteerDashboardPage } from "../features/temporary-access/VolunteerDashboardPage";
+import { DashboardPage } from "../features/dashboard/DashboardPage";
+import { ReportsPage } from "../features/reports/ReportsPage";
+import { ModelSearchPage } from "../features/inventory/ModelSearchPage";
+import { StockSearchPage } from "../features/inventory/StockSearchPage";
 
 const CatalogPage = lazy(() =>
   import("../features/inventory/CatalogPage").then((module) => ({ default: module.CatalogPage })),
@@ -76,7 +80,23 @@ export function AppRoutes() {
           </RequireRole>
         }
       />
-      <Route path="/" element={<ApplicationInfoPage />} />
+      <Route path="/status" element={<ApplicationInfoPage />} />
+      <Route
+        path="/"
+        element={
+          <RequireRole allow={[...INVENTORY_ROLES]}>
+            <DashboardPage />
+          </RequireRole>
+        }
+      />
+      <Route
+        path="/reports"
+        element={
+          <RequireRole allow={[...INVENTORY_ROLES]}>
+            <ReportsPage />
+          </RequireRole>
+        }
+      />
       <Route
         path="/scan"
         element={
@@ -139,11 +159,31 @@ export function AppRoutes() {
         }
       />
       <Route
+        path="/inventory/catalog"
+        element={
+          <RequireRole allow={["OWNER", "DEPUTY"]}>
+            <Suspense fallback={<LoadingPage />}>
+              <CatalogPage />
+            </Suspense>
+          </RequireRole>
+        }
+      />
+      <Route
+        path="/inventory/stock"
+        element={
+          <RequireRole allow={[...INVENTORY_ROLES]}>
+            <Suspense fallback={<LoadingPage />}>
+              <StockSearchPage />
+            </Suspense>
+          </RequireRole>
+        }
+      />
+      <Route
         path="/inventory"
         element={
           <RequireRole allow={[...INVENTORY_ROLES]}>
             <Suspense fallback={<LoadingPage />}>
-              <CatalogPage />
+              <ModelSearchPage />
             </Suspense>
           </RequireRole>
         }

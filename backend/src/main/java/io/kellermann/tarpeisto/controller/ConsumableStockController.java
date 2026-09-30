@@ -34,8 +34,10 @@ public class ConsumableStockController {
 
     @GetMapping("/asset-models/{assetModelId}/consumable-stock")
     public List<ConsumableStockResponse> listByModel(
-            @AuthenticationPrincipal TarpeistoPrincipal principal, @PathVariable UUID assetModelId) {
-        return consumableStockService.listByModel(principal, assetModelId).stream()
+            @AuthenticationPrincipal TarpeistoPrincipal principal,
+            @PathVariable UUID assetModelId,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "false") boolean includeArchived) {
+        return consumableStockService.listByModel(principal, assetModelId, includeArchived).stream()
                 .map(ConsumableStockResponse::from)
                 .toList();
     }

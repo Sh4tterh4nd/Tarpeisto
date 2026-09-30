@@ -4,7 +4,14 @@ import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AssetsPage } from "./AssetsPage";
 
-const api = vi.hoisted(() => ({ listCategories: vi.fn(), searchAssets: vi.fn() }));
+const api = vi.hoisted(() => ({
+  listCategories: vi.fn(),
+  listLocations: vi.fn(),
+  searchAssets: vi.fn(),
+}));
+vi.mock("../events/eventsApi", () => ({
+  listBookings: vi.fn().mockResolvedValue({ kind: "ok", data: [] }),
+}));
 vi.mock("./inventoryApi", () => ({ ...api, errorMessage: (error: Error) => error.message }));
 
 const ok = (data: unknown) => ({ kind: "ok" as const, data });
@@ -12,6 +19,7 @@ const ok = (data: unknown) => ({ kind: "ok" as const, data });
 describe("AssetsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    api.listLocations.mockResolvedValue(ok([]));
     api.listCategories.mockResolvedValue(
       ok([{ id: "lighting", name: "Lighting", color: "#123456", archived: false }]),
     );

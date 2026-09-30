@@ -77,6 +77,14 @@ invitation on an audit task. Share the creation-only QR/link immediately; only i
 so an existing invitation cannot reveal its link again. Revoking the invitation ends all resulting
 volunteer grants. Keep invitation links out of logs, screenshots, and public documents.
 
+The matching operational archive, workboard, search, and report image applies Flyway through V20
+at startup during the normal backed-up upgrade. V20 adds stock/user/event archive state and a
+separate archive record for completed audits;
+completed audit facts and stock movement history remain intact. Archived users cannot sign in, and
+restoring an account leaves it disabled until an Owner explicitly enables it. Report CSV downloads
+include archived records and retained history; keep using PostgreSQL and object-storage backups for
+disaster recovery.
+
 ## Traefik deployment
 
 If Traefik owns the public endpoint, use `docker-stack.traefik.example.yml` as the starting point

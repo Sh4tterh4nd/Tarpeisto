@@ -150,20 +150,22 @@ export function PackingPanel({
   const activeTemplates = templates.filter((template) => !template.archived);
   const visibleModels = useMemo(
     () =>
-      models.filter((model) =>
-        type === "CONSUMABLE_QUANTITY"
-          ? model.trackingMode === "QUANTITY_STOCK"
-          : model.trackingMode === "SERIALIZED_ASSET",
+      models.filter(
+        (model) =>
+          (!model.archived || model.id === assetModelId) &&
+          (type === "CONSUMABLE_QUANTITY"
+            ? model.trackingMode === "QUANTITY_STOCK"
+            : model.trackingMode === "SERIALIZED_ASSET"),
       ),
-    [models, type],
+    [models, type, assetModelId],
   );
 
   const reload = useCallback(
     async (isCurrent: () => boolean = () => true) => {
       const [packed, templateResult, modelResult] = await Promise.all([
         listPackingRequirements(containerAssetId),
-        listPackingTemplates(),
-        listAssetModels(),
+        listPackingTemplates(true),
+        listAssetModels(true),
       ]);
       if (!isCurrent()) return;
       if (packed.kind === "error") {
@@ -195,7 +197,7 @@ export function PackingPanel({
       if (observationsChanged) setObservations(nextObservations);
       setRequirements(packed.data);
       if (templateResult.kind === "ok") setTemplates(templateResult.data);
-      if (modelResult.kind === "ok") setModels(modelResult.data.filter((model) => !model.archived));
+      if (modelResult.kind === "ok") setModels(modelResult.data);
       if (previewResult.kind === "ok") setPreview(previewResult.data);
     },
     [containerAssetId],

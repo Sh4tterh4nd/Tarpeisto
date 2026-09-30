@@ -49,8 +49,9 @@ public class BookingController {
             @RequestParam(defaultValue = "2000-01-01T00:00:00Z") Instant from,
             @RequestParam(defaultValue = "2100-01-01T00:00:00Z") Instant until,
             @RequestParam(required = false) UUID cursor,
-            @RequestParam(defaultValue = "50") int limit) {
-        return bookings.list(principal, from, until, cursor, limit).stream()
+            @RequestParam(defaultValue = "50") int limit,
+            @RequestParam(defaultValue = "false") boolean includeArchived) {
+        return bookings.list(principal, from, until, cursor, limit, includeArchived).stream()
                 .map(BookingResponse::from)
                 .toList();
     }

@@ -13,7 +13,9 @@ public record UserResponse(
         String email,
         boolean enabled,
         OrganizationRole role,
-        Instant createdAt) {
+        Instant createdAt,
+        boolean archived,
+        long version) {
 
     public static UserResponse from(UserSummaryView view) {
         return new UserResponse(
@@ -23,6 +25,8 @@ public record UserResponse(
                 view.email(),
                 view.enabled(),
                 view.role(),
-                view.createdAt());
+                view.createdAt(),
+                view.archived(),
+                view.version());
     }
 }

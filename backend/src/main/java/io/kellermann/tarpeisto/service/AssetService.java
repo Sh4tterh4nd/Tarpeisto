@@ -153,6 +153,31 @@ public class AssetService {
             String direction,
             int limit,
             String cursor) {
+        return search(
+                principal,
+                query,
+                category,
+                containerOnly,
+                includeInactive,
+                sort,
+                direction,
+                limit,
+                cursor,
+                io.kellermann.tarpeisto.model.AssetSearchFilter.defaults(false));
+    }
+
+    @Transactional(readOnly = true)
+    public AssetSearchPageView search(
+            TarpeistoPrincipal principal,
+            String query,
+            String category,
+            Boolean containerOnly,
+            boolean includeInactive,
+            String sort,
+            String direction,
+            int limit,
+            String cursor,
+            io.kellermann.tarpeisto.model.AssetSearchFilter filter) {
         if (principal != null) principal.requirePermanent();
         requireAuthenticated(principal);
         if (limit < 1 || limit > 100) {
@@ -175,10 +200,28 @@ public class AssetService {
             throw new ValidationFailedException("direction must be asc or desc.");
         }
         boolean descending = "desc".equalsIgnoreCase(direction);
-        UUID anchor = parseCursor(cursor, property, descending);
+        String normalized = query == null || query.isBlank() ? null : query.trim();
+        if (normalized != null && normalized.length() > 256) throw new ValidationFailedException("query is too long.");
+        if (filter.auditStatus() != null
+                && !List.of("READY", "BLOCKED", "IN_PROGRESS", "COMPLETED").contains(filter.auditStatus()))
+            throw new ValidationFailedException("Unsupported audit status.");
+        if (filter.availability() != null
+                && !List.of("AVAILABLE", "UNAVAILABLE").contains(filter.availability()))
+            throw new ValidationFailedException("Unsupported availability.");
+        String binding = InventorySearchCursor.filters(
+                principal.organizationId(),
+                property,
+                descending,
+                normalized,
+                categoryId,
+                defaultCategory,
+                containerOnly,
+                includeInactive,
+                filter);
+        SearchAnchor anchor = parseSearchCursor(cursor, binding);
         var page = assetSearchRepository.search(
                 principal.organizationId(),
-                query == null || query.isBlank() ? null : query.trim(),
+                normalized,
                 categoryId,
                 defaultCategory,
                 containerOnly,
@@ -186,7 +229,10 @@ public class AssetService {
                 property,
                 descending,
                 limit + 1,
-                anchor);
+                anchor == null ? null : anchor.id(),
+                anchor == null ? null : anchor.value(),
+                filter,
+                clock.instant());
         List<AssetSearchView> items = page.stream()
                 .limit(limit)
                 .map(asset -> new AssetSearchView(
@@ -203,10 +249,40 @@ public class AssetService {
                         asset.lifecycleState(),
                         asset.archived(),
                         asset.parentContainerAssetId(),
-                        asset.placementVersion()))
+                        asset.placementVersion(),
+                        asset.effectiveLocationId(),
+                        asset.placePath()))
                 .toList();
         return new AssetSearchPageView(
-                items, page.size() > limit ? encodeCursor(items.getLast().id(), property, descending) : null);
+                items,
+                page.size() > limit
+                        ? encodeSearchCursor(
+                                page.get(limit - 1).id(), page.get(limit - 1).sortAnchor(), binding)
+                        : null);
+    }
+
+    private record SearchAnchor(UUID id, String value) {}
+
+    private static SearchAnchor parseSearchCursor(String cursor, String binding) {
+        if (cursor == null) return null;
+        try {
+            String[] parts = new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8).split("\n", 3);
+            if (parts.length != 3
+                    || !parts[0].equals(Base64.getUrlEncoder()
+                            .withoutPadding()
+                            .encodeToString(binding.getBytes(StandardCharsets.UTF_8))))
+                throw new IllegalArgumentException();
+            return new SearchAnchor(UUID.fromString(parts[1]), parts[2]);
+        } catch (IllegalArgumentException e) {
+            throw new ValidationFailedException("cursor is invalid for these filters.");
+        }
+    }
+
+    private static String encodeSearchCursor(UUID id, String value, String binding) {
+        String bound = Base64.getUrlEncoder().withoutPadding().encodeToString(binding.getBytes(StandardCharsets.UTF_8));
+        return Base64.getUrlEncoder()
+                .withoutPadding()
+                .encodeToString((bound + "\n" + id + "\n" + value).getBytes(StandardCharsets.UTF_8));
     }
 
     private static UUID parseCursor(String cursor, String sort, boolean descending) {
@@ -271,7 +347,8 @@ public class AssetService {
             List<AssetCustomFieldValueInput> values) {
         if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
-        AssetModel assetModel = assetModelService.requireSerializedAssetModel(principal.organizationId(), assetModelId);
+        AssetModel assetModel = assetModelService.requireActiveSerializedAssetModelForSelection(
+                principal.organizationId(), assetModelId);
         requireIndividualNameIfContainer(assetModel, individualName);
 
         List<ModelCustomField> activeFields = activeFields(principal.organizationId(), assetModelId);
@@ -358,7 +435,8 @@ public class AssetService {
         if (count < 1) {
             throw new ValidationFailedException("count must be at least 1.");
         }
-        AssetModel assetModel = assetModelService.requireSerializedAssetModel(principal.organizationId(), assetModelId);
+        AssetModel assetModel = assetModelService.requireActiveSerializedAssetModelForSelection(
+                principal.organizationId(), assetModelId);
         if (assetModel.isCanContainAssets()) {
             throw new ValidationFailedException(
                     "Container-capable models cannot be bulk created: each container asset requires its own individual name.");

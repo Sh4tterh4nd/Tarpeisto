@@ -20,7 +20,8 @@ public record BookingResponse(
         UUID currentRevisionId,
         UUID createdByUserId,
         long version,
-        List<BookingLineResponse> lines) {
+        List<BookingLineResponse> lines,
+        boolean archived) {
     static BookingResponse from(BookingView v) {
         return new BookingResponse(
                 v.id(),
@@ -35,6 +36,7 @@ public record BookingResponse(
                 v.currentRevisionId(),
                 v.createdByUserId(),
                 v.version(),
-                v.lines().stream().map(BookingLineResponse::from).toList());
+                v.lines().stream().map(BookingLineResponse::from).toList(),
+                v.archived());
     }
 }

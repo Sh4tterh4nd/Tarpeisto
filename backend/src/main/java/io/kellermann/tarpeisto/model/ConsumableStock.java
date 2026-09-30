@@ -67,6 +67,13 @@ public class ConsumableStock {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Column(name = "archived_at")
+    private Instant archivedAt;
+
+    public boolean isArchived() {
+        return archivedAt != null;
+    }
+
     @Version
     @Column(name = "version", nullable = false)
     private long version;

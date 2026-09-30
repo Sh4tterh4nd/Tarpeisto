@@ -42,6 +42,7 @@ public class ExternalIdentityService {
     private final OrganizationMembershipRepository membershipRepository;
     private final ActivityLogService activityLogService;
     private final AuthenticationProperties authenticationProperties;
+    private final io.kellermann.tarpeisto.repository.OrganizationRepository organizations;
     private final Clock clock;
 
     public ExternalIdentityService(
@@ -50,6 +51,7 @@ public class ExternalIdentityService {
             OrganizationMembershipRepository membershipRepository,
             ActivityLogService activityLogService,
             AuthenticationProperties authenticationProperties,
+            io.kellermann.tarpeisto.repository.OrganizationRepository organizations,
             Clock clock) {
         this.identityRepository = identityRepository;
         this.userRepository = userRepository;
@@ -57,6 +59,7 @@ public class ExternalIdentityService {
         this.activityLogService = activityLogService;
         this.authenticationProperties = authenticationProperties;
         this.clock = clock;
+        this.organizations = organizations;
     }
 
     // -------------------------------------------------------------------------------------
@@ -123,7 +126,7 @@ public class ExternalIdentityService {
     private OidcLoginOutcome authenticateLinkedIdentity(
             ExternalIdentity identity, String email, String displayName, Instant now) {
         User user = userRepository.findById(identity.getUserId()).orElseThrow(ExternalIdentityService::userNotFound);
-        if (!user.isEnabled()) {
+        if (!user.isEnabled() || user.isArchived()) {
             return new OidcLoginOutcome.Denied(OidcDenialReason.ACCOUNT_DISABLED);
         }
         identity.recordLogin(email, displayName, now);
@@ -216,7 +219,12 @@ public class ExternalIdentityService {
             TarpeistoPrincipal principal, UUID targetUserId, String issuer, String subject) {
         if (principal != null) principal.requirePermanent();
         requireOwner(principal);
+        organizations.findWithLockById(principal.organizationId()).orElseThrow();
         requireMembership(principal.organizationId(), targetUserId);
+        if (userRepository
+                .findById(targetUserId)
+                .orElseThrow(ExternalIdentityService::userNotFound)
+                .isArchived()) throw new ValidationFailedException("Restore archived user before linking an identity.");
 
         Instant now = clock.instant();
         Optional<ExternalIdentity> existing = identityRepository.findByIssuerAndSubject(issuer, subject);
@@ -253,6 +261,8 @@ public class ExternalIdentityService {
      */
     @Transactional
     public void unlink(TarpeistoPrincipal principal, UUID externalIdentityId) {
+        if (principal != null)
+            organizations.findWithLockById(principal.organizationId()).orElseThrow();
         if (principal != null) principal.requirePermanent();
         requireOwner(principal);
         ExternalIdentity identity =

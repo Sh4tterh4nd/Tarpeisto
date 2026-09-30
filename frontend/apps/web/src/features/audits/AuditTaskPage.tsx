@@ -13,9 +13,16 @@ import { Link as RouterLink } from "react-router-dom";
 import { PageHeading } from "@tarpeisto/shared-ui";
 import { useParams } from "react-router-dom";
 import { ScannerViewport } from "../scanner/ScannerViewport";
+import { ArchiveButton } from "../archive/ArchiveButton";
 import { useSession } from "../identity/useSession";
 import { webQrScannerCapability } from "../../platform/web/WebQrScannerCapability";
-import { completeAudit, startAudit, type AuditResult, type ContainerAudit } from "./auditApi";
+import {
+  completeAudit,
+  startAudit,
+  getAuditTask,
+  type AuditResult,
+  type ContainerAudit,
+} from "./auditApi";
 import { useAuditQueue } from "./useAuditQueue";
 import { AuditEvidencePanel } from "./AuditEvidencePanel";
 import type { AuditConsumableStatus, AuditFindingType } from "./auditApi";
@@ -53,7 +60,7 @@ function scanContext(scan: ContainerAudit["scans"][number]) {
 }
 
 export function AuditTaskPage() {
-  const { role } = useSession();
+  const { role, principal } = useSession();
   const { taskId = "" } = useParams();
   const queue = useAuditQueue(taskId);
   const { audit, container, error, setError } = queue;
@@ -155,6 +162,24 @@ export function AuditTaskPage() {
         title={container ? `Container audit: ${container.displayName}` : "Container audit"}
         description={`${container ? `${container.publicCode}. ` : ""}Active-audit work is saved on this device before synchronization. Start and complete while online.`}
       />
+      {audit.archived ? <Typography>Archived audit history</Typography> : null}
+      {!principal?.temporaryAccess &&
+      audit.id &&
+      audit.state === "COMPLETED" &&
+      (role === "OWNER" || role === "DEPUTY") ? (
+        <ArchiveButton
+          kind="audit"
+          id={audit.id}
+          archived={audit.archived ?? false}
+          version={audit.archiveVersion ?? 0}
+          label="audit"
+          onChanged={async () => {
+            const result = await getAuditTask(taskId);
+            if (result.kind === "ok") await queue.accept(result.data);
+            else setError(result.error.problem?.detail ?? result.error.message);
+          }}
+        />
+      ) : null}
       <Alert severity={queue.syncStatus === "Failed" ? "error" : "info"} role="status">
         {queue.syncStatus}
         {queue.commands.length

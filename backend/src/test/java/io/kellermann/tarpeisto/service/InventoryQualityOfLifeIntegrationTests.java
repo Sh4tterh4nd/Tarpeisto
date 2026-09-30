@@ -157,10 +157,9 @@ class InventoryQualityOfLifeIntegrationTests extends AbstractIntegrationTest {
             case "condition" -> row.condition().name();
             default -> row.lifecycleState().name();
         });
+        order = order.thenComparing(row -> row.id().toString());
         if (direction.equals("desc")) order = order.reversed();
-        assertThat(rows)
-                .hasSize(3)
-                .isSortedAccordingTo(order.thenComparing(row -> row.id().toString()));
+        assertThat(rows).hasSize(3).isSortedAccordingTo(order);
         assertThat(rows.stream().map(AssetSearchView::id).distinct().count()).isEqualTo(3);
     }
 
@@ -356,10 +355,10 @@ class InventoryQualityOfLifeIntegrationTests extends AbstractIntegrationTest {
                     .isEqualTo(expected.size());
             Comparator<AssetSearchView> name =
                     Comparator.comparing(row -> row.displayName().toLowerCase(java.util.Locale.ROOT));
+            name = name.thenComparing(row -> row.id().toString());
             if (direction.equals("desc")) name = name.reversed();
             // PostgreSQL compares UUIDs as unsigned bytes, not Java UUID's signed high bits.
-            assertThat(rows)
-                    .isSortedAccordingTo(name.thenComparing(row -> row.id().toString()));
+            assertThat(rows).isSortedAccordingTo(name);
             assertThat(rows.stream().map(AssetSearchView::id))
                     .containsExactlyInAnyOrderElementsOf(
                             expected.stream().map(Asset::getId).toList());
