@@ -340,15 +340,16 @@ public class AuditService {
             asset = requireAssetCode(principal.organizationId(), rawCode);
         } catch (ValidationFailedException ex) {
             findings.save(new AuditFinding(
-                    UUID.randomUUID(),
-                    principal.organizationId(),
-                    auditId,
-                    null,
-                    AuditFindingType.UNKNOWN_CODE,
-                    ex.getMessage(),
-                    json(Map.of("rawCode", rawCode)),
-                    principal.userId(),
-                    clock.instant()));
+                            UUID.randomUUID(),
+                            principal.organizationId(),
+                            auditId,
+                            null,
+                            AuditFindingType.UNKNOWN_CODE,
+                            ex.getMessage(),
+                            json(Map.of("rawCode", rawCode)),
+                            principal.userId(),
+                            clock.instant())
+                    .withSourceOperation(operationId));
             return view(principal.organizationId(), audit);
         }
         if (!asset.isActive())
@@ -573,15 +574,16 @@ public class AuditService {
                         scanContext(principal.organizationId(), audit, asset)));
         }
         findings.save(new AuditFinding(
-                UUID.randomUUID(),
-                principal.organizationId(),
-                auditId,
-                assetId,
-                type,
-                note,
-                json(Map.of()),
-                principal.userId(),
-                clock.instant()));
+                        UUID.randomUUID(),
+                        principal.organizationId(),
+                        auditId,
+                        assetId,
+                        type,
+                        note,
+                        json(Map.of()),
+                        principal.userId(),
+                        clock.instant())
+                .withSourceOperation(operationId));
         activity.record(
                 principal.organizationId(),
                 principal.userId(),
@@ -1086,6 +1088,7 @@ public class AuditService {
                 all.stream()
                         .map(s -> new AuditScanView(
                                 s.getId(),
+                                s.getOperationId(),
                                 s.getAssetId(),
                                 assets.findByIdAndOrganizationId(s.getAssetId(), org)
                                         .map(Asset::getPublicCode)
@@ -1097,7 +1100,12 @@ public class AuditService {
                         .toList(),
                 findings.findAllByOrganizationIdAndAuditIdOrderById(org, audit.getId()).stream()
                         .map(f -> new AuditFindingView(
-                                f.getId(), f.getAssetId(), f.getType().name(), f.getNote(), f.getDetail()))
+                                f.getId(),
+                                f.getSourceOperationId(),
+                                f.getAssetId(),
+                                f.getType().name(),
+                                f.getNote(),
+                                f.getDetail()))
                         .toList(),
                 List.of());
     }

@@ -33,7 +33,7 @@ export default defineConfig({
       workbox: {
         // The API must always hit the network; it is never precached or
         // served from the Workbox cache (spec 24.2 short-outage behavior is
-        // handled by the future outbox layer, not by caching API responses).
+        // handled by the persistent audit outbox, not by caching API responses).
         navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
           {

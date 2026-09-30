@@ -1,6 +1,6 @@
 # Tarpeisto Implementation Status
 
-Status: Living record of what exists, as of 2026-09-27
+Status: Living record of what exists, as of 2026-09-30
 
 Purpose: This document records **what is actually built and verified**, so that a contributor (human
 or agent) can continue the work without rediscovering it.
@@ -29,7 +29,7 @@ Read it together with [`DEVELOPMENT_POLICIES.md`](DEVELOPMENT_POLICIES.md) and t
 | 10      | Finding review, lifecycle, repairs and seal administration                      | Complete, verified                                                                     |
 | 11      | Container packing sheets                                                        | Complete, verified; physical paper/camera acceptance pending                           |
 | QoL     | Inventory navigation, browsing, exact assignment, layouts and safer catalog UX  | Complete, verified                                                                     |
-| 9.2-9.3 | Persistent scan outbox and queued audit photographs                             | Deferred until after the completed inventory QoL milestone                             |
+| 9.2-9.3 | Persistent scan outbox and queued audit photographs                             | Complete, automated verification passed                                                |
 | 12-14   | Temporary access, search, hardening                                             | Not started                                                                            |
 
 Verified at the Phase 8 checkpoint:
@@ -87,6 +87,25 @@ Verified at the inventory quality-of-life checkpoint:
 - The app now has a desktop navigation rail and mobile drawer, separate model and asset tables,
   sortable/filterable inventory views, searchable exact-asset requirements, safer confirmations,
   optional `Default` categories, refined responsive details and immediate scanner startup.
+
+Verified at the Phase 9.2/9.3 checkpoint:
+
+- Backend: **474 tests in 60 suites, 0 failures, errors or skips**, with `spotlessCheck check`
+  passing against PostgreSQL. Nine focused evidence integration tests cover authorization, tenants,
+  immutable replay/checksum semantics, completed evidence, generic deletion protection, concurrent
+  upload/completion, audit-row locking and losing S3-attempt cleanup with mocked `MediaStorage`.
+- Frontend: **195 unit tests, 0 failures** (177 web in 37 files, 11 api-client, 7 shared-ui),
+  with `format:check`, `lint`, all workspace typechecks and production PWA build passing. IndexedDB
+  tests cover FIFO/reopen recovery, atomic staging/quota rollback, fenced leases, completion barriers,
+  stale snapshot replies, persistent logout generations/tombstones, current CSRF and actor switches.
+- **16 Playwright tests pass** on desktop and mobile browser configurations. These are real browser
+  workflows with mocked API routes and real IndexedDB, including lost responses, queued photo bytes,
+  reload recovery, concurrent tabs and account-switch isolation. They do not constitute physical
+  phone/camera or printer acceptance.
+- `jibBuildTar` succeeds with the matching compiled frontend embedded. The live backend OpenAPI
+  document and generated TypeScript contract include evidence endpoints and operation linkage.
+- Deploy the matching application image and apply the explicit Flyway migration step through V18
+  before using audit evidence. Existing V1-V17 migration files remain unchanged.
 
 ## 2. How to verify this yourself
 
@@ -149,6 +168,9 @@ Migrations (Flyway owns all schema; applied migrations are immutable):
 | `V13`     | Online container-audit facts, frozen expectations, scans, observations, findings and operation IDs                         |
 | `V14`     | Append-only finding resolutions, repair/seal/verification history, formal manifest accounting and audit-attempt projection |
 | `V15`     | Optional asset-model categories while retaining tenant-safe category references                                            |
+| `V16`     | Session invalidation after principal rename                                                                                |
+| `V17`     | Standalone container-audit batches                                                                                         |
+| `V18`     | Immutable finding-linked audit evidence, tenant-safe associations and source-operation linkage                             |
 
 API surface is under `/api/v1`. The OpenAPI document at `/v3/api-docs` (enabled only under the `dev`
 profile) is the machine-readable contract; treat it as authoritative over any list here. Broadly:
@@ -191,8 +213,7 @@ the batch, and unexpected/misplaced, missing, damaged, unreadable-label and unkn
 are recorded as findings. Consumable confirmations are separate from serialized scans; only Owners and
 Deputies can submit a balance-changing observed amount through the immutable stock-movement ledger.
 Completion requires a matching closing container scan, preserves completed observations, updates direct
-verified placement, and unlocks parents bottom-up. Persistent IndexedDB queueing, retry/backoff and
-photo recovery remain Phase 9.2/9.3 work, not implemented behavior.
+verified placement, and unlocks parents bottom-up. Phases 9.2/9.3 now add persistent IndexedDB queueing, retry/backoff and photo recovery.
 
 Phase 10 adds a strictly additive V14 migration: completed audit findings, scans and manifests remain
 immutable while one final idempotent resolution is appended per finding. Owner/Deputy review can
@@ -266,6 +287,28 @@ assignment, responsive record/photo layouts, collapsed packing-sheet details, an
 Containers use only the duplicated A5-on-A4 contents sheet and are excluded from ordinary label
 exports. The OpenAPI snapshot and generated TypeScript client were recaptured from a live `dev`
 backend after V15 migrated PostgreSQL.
+
+Phases 9.2/9.3 add a Dexie/IndexedDB outbox partitioned by organization and user. Scans,
+move/undo corrections, findings, consumable observations and photo uploads persist before replay.
+FIFO retries use stable operation UUIDs and bounded backoff; failed work stays visible for retry or
+cancellation. Pending scans do not mark expected requirements as found. An active audit can recover
+its container/snapshot and pending work after reload during an outage, while all inventory routes
+remain unavailable to the cached identity. Start and completion remain online operations.
+
+A shared persistent lease, heartbeat and fencing token coordinate tabs; completion checks every
+persisted operation for the audit, including failed photographs. Acknowledgement and authoritative
+snapshot replacement are atomic. Snapshot revisions reject older GET replies from another tab.
+Logout or account changes immediately stop replay and hide old queues, while retaining them for the
+same actor. Cached identity generations reject late recovery writes after logout even before a
+cross-tab notification arrives. Each replay verifies the live session and supplies the expected actor
+and current CSRF; no credentials or CSRF tokens are stored in IndexedDB.
+
+Optional PNG/JPEG photographs are staged atomically with their damage, unknown-item or exact-item
+unreadable-label finding, including binary bytes and the precise source-operation dependency. Uploads
+show progress and retry status; selected unstaged files and queued uploads block completion.
+Uploaded evidence appears on the audit and Owner/Deputy review pages. V18 enforces tenant-safe,
+append-only associations. S3 attempts use separate keys and finalize under organization/audit locks;
+matching upload/checksum replay is accepted after completion and changed-content replay is rejected.
 
 API types are **generated** from the backend's OpenAPI document into
 `packages/api-client/src/generated/`. Hand-written duplicates of generated request/response shapes
@@ -371,12 +414,12 @@ what was verified. Treat the history as a readable grouping, not a bisectable ti
 
 1. Complete remaining physical label-stock/mobile/P-touch acceptance.
 2. Perform the remaining Phase 11 physical print and camera acceptance.
-3. **Phases 9.2 and 9.3** - persistent scan outbox and queued audit photographs.
+3. **Phase 12** - scoped temporary volunteer access.
 
 Phase 9.1 is implemented end to end for online operation: audits freeze direct expectations at start,
 enforce bottom-up execution, match exact requirements before model quantities, retain corrections,
 reconcile exact event-manifest identities separately from container completeness, and transition clean
-or finding-bearing returns appropriately. Browser-persistent outbox retry and queued photographs remain
-the explicitly deferred Phase 9.2/9.3 work after the completed inventory quality-of-life milestone.
+or finding-bearing returns appropriately. Browser-persistent outbox retry and queued photographs are implemented in Phases 9.2/9.3
+after the completed inventory quality-of-life milestone.
 
 Before starting, run the verification commands in section 2 to confirm the tree is still green.

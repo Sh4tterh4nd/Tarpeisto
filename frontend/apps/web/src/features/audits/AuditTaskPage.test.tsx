@@ -40,7 +40,7 @@ describe("AuditTaskPage", () => {
     });
   });
 
-  it("explains online-only operation and a child-task blocker before audit start", async () => {
+  it("explains persistent active-audit operation and a child-task blocker before audit start", async () => {
     render(
       <MemoryRouter initialEntries={["/audits/tasks/task-1"]}>
         <Routes>
@@ -49,7 +49,7 @@ describe("AuditTaskPage", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText(/Online-only/)).toBeInTheDocument();
+    expect(await screen.findByText(/saved on this device/)).toBeInTheDocument();
     expect(
       await screen.findByRole("heading", { name: "Container audit: Child case" }),
     ).toBeInTheDocument();

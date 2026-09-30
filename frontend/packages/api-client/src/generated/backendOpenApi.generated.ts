@@ -948,6 +948,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/audits/{auditId}/findings/{findingId}/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["uploadEvidence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/audits/{auditId}/consumables/{expectedId}": {
         parameters: {
             query?: never;
@@ -1604,6 +1620,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/findings/{findingId}/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["findingEvidence"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/consumable-stock/{balanceId}": {
         parameters: {
             query?: never;
@@ -1692,6 +1724,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["checkoutPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audits/{auditId}/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["auditEvidence"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1996,8 +2044,14 @@ export interface components {
         MediaResponse: {
             /** Format: uuid */
             id?: string;
+            /** Format: uuid */
+            auditId?: string;
+            /** Format: uuid */
+            findingId?: string;
+            /** Format: uuid */
+            uploadOperationId?: string;
             /** @enum {string} */
-            purpose?: "MODEL_REFERENCE" | "ASSET_REFERENCE" | "CONTAINER_LAYOUT";
+            purpose?: "MODEL_REFERENCE" | "ASSET_REFERENCE" | "CONTAINER_LAYOUT" | "AUDIT_EVIDENCE";
             contentType?: string;
             /** Format: int64 */
             byteSize?: number;
@@ -2564,6 +2618,8 @@ export interface components {
             /** Format: uuid */
             id?: string;
             /** Format: uuid */
+            sourceOperationId?: string;
+            /** Format: uuid */
             assetId?: string;
             type?: string;
             note?: string;
@@ -2572,6 +2628,8 @@ export interface components {
         AuditScanResponse: {
             /** Format: uuid */
             id?: string;
+            /** Format: uuid */
+            operationId?: string;
             /** Format: uuid */
             assetId?: string;
             assetCode?: string;
@@ -4721,6 +4779,38 @@ export interface operations {
             };
         };
     };
+    uploadEvidence: {
+        parameters: {
+            query: {
+                operationId: string;
+            };
+            header?: never;
+            path: {
+                auditId: string;
+                findingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["MediaResponse"];
+                };
+            };
+        };
+    };
     consumable: {
         parameters: {
             query?: never;
@@ -5940,6 +6030,28 @@ export interface operations {
             };
         };
     };
+    findingEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                findingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["MediaResponse"][];
+                };
+            };
+        };
+    };
     get_4: {
         parameters: {
             query?: never;
@@ -6069,6 +6181,28 @@ export interface operations {
                 };
                 content: {
                     "application/pdf": string;
+                };
+            };
+        };
+    };
+    auditEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                auditId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["MediaResponse"][];
                 };
             };
         };

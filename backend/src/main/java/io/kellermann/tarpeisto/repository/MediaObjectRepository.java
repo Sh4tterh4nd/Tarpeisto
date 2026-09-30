@@ -8,6 +8,12 @@ import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface MediaObjectRepository extends JpaRepository<MediaObject, UUID> {
+    Optional<MediaObject> findByOrganizationIdAndUploadOperationId(UUID organizationId, UUID uploadOperationId);
+
+    List<MediaObject> findAllByOrganizationIdAndAuditIdOrderByCreatedAtAsc(UUID organizationId, UUID auditId);
+
+    List<MediaObject> findAllByOrganizationIdAndFindingIdOrderByCreatedAtAsc(UUID organizationId, UUID findingId);
+
     Optional<MediaObject> findByIdAndOrganizationId(UUID id, UUID organizationId);
 
     Optional<MediaObject> findByOrganizationIdAndAssetModelIdAndPurposeAndArchivedAtIsNull(

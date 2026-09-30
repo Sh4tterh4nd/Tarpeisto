@@ -1,6 +1,6 @@
 # Tarpeisto Implementation Plan
 
-Status: Phase 9.1 online audit execution complete; persistent queue and photo recovery explicitly deferred.
+Status: Phases 9.2 and 9.3 complete after inventory refinement; automated verification passed.
 
 Depends on: [Functional specification](SPECIFICATION.md)
 
@@ -277,7 +277,7 @@ Define one application-owned interface supporting S3-compatible storage (AWS S3 
 - Reordering and primary-image selection
 - Safe image display URLs
 
-Audit evidence uploads are implemented later on the same abstraction.
+Phase 9.3 adds immutable audit evidence uploads on the same abstraction.
 
 ### 5.3 Exit criteria
 
@@ -568,7 +568,7 @@ Implement in this order:
 5. Last-scanned card
 6. Undo scan
 7. Manual code and unreadable-label path
-8. Damage note path; photographs follow in Phase 9.3
+8. Damage note path; optional finding photographs are delivered in Phase 9.3
 9. Missing confirmation
 10. Extra/misplaced destination information
 11. Cross-audit `Move scan here`
@@ -578,11 +578,11 @@ Implement in this order:
 15. On a genuine equipment-scanner result, offer an authorized user a standalone container audit;
     keep an explicit action after decline and never auto-prompt after refresh/direct navigation
 
-### 11.4 Deferred work
+### 11.4 Persistent recovery follow-up
 
 - Phase 9.2 owns the persistent IndexedDB scan/outbox queue, ordered retry/backoff, and restart recovery.
 - Phase 9.3 owns audit evidence photographs, queued upload retry/progress, and restart recovery.
-- The Phase 9.1 UI must say online-only, retain a retry affordance for a failed request, and never imply that an operation was persisted locally.
+- Phases 9.2 and 9.3 replace the original online-only submission UI with persistent, account-scoped active-audit recovery. Starting and completing an audit still require a live session.
 
 ### 11.5 Event-wide reconciliation
 
@@ -685,7 +685,7 @@ Implement in this order:
 - Every requirement appears exactly once per duplicated half.
 - Multi-page sheets preserve the duplicate-half rule.
 
-## 14. Quality-of-life inventory refinement (after Phase 11, before deferred Phase 9.2)
+## 14. Quality-of-life inventory refinement (after Phase 11, before Phase 9.2)
 
 This focused milestone improves established inventory workflows without changing the deferred persistent-audit or evidence-upload commitments.
 
@@ -725,12 +725,20 @@ This focused milestone improves established inventory workflows without changing
 - Retry in order with bounded exponential backoff and explicit failed/synchronizing status.
 - Block completion while local operations remain unsynchronized.
 - Recover queued work after refresh or PWA restart without double-applying server mutations.
+- Use Dexie/IndexedDB FIFO partitions by organization and actor, immutable command bodies, stable UUIDs and bounded retry delays. Persist before sending; failed storage must remain visibly unsaved.
+- Keep only active-audit/container snapshots for offline recovery. Pending scans never satisfy authoritative requirements. No inventory browsing or completion is available offline.
+- Coordinate drain and completion across tabs with an atomic lease, heartbeat and fencing token. Completion checks persisted scans, corrections and photos while holding that lease.
+- Verify the live actor before replay and include the expected actor fence and current CSRF on each send. Logout/account changes stop and hide old work across tabs; a persistent identity generation prevents late requests from re-enabling recovery.
 
 ## 16. Phase 9.3: queued audit evidence photographs (after Phase 9.2)
 
 - Persist evidence-upload metadata and binary staging safely for short outages.
 - Show upload progress, retry failures, and prevent completion until required uploads synchronize.
 - Recover queued photo work after refresh or PWA restart.
+- Stage optional PNG/JPEG photographs and their precise finding source-operation dependency together with the finding in one transaction. Quota failures retain the selected files for recovery.
+- Make upload operation IDs, associations and checksum immutable; a matching replay returns the same evidence, including after audit completion. Reject changed-content replay and completed-observation changes.
+- Finalize staged S3 uploads under organization and audit-row locks; concurrent attempts own separate keys and remove only their own losing objects.
+- Display uploaded photographs on the audit and Owner/Deputy review pages.
 
 ## 17. Phase 12: temporary access
 
@@ -937,7 +945,7 @@ Phases 7-8. Events can reserve equipment, prevent conflicts, check out exact man
 
 ### Milestone D: Audit and remediation
 
-Phase 9.1, then Phases 10 and 11, followed by the quality-of-life inventory refinement, then deferred Phases 9.2 and 9.3, followed by Phase 12. Online bottom-up audits and flexible cable matching precede findings/repairs/seals, packing sheets, and polished inventory workflows; persistent scan and photo recovery remains deferred until those workflows are complete.
+Phase 9.1, then Phases 10 and 11, followed by the quality-of-life inventory refinement, then Phases 9.2 and 9.3, followed by Phase 12. Online bottom-up audits and flexible cable matching precede findings/repairs/seals, packing sheets, and polished inventory workflows; persistent scan and photo recovery now extends those completed workflows.
 
 ### Milestone E: Stable self-hosted release
 

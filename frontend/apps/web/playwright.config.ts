@@ -1,5 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const port = Number(process.env["TARPEISTO_E2E_PORT"] ?? "5173");
+const baseURL = `http://localhost:${port}`;
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
@@ -7,12 +10,12 @@ export default defineConfig({
   retries: process.env["CI"] ? 2 : 0,
   reporter: [["html", { open: "never" }]],
   use: {
-    baseURL: "http://localhost:5173",
+    baseURL,
     trace: "on-first-retry",
   },
   webServer: {
-    command: "pnpm run dev",
-    url: "http://localhost:5173",
+    command: `pnpm run dev --port ${port} --strictPort`,
+    url: baseURL,
     reuseExistingServer: !process.env["CI"],
     timeout: 30_000,
   },

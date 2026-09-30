@@ -11,6 +11,7 @@ import Checkbox from "@mui/material/Checkbox";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import { useSearchParams } from "react-router-dom";
 import { PageHeading } from "@tarpeisto/shared-ui";
+import { AuditEvidencePanel } from "../audits/AuditEvidencePanel";
 import {
   type FindingReview,
   type ResolutionAction,
@@ -189,9 +190,7 @@ export function ReviewPage() {
                 <br />
                 Container: {selected.containerAssetId || "Unavailable"}
               </Typography>
-              <Alert severity="info">
-                Evidence photographs are unavailable in this online-only phase.
-              </Alert>
+              <AuditEvidencePanel key={selected.id} findingId={selected.id} />
               {selected.resolved ? (
                 <Alert severity="success">
                   Resolved as {String(selected.resolutionAction).replaceAll("_", " ")}{" "}

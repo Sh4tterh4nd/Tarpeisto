@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -15,20 +15,10 @@ import { useParams } from "react-router-dom";
 import { ScannerViewport } from "../scanner/ScannerViewport";
 import { useSession } from "../identity/useSession";
 import { webQrScannerCapability } from "../../platform/web/WebQrScannerCapability";
-import {
-  completeAudit,
-  getAuditContainer,
-  getAuditTask,
-  moveAuditScanHere,
-  observeAuditConsumable,
-  recordAuditFinding,
-  scanAudit,
-  startAudit,
-  undoAuditScan,
-  type AuditResult,
-  type AuditContainer,
-  type ContainerAudit,
-} from "./auditApi";
+import { completeAudit, startAudit, type AuditResult, type ContainerAudit } from "./auditApi";
+import { useAuditQueue } from "./useAuditQueue";
+import { AuditEvidencePanel } from "./AuditEvidencePanel";
+import type { AuditConsumableStatus, AuditFindingType } from "./auditApi";
 
 function expectedLabel(row: ContainerAudit["expectedRequirements"][number]) {
   try {
@@ -64,10 +54,9 @@ function scanContext(scan: ContainerAudit["scans"][number]) {
 export function AuditTaskPage() {
   const { role } = useSession();
   const { taskId = "" } = useParams();
-  const [audit, setAudit] = useState<ContainerAudit>();
-  const [container, setContainer] = useState<AuditContainer>();
+  const queue = useAuditQueue(taskId);
+  const { audit, container, error, setError } = queue;
   const [code, setCode] = useState("");
-  const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const [retryAction, setRetryAction] = useState<
@@ -76,38 +65,70 @@ export function AuditTaskPage() {
   const [confirmMissing, setConfirmMissing] = useState(false);
   const [sealConfirmed, setSealConfirmed] = useState(false);
   const [findingNote, setFindingNote] = useState("");
+  const [photos, setPhotos] = useState<File[]>([]);
   const [observedQuantities, setObservedQuantities] = useState<Record<string, string>>({});
   const [observationReasons, setObservationReasons] = useState<Record<string, string>>({});
-  useEffect(() => {
-    let active = true;
-    void getAuditTask(taskId).then(async (result) => {
-      if (!active) return;
-      if (result.kind === "error") {
-        setError(result.error.problem?.detail ?? result.error.message);
-        return;
-      }
-      setAudit(result.data);
-      const containerResult = await getAuditContainer(result.data.containerAssetId);
-      if (active && containerResult.kind === "ok") setContainer(containerResult.data);
+  const scanAudit = (_auditId: string, value: string, operationId: string) =>
+    queue.enqueue({ kind: "scan", body: { operationId, code: value } });
+  const moveAuditScanHere = (_auditId: string, value: string, operationId: string) =>
+    queue.enqueue({ kind: "move", body: { operationId, code: value } });
+  const undoAuditScan = (_auditId: string, scanId: string, operationId: string) =>
+    queue.enqueue({ kind: "undo", scanId, body: { operationId } });
+  const observeAuditConsumable = (
+    _auditId: string,
+    expectedId: string,
+    status: AuditConsumableStatus,
+    observedQuantity: number | undefined,
+    reason: string | undefined,
+    operationId: string,
+  ) =>
+    queue.enqueue({
+      kind: "consumable",
+      expectedId,
+      body: { operationId, status, observedQuantity, reason },
     });
-    return () => {
-      active = false;
-    };
-  }, [taskId]);
-  const apply = async (action: () => Promise<AuditResult<ContainerAudit>>) => {
+  const recordAuditFinding = async (
+    _auditId: string,
+    type: AuditFindingType,
+    assetId: string | undefined,
+    note: string | undefined,
+    operationId: string,
+  ) => {
+    const saved = await queue.findingWithPhotos(
+      { kind: "finding", body: { operationId, type, assetId, note } },
+      photos,
+    );
+    if (saved) setPhotos([]);
+  };
+  const apply = async (
+    action: () => Promise<AuditResult<ContainerAudit> | string | undefined | void>,
+  ) => {
     if (busyRef.current) return;
     busyRef.current = true;
     setBusy(true);
-    const result = await action();
+    let result;
+    try {
+      result = await action();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "The operation failed.");
+    }
     busyRef.current = false;
     setBusy(false);
+    if (!result || typeof result === "string") return;
     if (result.kind === "ok") {
-      setAudit(result.data);
+      try {
+        await queue.accept(result.data);
+      } catch {
+        setError(
+          "Browser storage is unavailable. The server accepted the operation; reconnect to recover it.",
+        );
+        return;
+      }
       setError(undefined);
       setRetryAction(null);
     } else {
       setError(result.error.problem?.detail ?? result.error.message);
-      setRetryAction(() => action);
+      setRetryAction(() => action as () => Promise<AuditResult<ContainerAudit>>);
     }
   };
   async function submit(event: FormEvent) {
@@ -117,7 +138,12 @@ export function AuditTaskPage() {
       await apply(() => scanAudit(audit.id!, code, operationId));
     } else await apply(() => startAudit(taskId, code));
   }
-  if (!audit) return <Typography role="status">Loading audit.</Typography>;
+  if (!audit)
+    return error ? (
+      <Alert severity="error">{error}</Alert>
+    ) : (
+      <Typography role="status">Loading audit.</Typography>
+    );
   const started = Boolean(audit.id);
   const hasUnmet = audit.expectedRequirements.some((row) => !row.satisfied);
   const lastActiveScan = audit.scans.findLast((scan) => !scan.undone);
@@ -125,8 +151,67 @@ export function AuditTaskPage() {
     <Stack spacing={2}>
       <PageHeading
         title={container ? `Container audit: ${container.displayName}` : "Container audit"}
-        description={`${container ? `${container.publicCode}. ` : ""}Online-only: submissions are sent now. If one fails, retry it before completing.`}
+        description={`${container ? `${container.publicCode}. ` : ""}Active-audit work is saved on this device before synchronization. Start and complete while online.`}
       />
+      <Alert severity={queue.syncStatus === "Failed" ? "error" : "info"} role="status">
+        {queue.syncStatus}
+        {queue.commands.length
+          ? `: ${queue.commands.length} saved operations awaiting synchronization.`
+          : ": audit work is synchronized."}
+      </Alert>
+      {queue.commands.length ? (
+        <Paper sx={{ p: 2 }}>
+          <Typography variant="h6">Saved work awaiting synchronization</Typography>
+          <Typography>
+            Pending scans do not count as found until the server confirms them. Cancel a pending
+            scan to correct it; undo confirmed scans below.
+          </Typography>
+          {queue.commands.map((row) => (
+            <Stack key={row.operationId} spacing={1} sx={{ py: 1 }}>
+              <Typography>
+                {row.command.kind === "scan" || row.command.kind === "move"
+                  ? row.command.body.code
+                  : row.command.kind === "photo"
+                    ? row.command.fileName
+                    : row.command.kind}{" "}
+                -{" "}
+                {row.state === "sending"
+                  ? `Synchronizing ${row.command.kind === "photo" ? `${row.progress}%` : ""}`
+                  : row.state === "failed"
+                    ? "Failed"
+                    : "Saved, pending confirmation"}
+              </Typography>
+              {row.error ? <Typography color="error">{row.error}</Typography> : null}
+              <Stack direction="row" spacing={1}>
+                {row.state === "failed" || (row.state === "pending" && row.attempts === 0) ? (
+                  <Button onClick={() => void queue.cancel(row)}>Cancel saved operation</Button>
+                ) : null}
+                {row.state === "failed" ? (
+                  <Button onClick={() => void queue.retry(row)}>Retry saved operation</Button>
+                ) : null}
+                {row.state === "failed" &&
+                row.error?.includes("another audit") &&
+                (row.command.kind === "scan" || row.command.kind === "move") ? (
+                  <Button
+                    onClick={() => {
+                      const value =
+                        row.command.kind === "scan" || row.command.kind === "move"
+                          ? row.command.body.code
+                          : "";
+                      void (async () => {
+                        if (await queue.cancel(row))
+                          await moveAuditScanHere(audit.id!, value, crypto.randomUUID());
+                      })();
+                    }}
+                  >
+                    Move scan here
+                  </Button>
+                ) : null}
+              </Stack>
+            </Stack>
+          ))}
+        </Paper>
+      ) : null}
       {error ? (
         <Alert
           severity="error"
@@ -168,7 +253,7 @@ export function AuditTaskPage() {
               onCode={(value) => {
                 setCode(value);
                 const operationId = crypto.randomUUID();
-                void apply(() => scanAudit(audit.id!, value, operationId));
+                void scanAudit(audit.id!, value, operationId);
               }}
             />
           ) : null}
@@ -405,6 +490,39 @@ export function AuditTaskPage() {
             onChange={(event) => setFindingNote(event.target.value)}
             helperText="Optional. Add the important physical detail before marking damage."
           />
+          <Button component="label" sx={{ mt: 1 }}>
+            Choose optional evidence photographs
+            <input
+              type="file"
+              hidden
+              multiple
+              accept="image/png,image/jpeg"
+              onChange={(event) => setPhotos(Array.from(event.target.files ?? []))}
+            />
+          </Button>
+          {photos.length ? (
+            <Typography>
+              {photos.length} photographs selected; saved when a finding is recorded.
+            </Typography>
+          ) : null}
+          <Stack direction="row" spacing={1}>
+            <Button
+              disabled={busy}
+              onClick={() =>
+                void apply(() =>
+                  recordAuditFinding(
+                    audit.id!,
+                    "UNKNOWN_CODE",
+                    undefined,
+                    findingNote || undefined,
+                    crypto.randomUUID(),
+                  ),
+                )
+              }
+            >
+              Report unknown item
+            </Button>
+          </Stack>
           {hasUnmet ? (
             <FormControlLabel
               sx={{ mt: 1 }}
@@ -449,11 +567,26 @@ export function AuditTaskPage() {
             </Button>
             <Button
               variant="contained"
-              disabled={busy || (hasUnmet && !confirmMissing)}
+              disabled={
+                busy ||
+                photos.length > 0 ||
+                queue.completionBlocked ||
+                (hasUnmet && !confirmMissing)
+              }
               onClick={() => {
                 const operationId = crypto.randomUUID();
                 void apply(() =>
-                  completeAudit(audit.id!, code, confirmMissing, sealConfirmed, operationId),
+                  queue.complete((actor, signal) =>
+                    completeAudit(
+                      audit.id!,
+                      code,
+                      confirmMissing,
+                      sealConfirmed,
+                      operationId,
+                      actor,
+                      signal,
+                    ),
+                  ),
                 );
               }}
             >
@@ -461,6 +594,9 @@ export function AuditTaskPage() {
             </Button>
           </Stack>
         </Paper>
+      ) : null}
+      {audit.id ? (
+        <AuditEvidencePanel key={audit.id} auditId={audit.id} refreshKey={queue.commands.length} />
       ) : null}
       {audit.findings.length ? (
         <Paper sx={{ p: 2 }}>

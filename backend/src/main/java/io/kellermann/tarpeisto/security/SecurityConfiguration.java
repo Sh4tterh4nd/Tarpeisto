@@ -63,6 +63,9 @@ public class SecurityConfiguration {
         http.csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
                 .addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class)
+                .addFilterAfter(
+                        new ExpectedAuditActorFilter(responseWriter),
+                        org.springframework.security.web.access.intercept.AuthorizationFilter.class)
                 .sessionManagement(session ->
                         // Rotates the session identifier on authentication to defeat session
                         // fixation. This is already the Spring Security default; set explicitly

@@ -2572,6 +2572,69 @@
         }
       }
     },
+    "/api/v1/audits/{auditId}/findings/{findingId}/evidence": {
+      "post": {
+        "tags": ["media-controller"],
+        "operationId": "uploadEvidence",
+        "parameters": [
+          {
+            "name": "auditId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "findingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "operationId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": ["file"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/audits/{auditId}/consumables/{expectedId}": {
       "post": {
         "tags": ["audit-controller"],
@@ -4329,6 +4392,38 @@
         }
       }
     },
+    "/api/v1/findings/{findingId}/evidence": {
+      "get": {
+        "tags": ["media-controller"],
+        "operationId": "findingEvidence",
+        "parameters": [
+          {
+            "name": "findingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MediaResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/consumable-stock/{balanceId}": {
       "get": {
         "tags": ["consumable-stock-controller"],
@@ -4514,6 +4609,38 @@
                 "schema": {
                   "type": "string",
                   "format": "byte"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audits/{auditId}/evidence": {
+      "get": {
+        "tags": ["media-controller"],
+        "operationId": "auditEvidence",
+        "parameters": [
+          {
+            "name": "auditId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MediaResponse"
+                  }
                 }
               }
             }
@@ -5187,9 +5314,21 @@
             "type": "string",
             "format": "uuid"
           },
+          "auditId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "findingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "uploadOperationId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "purpose": {
             "type": "string",
-            "enum": ["MODEL_REFERENCE", "ASSET_REFERENCE", "CONTAINER_LAYOUT"]
+            "enum": ["MODEL_REFERENCE", "ASSET_REFERENCE", "CONTAINER_LAYOUT", "AUDIT_EVIDENCE"]
           },
           "contentType": {
             "type": "string"
@@ -6663,6 +6802,10 @@
             "type": "string",
             "format": "uuid"
           },
+          "sourceOperationId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "assetId": {
             "type": "string",
             "format": "uuid"
@@ -6682,6 +6825,10 @@
         "type": "object",
         "properties": {
           "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "operationId": {
             "type": "string",
             "format": "uuid"
           },

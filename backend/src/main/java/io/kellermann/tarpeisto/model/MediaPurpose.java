@@ -4,5 +4,6 @@ package io.kellermann.tarpeisto.model;
 public enum MediaPurpose {
     MODEL_REFERENCE,
     ASSET_REFERENCE,
-    CONTAINER_LAYOUT
+    CONTAINER_LAYOUT,
+    AUDIT_EVIDENCE
 }

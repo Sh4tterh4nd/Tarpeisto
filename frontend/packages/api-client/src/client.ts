@@ -84,7 +84,7 @@ type UnauthenticatedListener = () => void;
 
 const unauthenticatedListeners = new Set<UnauthenticatedListener>();
 
-function notifyUnauthenticated(): void {
+export function notifyUnauthenticated(): void {
   for (const listener of unauthenticatedListeners) {
     listener();
   }

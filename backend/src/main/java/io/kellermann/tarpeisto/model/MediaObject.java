@@ -28,6 +28,15 @@ public class MediaObject {
     @Column(name = "asset_id")
     private UUID assetId;
 
+    @Column(name = "container_audit_id", updatable = false)
+    private UUID auditId;
+
+    @Column(name = "audit_finding_id", updatable = false)
+    private UUID findingId;
+
+    @Column(name = "upload_operation_id", updatable = false)
+    private UUID uploadOperationId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "purpose", nullable = false, length = 32)
     private MediaPurpose purpose;
@@ -114,6 +123,26 @@ public class MediaObject {
         this.updatedAt = now;
     }
 
+    public MediaObject associateEvidence(UUID auditId, UUID findingId, UUID operationId) {
+        if (purpose != MediaPurpose.AUDIT_EVIDENCE) throw new IllegalStateException("Evidence purpose required.");
+        this.auditId = Objects.requireNonNull(auditId);
+        this.findingId = Objects.requireNonNull(findingId);
+        this.uploadOperationId = Objects.requireNonNull(operationId);
+        return this;
+    }
+
+    public UUID getAuditId() {
+        return auditId;
+    }
+
+    public UUID getFindingId() {
+        return findingId;
+    }
+
+    public UUID getUploadOperationId() {
+        return uploadOperationId;
+    }
+
     public void updateLayout(String caption, int displayOrder, Instant now) {
         if (purpose != MediaPurpose.CONTAINER_LAYOUT)
             throw new IllegalStateException("Only layout images have captions or order.");
@@ -130,6 +159,7 @@ public class MediaObject {
     }
 
     public void archiveForCleanup(Instant now) {
+        if (purpose == MediaPurpose.AUDIT_EVIDENCE) throw new IllegalStateException("Audit evidence is immutable.");
         this.archivedAt = Objects.requireNonNull(now);
         this.cleanupPending = true;
         this.updatedAt = now;

@@ -5,6 +5,7 @@ import java.util.UUID;
 
 public record AuditScanView(
         UUID id,
+        UUID operationId,
         UUID assetId,
         String assetCode,
         String outcome,

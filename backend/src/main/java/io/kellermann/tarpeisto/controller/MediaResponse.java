@@ -8,6 +8,9 @@ import java.util.UUID;
 /** Safe media metadata response; opaque object-storage keys are never serialized. */
 public record MediaResponse(
         UUID id,
+        UUID auditId,
+        UUID findingId,
+        UUID uploadOperationId,
         MediaPurpose purpose,
         String contentType,
         long byteSize,
@@ -21,6 +24,9 @@ public record MediaResponse(
     static MediaResponse from(MediaView view) {
         return new MediaResponse(
                 view.id(),
+                view.auditId(),
+                view.findingId(),
+                view.uploadOperationId(),
                 view.purpose(),
                 view.contentType(),
                 view.byteSize(),

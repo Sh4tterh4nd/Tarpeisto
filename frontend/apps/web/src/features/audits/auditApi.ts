@@ -13,8 +13,11 @@ export type AuditExpectedRequirement = Omit<
 > &
   Pick<GeneratedExpected, "assetModelId" | "specificAssetId" | "requiredQuantity">;
 export type AuditScan = Required<GeneratedScan>;
-export type AuditFinding = Omit<Required<GeneratedFinding>, "assetId" | "note"> &
-  Pick<GeneratedFinding, "assetId" | "note">;
+export type AuditFinding = Omit<
+  Required<GeneratedFinding>,
+  "assetId" | "note" | "sourceOperationId"
+> &
+  Pick<GeneratedFinding, "assetId" | "note" | "sourceOperationId">;
 export type ContainerAudit = Omit<
   Required<GeneratedAudit>,
   "id" | "completionOutcome" | "expectedRequirements" | "scans" | "findings"
@@ -120,9 +123,13 @@ export const completeAudit = (
   confirmMissing: boolean,
   sealConfirmed: boolean,
   operationId = crypto.randomUUID(),
+  actor?: string,
+  signal?: AbortSignal,
 ) =>
   read<ContainerAudit>(() =>
     apiClient.POST("/api/v1/audits/{auditId}/complete", {
+      signal,
+      headers: actor ? { "X-Tarpeisto-Audit-Actor": actor } : undefined,
       params: { path: { auditId } },
       body: { operationId, containerCode, confirmMissing, sealConfirmed },
     }),

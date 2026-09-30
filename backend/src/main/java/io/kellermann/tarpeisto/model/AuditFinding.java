@@ -27,6 +27,9 @@ public class AuditFinding {
     @Column(name = "physical_asset_id")
     private UUID assetId;
 
+    @Column(name = "source_operation_id", updatable = false)
+    private UUID sourceOperationId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "finding_type")
     private AuditFindingType type;
@@ -65,6 +68,15 @@ public class AuditFinding {
         this.detail = detail;
         this.actor = actor;
         recordedAt = at;
+    }
+
+    public AuditFinding withSourceOperation(UUID operationId) {
+        this.sourceOperationId = operationId;
+        return this;
+    }
+
+    public UUID getSourceOperationId() {
+        return sourceOperationId;
     }
 
     public UUID getId() {

@@ -6,6 +6,7 @@ import java.util.UUID;
 
 public record AuditScanResponse(
         UUID id,
+        UUID operationId,
         UUID assetId,
         String assetCode,
         String outcome,
@@ -14,6 +15,13 @@ public record AuditScanResponse(
         String contextSnapshot) {
     static AuditScanResponse from(AuditScanView v) {
         return new AuditScanResponse(
-                v.id(), v.assetId(), v.assetCode(), v.outcome(), v.scannedAt(), v.undone(), v.contextSnapshot());
+                v.id(),
+                v.operationId(),
+                v.assetId(),
+                v.assetCode(),
+                v.outcome(),
+                v.scannedAt(),
+                v.undone(),
+                v.contextSnapshot());
     }
 }

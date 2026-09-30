@@ -1,17 +1,25 @@
 package io.kellermann.tarpeisto.service;
 
 import io.kellermann.tarpeisto.config.S3Properties;
+import io.kellermann.tarpeisto.exception.AuditMutationConflictException;
 import io.kellermann.tarpeisto.exception.NotFoundException;
 import io.kellermann.tarpeisto.exception.StaleMediaVersionException;
 import io.kellermann.tarpeisto.exception.ValidationFailedException;
 import io.kellermann.tarpeisto.model.Asset;
 import io.kellermann.tarpeisto.model.AssetModel;
+import io.kellermann.tarpeisto.model.AuditFinding;
+import io.kellermann.tarpeisto.model.AuditFindingType;
+import io.kellermann.tarpeisto.model.ContainerAudit;
+import io.kellermann.tarpeisto.model.ContainerAuditState;
 import io.kellermann.tarpeisto.model.MediaObject;
 import io.kellermann.tarpeisto.model.MediaPurpose;
 import io.kellermann.tarpeisto.model.OrganizationRole;
 import io.kellermann.tarpeisto.repository.AssetModelRepository;
 import io.kellermann.tarpeisto.repository.AssetRepository;
+import io.kellermann.tarpeisto.repository.AuditFindingRepository;
+import io.kellermann.tarpeisto.repository.ContainerAuditRepository;
 import io.kellermann.tarpeisto.repository.MediaObjectRepository;
+import io.kellermann.tarpeisto.repository.OrganizationRepository;
 import io.kellermann.tarpeisto.security.TarpeistoPrincipal;
 import io.kellermann.tarpeisto.storage.MediaStorage;
 import java.awt.Graphics2D;
@@ -52,6 +60,9 @@ public class MediaService {
     private final TransactionTemplate transactionTemplate;
     private final Clock clock;
     private final ActivityLogService activityLogService;
+    private final ContainerAuditRepository audits;
+    private final AuditFindingRepository findings;
+    private final OrganizationRepository organizations;
 
     public MediaService(
             MediaObjectRepository mediaObjectRepository,
@@ -61,7 +72,10 @@ public class MediaService {
             S3Properties s3Properties,
             TransactionTemplate transactionTemplate,
             Clock clock,
-            ActivityLogService activityLogService) {
+            ActivityLogService activityLogService,
+            ContainerAuditRepository audits,
+            AuditFindingRepository findings,
+            OrganizationRepository organizations) {
         this.mediaObjectRepository = mediaObjectRepository;
         this.assetModelRepository = assetModelRepository;
         this.assetRepository = assetRepository;
@@ -70,6 +84,9 @@ public class MediaService {
         this.transactionTemplate = transactionTemplate;
         this.clock = clock;
         this.activityLogService = activityLogService;
+        this.audits = audits;
+        this.findings = findings;
+        this.organizations = organizations;
     }
 
     public MediaView uploadModelReference(TarpeistoPrincipal principal, UUID assetModelId, MultipartFile file) {
@@ -183,6 +200,8 @@ public class MediaService {
         requireOwnerOrDeputy(principal);
         MediaObject deleted = transactionTemplate.execute(status -> {
             MediaObject media = requireMedia(principal.organizationId(), mediaId);
+            if (media.getPurpose() == MediaPurpose.AUDIT_EVIDENCE)
+                throw new ValidationFailedException("Audit evidence cannot be deleted.");
             media.archiveForCleanup(clock.instant());
             activityLogService.record(
                     principal.organizationId(), principal.userId(), "MEDIA_REMOVED", "MEDIA", media.getId(), null);
@@ -194,10 +213,127 @@ public class MediaService {
     public void retryCleanup(TarpeistoPrincipal principal, UUID mediaId) {
         requireOwnerOrDeputy(principal);
         MediaObject media = requireMedia(principal.organizationId(), mediaId);
-        if (!media.isArchived() || !media.isCleanupPending()) {
+        if (media.getPurpose() == MediaPurpose.AUDIT_EVIDENCE || !media.isArchived() || !media.isCleanupPending()) {
             throw new ValidationFailedException("This image has no pending cleanup.");
         }
         attemptCleanup(media);
+    }
+
+    public List<MediaView> listAuditEvidence(TarpeistoPrincipal principal, UUID auditId) {
+        requireAuthenticated(principal);
+        requireAudit(principal, auditId);
+        return mediaObjectRepository
+                .findAllByOrganizationIdAndAuditIdOrderByCreatedAtAsc(principal.organizationId(), auditId)
+                .stream()
+                .map(MediaView::from)
+                .toList();
+    }
+
+    public List<MediaView> listFindingEvidence(TarpeistoPrincipal principal, UUID findingId) {
+        requireAuthenticated(principal);
+        findings.findByIdAndOrganizationId(findingId, principal.organizationId())
+                .orElseThrow(() -> new NotFoundException("Finding not found."));
+        return mediaObjectRepository
+                .findAllByOrganizationIdAndFindingIdOrderByCreatedAtAsc(principal.organizationId(), findingId)
+                .stream()
+                .map(MediaView::from)
+                .toList();
+    }
+
+    /** Each attempt owns its object keys. Replay lookup precedes the immutable completion gate. */
+    public MediaView uploadAuditEvidence(
+            TarpeistoPrincipal principal, UUID auditId, UUID findingId, UUID operationId, MultipartFile file) {
+        requireAuthenticated(principal);
+        if (principal.role() == OrganizationRole.VIEWER) throw new AccessDeniedException("Auditor role required.");
+        if (!s3Properties.enabled()) throw new ValidationFailedException("Media storage is not configured.");
+        ValidatedImage image = validateImage(file);
+        MediaObject replay = transactionTemplate.execute(
+                status -> evidencePreflight(principal, auditId, findingId, operationId, image));
+        if (replay != null) return MediaView.from(replay);
+        UUID mediaId = UUID.randomUUID();
+        String root = "organizations/" + principal.organizationId() + "/media/" + mediaId + "/";
+        String objectKey = root + "original" + image.extension();
+        String thumbnailKey = root + "thumbnail.jpg";
+        try {
+            mediaStorage.put(
+                    objectKey, image.contentType(), image.bytes().length, new ByteArrayInputStream(image.bytes()));
+            mediaStorage.put(
+                    thumbnailKey, "image/jpeg", image.thumbnail().length, new ByteArrayInputStream(image.thumbnail()));
+            MediaObject saved = transactionTemplate.execute(status -> {
+                organizations
+                        .findWithLockById(principal.organizationId())
+                        .orElseThrow(() -> new NotFoundException("Organization not found."));
+                MediaObject existing = evidencePreflight(principal, auditId, findingId, operationId, image);
+                if (existing != null) return existing;
+                MediaObject media = new MediaObject(
+                                mediaId,
+                                principal.organizationId(),
+                                null,
+                                null,
+                                MediaPurpose.AUDIT_EVIDENCE,
+                                objectKey,
+                                thumbnailKey,
+                                image.contentType(),
+                                image.bytes().length,
+                                image.sha256(),
+                                null,
+                                0,
+                                false,
+                                principal.userId(),
+                                clock.instant())
+                        .associateEvidence(auditId, findingId, operationId);
+                mediaObjectRepository.saveAndFlush(media);
+                activityLogService.record(
+                        principal.organizationId(),
+                        principal.userId(),
+                        "AUDIT_EVIDENCE_UPLOADED",
+                        "MEDIA",
+                        mediaId,
+                        java.util.Map.of("auditId", auditId, "findingId", findingId));
+                return media;
+            });
+            if (!saved.getId().equals(mediaId)) {
+                deleteQuietly(objectKey);
+                deleteQuietly(thumbnailKey);
+            }
+            return MediaView.from(saved);
+        } catch (RuntimeException failure) {
+            deleteQuietly(objectKey);
+            deleteQuietly(thumbnailKey);
+            throw failure;
+        }
+    }
+
+    private ContainerAudit requireAudit(TarpeistoPrincipal principal, UUID auditId) {
+        return audits.findByOrganizationIdAndId(principal.organizationId(), auditId)
+                .orElseThrow(() -> new NotFoundException("Audit not found."));
+    }
+
+    private MediaObject evidencePreflight(
+            TarpeistoPrincipal principal, UUID auditId, UUID findingId, UUID operationId, ValidatedImage image) {
+        ContainerAudit audit = requireAudit(principal, auditId);
+        AuditFinding finding = findings.findByIdAndOrganizationId(findingId, principal.organizationId())
+                .orElseThrow(() -> new NotFoundException("Finding not found."));
+        if (!auditId.equals(finding.getAuditId()))
+            throw new ValidationFailedException("Finding does not belong to this audit.");
+        MediaObject replay = mediaObjectRepository
+                .findByOrganizationIdAndUploadOperationId(principal.organizationId(), operationId)
+                .orElse(null);
+        if (replay != null) {
+            if (!auditId.equals(replay.getAuditId())
+                    || !findingId.equals(replay.getFindingId())
+                    || !image.sha256().equals(replay.getSha256())
+                    || !image.contentType().equals(replay.getContentType())) throw new AuditMutationConflictException();
+            return replay;
+        }
+        if (audit.getState() != ContainerAuditState.IN_PROGRESS || !audit.isCurrentAttempt())
+            throw new ValidationFailedException("Completed audit evidence is immutable.");
+        if (finding.getType() != AuditFindingType.DAMAGED
+                && finding.getType() != AuditFindingType.UNKNOWN_CODE
+                && finding.getType() != AuditFindingType.UNREADABLE_LABEL)
+            throw new ValidationFailedException(
+                    "Photographs require a damage, unknown-code, or unreadable-label finding.");
+        return null;
     }
 
     private MediaView upload(

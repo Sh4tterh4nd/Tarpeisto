@@ -81,6 +81,26 @@ export default tseslint.config(
     ...boundaryRestrictedImports,
   },
   {
+    files: ["apps/web/src/data/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@tarpeisto/api-client/*", "!@tarpeisto/api-client"],
+              message: "Import only the @tarpeisto/api-client package entry point.",
+            },
+            {
+              group: ["@tarpeisto/shared-ui/*", "!@tarpeisto/shared-ui"],
+              message: "Import only the @tarpeisto/shared-ui package entry point.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["**/*.test.{ts,tsx}", "**/e2e/**/*.{ts,tsx}"],
     rules: {
       "@typescript-eslint/no-explicit-any": "off",

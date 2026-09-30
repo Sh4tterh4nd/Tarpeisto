@@ -2,12 +2,14 @@ import { createContext } from "react";
 import type { AppError } from "@tarpeisto/api-client";
 import type { LoginCredentials, Role, SessionPrincipal } from "./sessionApi";
 
-export type SessionStatus = "loading" | "setup-required" | "authenticated" | "anonymous";
+export type SessionStatus =
+  "loading" | "setup-required" | "authenticated" | "anonymous" | "offline-audit";
 
 export interface SessionContextValue {
   status: SessionStatus;
-  /** Defined only when `status === "authenticated"`. */
+  /** Live authenticated identity, or cached identity restricted to the recovered offline audit. */
   principal: SessionPrincipal | undefined;
+  offlineAuditTaskId?: string;
   /** Convenience accessor for `principal?.role`. */
   role: Role | undefined;
   /** True when the session ended unexpectedly (a stale/expired cookie observed on some other API call), distinct from never having signed in. */

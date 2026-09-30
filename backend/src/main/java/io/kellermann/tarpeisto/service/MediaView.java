@@ -8,6 +8,9 @@ import java.util.UUID;
 /** Safe API projection: object keys and original filenames are intentionally never exposed. */
 public record MediaView(
         UUID id,
+        UUID auditId,
+        UUID findingId,
+        UUID uploadOperationId,
         MediaPurpose purpose,
         String contentType,
         long byteSize,
@@ -22,6 +25,9 @@ public record MediaView(
         String root = "/api/v1/media/" + media.getId();
         return new MediaView(
                 media.getId(),
+                media.getAuditId(),
+                media.getFindingId(),
+                media.getUploadOperationId(),
                 media.getPurpose(),
                 media.getContentType(),
                 media.getByteSize(),

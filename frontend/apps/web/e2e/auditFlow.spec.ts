@@ -90,7 +90,7 @@ test("an online return audit starts, scans and completes", async ({ page }) => {
   await page.goto("/audits/tasks/11111111-1111-1111-1111-111111111111");
 
   await expect(page.getByRole("heading", { name: "Container audit: Audit case" })).toBeVisible();
-  await expect(page.getByText(/Online-only/)).toBeVisible();
+  await expect(page.getByText(/saved on this device/)).toBeVisible();
 
   await page.getByLabel("Scan assigned container to start").fill("7K3MXY");
   await page.getByRole("button", { name: "Start audit" }).click();

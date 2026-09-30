@@ -35,6 +35,34 @@ public class MediaController {
         this.mediaService = mediaService;
     }
 
+    @GetMapping("/audits/{auditId}/evidence")
+    public List<MediaResponse> auditEvidence(
+            @AuthenticationPrincipal TarpeistoPrincipal principal, @PathVariable UUID auditId) {
+        return mediaService.listAuditEvidence(principal, auditId).stream()
+                .map(MediaResponse::from)
+                .toList();
+    }
+
+    @GetMapping("/findings/{findingId}/evidence")
+    public List<MediaResponse> findingEvidence(
+            @AuthenticationPrincipal TarpeistoPrincipal principal, @PathVariable UUID findingId) {
+        return mediaService.listFindingEvidence(principal, findingId).stream()
+                .map(MediaResponse::from)
+                .toList();
+    }
+
+    @PostMapping(
+            value = "/audits/{auditId}/findings/{findingId}/evidence",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public MediaResponse uploadEvidence(
+            @AuthenticationPrincipal TarpeistoPrincipal principal,
+            @PathVariable UUID auditId,
+            @PathVariable UUID findingId,
+            @RequestParam UUID operationId,
+            @RequestPart("file") MultipartFile file) {
+        return MediaResponse.from(mediaService.uploadAuditEvidence(principal, auditId, findingId, operationId, file));
+    }
+
     @GetMapping("/asset-models/{assetModelId}/media/reference")
     public MediaResponse getModelReference(
             @AuthenticationPrincipal TarpeistoPrincipal principal, @PathVariable UUID assetModelId) {
