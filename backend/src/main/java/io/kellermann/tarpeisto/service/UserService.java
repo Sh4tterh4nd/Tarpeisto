@@ -58,6 +58,7 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public List<UserSummaryView> listUsers(TarpeistoPrincipal principal) {
+        if (principal != null) principal.requirePermanent();
         requireOwner(principal);
         List<OrganizationMembership> memberships =
                 membershipRepository.findAllByOrganizationIdOrderByCreatedAtAsc(principal.organizationId());
@@ -78,6 +79,7 @@ public class UserService {
             String displayName,
             String email,
             OrganizationRole role) {
+        if (principal != null) principal.requirePermanent();
         requireOwner(principal);
         if (userRepository.findByUsernameIgnoreCase(username).isPresent()) {
             throw new ValidationFailedException("Username is already taken.");
@@ -103,6 +105,7 @@ public class UserService {
 
     @Transactional
     public void changeRole(TarpeistoPrincipal principal, UUID targetUserId, OrganizationRole newRole) {
+        if (principal != null) principal.requirePermanent();
         requireOwner(principal);
         OrganizationMembership membership = requireMembership(principal.organizationId(), targetUserId);
 
@@ -123,6 +126,7 @@ public class UserService {
 
     @Transactional
     public void setEnabled(TarpeistoPrincipal principal, UUID targetUserId, boolean enabled) {
+        if (principal != null) principal.requirePermanent();
         requireOwner(principal);
         OrganizationMembership membership = requireMembership(principal.organizationId(), targetUserId);
         User user = userRepository.findById(targetUserId).orElseThrow(UserService::userNotFound);

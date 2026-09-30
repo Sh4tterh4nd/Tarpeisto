@@ -1317,6 +1317,123 @@
         }
       }
     },
+    "/api/v1/temporary-access/redemptions": {
+      "post": {
+        "tags": ["temporary-access-controller"],
+        "operationId": "redeem",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RedeemTemporaryInvitationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/temporary-access/invitations": {
+      "get": {
+        "tags": ["temporary-access-controller"],
+        "operationId": "list_2",
+        "parameters": [
+          {
+            "name": "bookingId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "auditBatchId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TemporaryAccessInvitation"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["temporary-access-controller"],
+        "operationId": "create_2",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTemporaryInvitationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemporaryInvitationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/temporary-access/invitations/{invitationId}/revoke": {
+      "post": {
+        "tags": ["temporary-access-controller"],
+        "operationId": "revoke",
+        "parameters": [
+          {
+            "name": "invitationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
     "/api/v1/setup": {
       "get": {
         "tags": ["initial-setup-controller"],
@@ -1722,7 +1839,7 @@
     "/api/v1/locations": {
       "get": {
         "tags": ["location-controller"],
-        "operationId": "list_2",
+        "operationId": "list_3",
         "responses": {
           "200": {
             "description": "OK",
@@ -1741,7 +1858,7 @@
       },
       "post": {
         "tags": ["location-controller"],
-        "operationId": "create_2",
+        "operationId": "create_3",
         "requestBody": {
           "content": {
             "application/json": {
@@ -1872,7 +1989,7 @@
     "/api/v1/categories": {
       "get": {
         "tags": ["category-controller"],
-        "operationId": "list_3",
+        "operationId": "list_4",
         "responses": {
           "200": {
             "description": "OK",
@@ -1891,7 +2008,7 @@
       },
       "post": {
         "tags": ["category-controller"],
-        "operationId": "create_3",
+        "operationId": "create_4",
         "requestBody": {
           "content": {
             "application/json": {
@@ -1963,7 +2080,7 @@
     "/api/v1/bookings": {
       "get": {
         "tags": ["booking-controller"],
-        "operationId": "list_4",
+        "operationId": "list_5",
         "parameters": [
           {
             "name": "from",
@@ -2023,7 +2140,7 @@
       },
       "post": {
         "tags": ["booking-controller"],
-        "operationId": "create_4",
+        "operationId": "create_5",
         "requestBody": {
           "content": {
             "application/json": {
@@ -2844,7 +2961,7 @@
     "/api/v1/assets/{containerAssetId}/packing-requirements": {
       "get": {
         "tags": ["packing-requirement-controller"],
-        "operationId": "list_5",
+        "operationId": "list_6",
         "parameters": [
           {
             "name": "containerAssetId",
@@ -3289,7 +3406,7 @@
     "/api/v1/asset-models": {
       "get": {
         "tags": ["asset-model-controller"],
-        "operationId": "list_6",
+        "operationId": "list_7",
         "responses": {
           "200": {
             "description": "OK",
@@ -3308,7 +3425,7 @@
       },
       "post": {
         "tags": ["asset-model-controller"],
-        "operationId": "create_5",
+        "operationId": "create_6",
         "requestBody": {
           "content": {
             "application/json": {
@@ -3430,7 +3547,7 @@
     "/api/v1/asset-models/{assetModelId}/custom-fields": {
       "get": {
         "tags": ["model-custom-field-controller"],
-        "operationId": "list_7",
+        "operationId": "list_8",
         "parameters": [
           {
             "name": "assetModelId",
@@ -3460,7 +3577,7 @@
       },
       "post": {
         "tags": ["model-custom-field-controller"],
-        "operationId": "create_6",
+        "operationId": "create_7",
         "parameters": [
           {
             "name": "assetModelId",
@@ -3530,7 +3647,7 @@
     "/api/v1/asset-models/{assetModelId}/custom-fields/{fieldId}/options": {
       "get": {
         "tags": ["model-custom-field-option-controller"],
-        "operationId": "list_8",
+        "operationId": "list_9",
         "parameters": [
           {
             "name": "assetModelId",
@@ -3569,7 +3686,7 @@
       },
       "post": {
         "tags": ["model-custom-field-option-controller"],
-        "operationId": "create_7",
+        "operationId": "create_8",
         "parameters": [
           {
             "name": "assetModelId",
@@ -3962,7 +4079,7 @@
     "/api/v1/asset-models/{assetModelId}/assets": {
       "get": {
         "tags": ["asset-controller"],
-        "operationId": "list_9",
+        "operationId": "list_10",
         "parameters": [
           {
             "name": "assetModelId",
@@ -4001,7 +4118,7 @@
       },
       "post": {
         "tags": ["asset-controller"],
-        "operationId": "create_8",
+        "operationId": "create_9",
         "parameters": [
           {
             "name": "assetModelId",
@@ -4188,6 +4305,27 @@
         }
       }
     },
+    "/api/v1/temporary-access/tasks": {
+      "get": {
+        "tags": ["temporary-access-controller"],
+        "operationId": "tasks",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AssignedAuditTaskView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/packing-requirements/{id}/reservation-impact": {
       "get": {
         "tags": ["packing-requirement-controller"],
@@ -4334,7 +4472,7 @@
     "/api/v1/findings": {
       "get": {
         "tags": ["review-controller"],
-        "operationId": "list_10",
+        "operationId": "list_11",
         "parameters": [
           {
             "name": "unresolvedOnly",
@@ -4670,6 +4808,35 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ContainerAuditResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audits/tasks/{taskId}/container": {
+      "get": {
+        "tags": ["audit-controller"],
+        "operationId": "container",
+        "parameters": [
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditContainerResponse"
                 }
               }
             }
@@ -6137,6 +6304,146 @@
           }
         }
       },
+      "RedeemTemporaryInvitationRequest": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "displayName": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "operationId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["displayName", "operationId", "token"]
+      },
+      "SessionResponse": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "username": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "organizationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["OWNER", "DEPUTY", "OPERATOR_AUDITOR", "VIEWER"]
+          },
+          "temporaryAccess": {
+            "$ref": "#/components/schemas/TemporaryAccessContext"
+          }
+        }
+      },
+      "TemporaryAccessContext": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "invitationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "bookingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "auditBatchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CreateTemporaryInvitationRequest": {
+        "type": "object",
+        "properties": {
+          "bookingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "auditBatchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "joinUrl": {
+            "type": "string",
+            "maxLength": 2048,
+            "minLength": 0
+          }
+        },
+        "required": ["joinUrl"]
+      },
+      "TemporaryAccessInvitation": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "organizationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "bookingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "auditBatchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "issuedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "revokedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "TemporaryInvitationResponse": {
+        "type": "object",
+        "properties": {
+          "invitation": {
+            "$ref": "#/components/schemas/TemporaryAccessInvitation"
+          },
+          "token": {
+            "type": "string"
+          },
+          "joinUrl": {
+            "type": "string"
+          },
+          "qrCodeDataUrl": {
+            "type": "string"
+          }
+        }
+      },
       "CompleteInitialSetupRequest": {
         "type": "object",
         "properties": {
@@ -6182,29 +6489,6 @@
           }
         },
         "required": ["password", "username"]
-      },
-      "SessionResponse": {
-        "type": "object",
-        "properties": {
-          "userId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "username": {
-            "type": "string"
-          },
-          "displayName": {
-            "type": "string"
-          },
-          "organizationId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "role": {
-            "type": "string",
-            "enum": ["OWNER", "DEPUTY", "OPERATOR_AUDITOR", "VIEWER"]
-          }
-        }
       },
       "CloseRepairRequest": {
         "type": "object",
@@ -6818,6 +7102,13 @@
           },
           "detail": {
             "type": "string"
+          },
+          "recordedByUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "recordedByDisplayName": {
+            "type": "string"
           }
         }
       },
@@ -6850,6 +7141,13 @@
             "type": "boolean"
           },
           "contextSnapshot": {
+            "type": "string"
+          },
+          "recordedByUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "recordedByDisplayName": {
             "type": "string"
           }
         }
@@ -7509,6 +7807,38 @@
         },
         "required": ["format"]
       },
+      "AssignedAuditTaskView": {
+        "type": "object",
+        "properties": {
+          "taskId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "batchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "containerAssetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "publicCode": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "blockingReasons": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "InitialSetupStatusResponse": {
         "type": "object",
         "properties": {
@@ -7620,6 +7950,21 @@
           "snapshot": {
             "type": "object",
             "additionalProperties": {}
+          }
+        }
+      },
+      "AuditContainerResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "publicCode": {
+            "type": "string"
           }
         }
       },

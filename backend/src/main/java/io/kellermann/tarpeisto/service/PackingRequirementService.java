@@ -102,6 +102,7 @@ public class PackingRequirementService {
 
     @Transactional(readOnly = true)
     public List<PackingRequirementView> list(TarpeistoPrincipal p, UUID container) {
+        if (p != null) p.requirePermanent();
         auth(p);
         requireContainerForRead(p.organizationId(), container);
         return requirements
@@ -137,6 +138,7 @@ public class PackingRequirementService {
      */
     @Transactional(readOnly = true)
     public PackingPreviewView preview(TarpeistoPrincipal p, UUID container, Map<UUID, BigDecimal> observations) {
+        if (p != null) p.requirePermanent();
         auth(p);
         requireContainerForRead(p.organizationId(), container);
         List<PackingRequirement> rows = requirements
@@ -249,6 +251,7 @@ public class PackingRequirementService {
             UUID model,
             String assetReference,
             BigDecimal quantity) {
+        if (p != null) p.requirePermanent();
         return add(p, container, type, model, null, assetReference, quantity, false, null);
     }
 
@@ -263,6 +266,7 @@ public class PackingRequirementService {
             BigDecimal quantity,
             boolean assignToContainer,
             Long expectedAssetVersion) {
+        if (p != null) p.requirePermanent();
         admin(p);
         lock(p.organizationId());
         requireContainerForWrite(p.organizationId(), container);
@@ -305,11 +309,13 @@ public class PackingRequirementService {
 
     @Transactional
     public void archive(TarpeistoPrincipal p, UUID id, long expectedVersion) {
+        if (p != null) p.requirePermanent();
         archive(p, id, expectedVersion, false);
     }
 
     @Transactional(readOnly = true)
     public List<UUID> reservationImpact(TarpeistoPrincipal p, UUID id) {
+        if (p != null) p.requirePermanent();
         auth(p);
         PackingRequirement row = requirements
                 .findByIdAndOrganizationId(id, p.organizationId())
@@ -319,6 +325,7 @@ public class PackingRequirementService {
 
     @Transactional
     public void archive(TarpeistoPrincipal p, UUID id, long expectedVersion, boolean confirmed) {
+        if (p != null) p.requirePermanent();
         admin(p);
         lock(p.organizationId());
         PackingRequirement row = requirements
@@ -352,6 +359,7 @@ public class PackingRequirementService {
             UUID model,
             String assetReference,
             BigDecimal quantity) {
+        if (p != null) p.requirePermanent();
         return update(p, id, expectedVersion, type, model, assetReference, quantity, false);
     }
 
@@ -365,6 +373,7 @@ public class PackingRequirementService {
             String assetReference,
             BigDecimal quantity,
             boolean confirmed) {
+        if (p != null) p.requirePermanent();
         admin(p);
         lock(p.organizationId());
         PackingRequirement row = requirements
@@ -402,6 +411,7 @@ public class PackingRequirementService {
 
     @Transactional
     public PackingRequirementView restore(TarpeistoPrincipal p, UUID id, long expectedVersion) {
+        if (p != null) p.requirePermanent();
         admin(p);
         lock(p.organizationId());
         PackingRequirement row = requirements
@@ -440,6 +450,7 @@ public class PackingRequirementService {
 
     @Transactional(readOnly = true)
     public List<PackingTemplateView> listTemplates(TarpeistoPrincipal p) {
+        if (p != null) p.requirePermanent();
         auth(p);
         return templates.findAllByOrganizationIdOrderByNameAsc(p.organizationId()).stream()
                 .map(t -> templateView(p.organizationId(), t))
@@ -448,6 +459,7 @@ public class PackingRequirementService {
 
     @Transactional
     public PackingTemplateView createTemplate(TarpeistoPrincipal p, String name, String description) {
+        if (p != null) p.requirePermanent();
         admin(p);
         lock(p.organizationId());
         requireTemplateNameAvailable(p.organizationId(), name, null);
@@ -471,6 +483,7 @@ public class PackingRequirementService {
     @Transactional
     public PackingTemplateView updateTemplate(
             TarpeistoPrincipal p, UUID id, long expectedVersion, String name, String description) {
+        if (p != null) p.requirePermanent();
         admin(p);
         lock(p.organizationId());
         PackingTemplate template = templates
@@ -499,6 +512,7 @@ public class PackingRequirementService {
     @Transactional
     public PackingTemplateView setTemplateArchived(
             TarpeistoPrincipal p, UUID id, long expectedVersion, boolean archived) {
+        if (p != null) p.requirePermanent();
         admin(p);
         lock(p.organizationId());
         PackingTemplate template = templates
@@ -528,6 +542,7 @@ public class PackingRequirementService {
             UUID model,
             String assetReference,
             BigDecimal quantity) {
+        if (p != null) p.requirePermanent();
         admin(p);
         lock(p.organizationId());
         PackingTemplate template = templates
@@ -571,6 +586,7 @@ public class PackingRequirementService {
             UUID model,
             String assetReference,
             BigDecimal quantity) {
+        if (p != null) p.requirePermanent();
         admin(p);
         lock(p.organizationId());
         PackingTemplateRequirement row = templateRequirements
@@ -602,6 +618,7 @@ public class PackingRequirementService {
     @Transactional
     public PackingTemplateView setTemplateRequirementArchived(
             TarpeistoPrincipal p, UUID id, long expectedVersion, boolean archived) {
+        if (p != null) p.requirePermanent();
         admin(p);
         lock(p.organizationId());
         PackingTemplateRequirement row = templateRequirements
@@ -644,6 +661,7 @@ public class PackingRequirementService {
 
     @Transactional
     public List<PackingRequirementView> applyTemplate(TarpeistoPrincipal p, UUID container, UUID templateId) {
+        if (p != null) p.requirePermanent();
         admin(p);
         lock(p.organizationId());
         requireContainerForWrite(p.organizationId(), container);

@@ -14,6 +14,7 @@ spring:
     baseline-on-migrate: false
   session:
     store-type: jdbc
+    timeout: ${TARPEISTO_SESSION_TIMEOUT:30d}
     jdbc:
       initialize-schema: never
   mvc:
@@ -38,6 +39,7 @@ server:
   servlet:
     session:
       cookie:
+        max-age: ${TARPEISTO_SESSION_TIMEOUT:30d}
         http-only: true
         same-site: lax
         secure: true

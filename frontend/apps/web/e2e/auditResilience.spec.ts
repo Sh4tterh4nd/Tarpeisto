@@ -68,7 +68,7 @@ async function mockServer(context: BrowserContext, state: ReturnType<typeof serv
       await route.fulfill({ status: 404, json: { title: "Not found", status: 404 } });
       return;
     }
-    if (url.pathname === `/api/v1/assets/${containerId}`) {
+    if (url.pathname === `/api/v1/audits/tasks/${taskId}/container`) {
       await route.fulfill({
         json: { id: containerId, displayName: "Resilient case", publicCode: "7K3MXY" },
       });

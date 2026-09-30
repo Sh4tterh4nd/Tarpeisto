@@ -96,6 +96,7 @@ public class AssetModelService {
 
     @Transactional(readOnly = true)
     public List<AssetModelView> list(TarpeistoPrincipal principal) {
+        if (principal != null) principal.requirePermanent();
         requireAuthenticated(principal);
         return assetModelRepository.findAllByOrganizationIdOrderByNameAsc(principal.organizationId()).stream()
                 .map(AssetModelView::from)
@@ -104,6 +105,7 @@ public class AssetModelService {
 
     @Transactional(readOnly = true)
     public AssetModelView get(TarpeistoPrincipal principal, UUID assetModelId) {
+        if (principal != null) principal.requirePermanent();
         requireAuthenticated(principal);
         return AssetModelView.from(requireAssetModel(principal.organizationId(), assetModelId));
     }
@@ -119,6 +121,7 @@ public class AssetModelService {
             String stockUnitLabel,
             BigDecimal lowStockThreshold,
             boolean canContainAssets) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         lockOrganization(principal.organizationId());
         if (categoryId != null) {
@@ -163,6 +166,7 @@ public class AssetModelService {
 
     @Transactional
     public AssetModelView rename(TarpeistoPrincipal principal, UUID assetModelId, String name, String description) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         lockOrganization(principal.organizationId());
         AssetModel assetModel = requireAssetModel(principal.organizationId(), assetModelId);
@@ -182,6 +186,7 @@ public class AssetModelService {
 
     @Transactional
     public AssetModelView changeCategory(TarpeistoPrincipal principal, UUID assetModelId, UUID categoryId) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         lockOrganization(principal.organizationId());
         AssetModel assetModel = requireAssetModel(principal.organizationId(), assetModelId);
@@ -201,6 +206,7 @@ public class AssetModelService {
 
     @Transactional
     public AssetModelView changeReplacementUrl(TarpeistoPrincipal principal, UUID assetModelId, String replacementUrl) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         AssetModel assetModel = requireAssetModel(principal.organizationId(), assetModelId);
         requireValidReplacementUrl(replacementUrl);
@@ -222,6 +228,7 @@ public class AssetModelService {
             TrackingMode newTrackingMode,
             String stockUnitLabel,
             BigDecimal lowStockThreshold) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         lockOrganization(principal.organizationId());
         AssetModel assetModel = requireAssetModel(principal.organizationId(), assetModelId);
@@ -246,6 +253,7 @@ public class AssetModelService {
     @Transactional
     public AssetModelView setCanContainAssets(
             TarpeistoPrincipal principal, UUID assetModelId, boolean canContainAssets) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         lockOrganization(principal.organizationId());
         AssetModel assetModel = requireAssetModel(principal.organizationId(), assetModelId);
@@ -287,6 +295,7 @@ public class AssetModelService {
 
     @Transactional
     public void archive(TarpeistoPrincipal principal, UUID assetModelId) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         lockOrganization(principal.organizationId());
         AssetModel assetModel = requireAssetModel(principal.organizationId(), assetModelId);
@@ -304,6 +313,7 @@ public class AssetModelService {
 
     @Transactional
     public void restore(TarpeistoPrincipal principal, UUID assetModelId) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         lockOrganization(principal.organizationId());
         AssetModel assetModel = requireAssetModel(principal.organizationId(), assetModelId);

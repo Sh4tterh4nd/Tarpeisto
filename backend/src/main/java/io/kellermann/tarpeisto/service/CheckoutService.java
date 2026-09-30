@@ -145,6 +145,7 @@ public class CheckoutService {
 
     @Transactional(readOnly = true)
     public CheckoutManifestView get(TarpeistoPrincipal principal, UUID bookingId) {
+        if (principal != null) principal.requirePermanent();
         authorizeRead(principal);
         CheckoutManifest manifest = requireManifest(principal.organizationId(), bookingId);
         return view(principal.organizationId(), manifest);
@@ -158,6 +159,7 @@ public class CheckoutService {
             UUID mutationId,
             String overrideReason,
             List<UUID> selectedAssetIds) {
+        if (principal != null) principal.requirePermanent();
         authorizeOperation(principal);
         UUID commandId = requireMutation(mutationId);
         organizations
@@ -333,6 +335,7 @@ public class CheckoutService {
     @Transactional
     public CheckoutManifestView checkInAsset(
             TarpeistoPrincipal principal, UUID bookingId, UUID assetId, UUID mutationId) {
+        if (principal != null) principal.requirePermanent();
         authorizeOperation(principal);
         lockOrganization(principal);
         CheckoutManifest manifest = requireManifest(principal.organizationId(), bookingId);
@@ -376,6 +379,7 @@ public class CheckoutService {
             UUID mutationId,
             UUID destinationContainerAssetId,
             UUID destinationLocationId) {
+        if (principal != null) principal.requirePermanent();
         authorizeOperation(principal);
         lockOrganization(principal);
         if (quantity == null
@@ -409,6 +413,7 @@ public class CheckoutService {
 
     @Transactional
     public CheckoutManifestView completeReturn(TarpeistoPrincipal principal, UUID bookingId, UUID mutationId) {
+        if (principal != null) principal.requirePermanent();
         authorizeOperation(principal);
         lockOrganization(principal);
         CheckoutManifest manifest = requireManifest(principal.organizationId(), bookingId);
@@ -438,6 +443,7 @@ public class CheckoutService {
 
     @Transactional(readOnly = true)
     public byte[] pdf(TarpeistoPrincipal principal, UUID bookingId) {
+        if (principal != null) principal.requirePermanent();
         CheckoutManifestView view = get(principal, bookingId);
         List<String> lines = new ArrayList<>();
         lines.add("TARPEISTO CHECKOUT MANIFEST");

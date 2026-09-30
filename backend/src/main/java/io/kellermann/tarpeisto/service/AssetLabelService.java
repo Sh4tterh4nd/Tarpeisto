@@ -28,6 +28,7 @@ public class AssetLabelService {
             AssetLabelFormat format,
             int skipFirstPositions,
             AssetLabelCalibration calibration) {
+        if (principal != null) principal.requirePermanent();
         requireAuthenticated(principal);
         AssetLabelFormat resolvedFormat = requireFormat(format);
         validateSkip(skipFirstPositions, resolvedFormat);
@@ -41,6 +42,7 @@ public class AssetLabelService {
 
     public byte[] calibration(
             TarpeistoPrincipal principal, AssetLabelFormat format, AssetLabelCalibration calibration) {
+        if (principal != null) principal.requirePermanent();
         requireAuthenticated(principal);
         try {
             return AssetLabelDocument.calibration(requireFormat(format), calibration);
@@ -50,6 +52,7 @@ public class AssetLabelService {
     }
 
     public byte[] ptouchCsv(TarpeistoPrincipal principal, List<UUID> assetIds) {
+        if (principal != null) principal.requirePermanent();
         requireAuthenticated(principal);
         List<AssetLabelEntry> entries = snapshotService.snapshot(principal.organizationId(), assetIds);
         return AssetLabelCsv.write(entries);

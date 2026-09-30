@@ -14,8 +14,10 @@ import {
   stopAuditIdentity,
   subscribeAuditIdentityStop,
   verifyAuditIdentity,
+  disableAuditRecovery,
 } from "../../data/sync/auditIdentity";
 import { webConnectivityCapability } from "../../platform/web/webConnectivityCapability";
+import { temporaryAccessExpired } from "../../data/sync/temporaryDeadline";
 
 export interface SessionProviderProps {
   children: ReactNode;
@@ -38,15 +40,32 @@ export function SessionProvider({ children }: SessionProviderProps) {
   const [sessionExpired, setSessionExpired] = useState(false);
   const [offlineAuditTaskId, setOfflineAuditTaskId] = useState<string>();
   const statusRef = useRef<SessionStatus>("loading");
+  const identityEpoch = useRef(0);
+  const refreshSequence = useRef(0);
+  const verifyingIdentity = useRef(false);
 
   useEffect(() => {
     statusRef.current = status;
   }, [status]);
 
   const refresh = useCallback(async () => {
+    const epoch = identityEpoch.current;
+    const sequence = ++refreshSequence.current;
+    const current = () => epoch === identityEpoch.current && sequence === refreshSequence.current;
     const outcome = await fetchCurrentSession();
+    if (!current()) return;
     if (outcome.kind === "authenticated") {
-      await verifyAuditIdentity(outcome.principal).catch(() => {});
+      if (temporaryAccessExpired(outcome.principal)) {
+        await stopAuditIdentity().catch(() => {});
+        return;
+      }
+      verifyingIdentity.current = true;
+      try {
+        await verifyAuditIdentity(outcome.principal).catch(() => {});
+      } finally {
+        verifyingIdentity.current = false;
+      }
+      if (!current()) return;
       setOfflineAuditTaskId(undefined);
       setPrincipal(outcome.principal);
       setStatus("authenticated");
@@ -54,7 +73,9 @@ export function SessionProvider({ children }: SessionProviderProps) {
       return;
     }
     if (outcome.kind === "error" && outcome.error.kind === "network") {
+      if (statusRef.current === "authenticated" || statusRef.current === "offline-audit") return;
       const recovered = await recoverAuditIdentity().catch(() => undefined);
+      if (!current()) return;
       if (recovered) {
         setPrincipal(recovered.principal);
         setOfflineAuditTaskId(recovered.taskId);
@@ -64,6 +85,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
     }
     if (outcome.kind === "anonymous") {
       const setupStatus = await fetchInitialSetupStatus();
+      if (!current()) return;
       if (setupStatus?.setupRequired) {
         setPrincipal(undefined);
         setStatus("setup-required");
@@ -85,6 +107,10 @@ export function SessionProvider({ children }: SessionProviderProps) {
   useEffect(
     () =>
       onUnauthenticatedResponse(() => {
+        if (statusRef.current === "loading" || statusRef.current === "setup-required") {
+          void disableAuditRecovery().catch(() => {});
+          return;
+        }
         void stopAuditIdentity().catch(() => {});
         if (statusRef.current === "authenticated") {
           setSessionExpired(true);
@@ -98,7 +124,9 @@ export function SessionProvider({ children }: SessionProviderProps) {
   );
   useEffect(
     () =>
-      subscribeAuditIdentityStop(() => {
+      subscribeAuditIdentityStop((reason) => {
+        if (verifyingIdentity.current && reason === "account-switch") return;
+        identityEpoch.current++;
         setPrincipal(undefined);
         setOfflineAuditTaskId(undefined);
         setStatus("anonymous");
@@ -109,7 +137,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
     () =>
       webConnectivityCapability.subscribe(() => {
         if (
-          statusRef.current === "offline-audit" &&
+          (statusRef.current === "offline-audit" || statusRef.current === "authenticated") &&
           webConnectivityCapability.getStatus() === "online"
         )
           void refresh();
@@ -117,10 +145,56 @@ export function SessionProvider({ children }: SessionProviderProps) {
     [refresh],
   );
 
+  useEffect(() => {
+    const foreground = () => {
+      if (
+        document.visibilityState === "visible" &&
+        (statusRef.current === "authenticated" || statusRef.current === "offline-audit")
+      )
+        void refresh();
+    };
+    window.addEventListener("focus", foreground);
+    window.addEventListener("pageshow", foreground);
+    document.addEventListener("visibilitychange", foreground);
+    const timer = setInterval(foreground, 5 * 60_000);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("focus", foreground);
+      window.removeEventListener("pageshow", foreground);
+      document.removeEventListener("visibilitychange", foreground);
+    };
+  }, [refresh]);
+
+  useEffect(() => {
+    if (!principal?.temporaryAccess) return;
+    const expire = () => {
+      if (temporaryAccessExpired(principal)) {
+        setSessionExpired(true);
+        void stopAuditIdentity().catch(() => {});
+      }
+    };
+    const remaining = Date.parse(principal.temporaryAccess.expiresAt ?? "") - Date.now();
+    const timer = setTimeout(expire, Math.max(0, Number.isFinite(remaining) ? remaining : 0));
+    return () => clearTimeout(timer);
+  }, [principal]);
+
   const signIn = useCallback(async (credentials: LoginCredentials) => {
+    const epoch = ++identityEpoch.current;
     const outcome = await loginRequest(credentials);
+    if (epoch !== identityEpoch.current)
+      return outcome.kind === "error" ? outcome.error : undefined;
     if (outcome.kind === "authenticated") {
-      await verifyAuditIdentity(outcome.principal).catch(() => {});
+      if (temporaryAccessExpired(outcome.principal)) {
+        await stopAuditIdentity().catch(() => {});
+        return undefined;
+      }
+      verifyingIdentity.current = true;
+      try {
+        await verifyAuditIdentity(outcome.principal).catch(() => {});
+      } finally {
+        verifyingIdentity.current = false;
+      }
+      if (epoch !== identityEpoch.current) return undefined;
       setOfflineAuditTaskId(undefined);
       setPrincipal(outcome.principal);
       setStatus("authenticated");
@@ -131,10 +205,12 @@ export function SessionProvider({ children }: SessionProviderProps) {
   }, []);
 
   const signOut = useCallback(async () => {
+    identityEpoch.current++;
+    setPrincipal(undefined);
+    setOfflineAuditTaskId(undefined);
+    setStatus("anonymous");
     await stopAuditIdentity().catch(() => {});
     await logoutRequest();
-    setPrincipal(undefined);
-    setStatus("anonymous");
   }, []);
 
   const acknowledgeSessionExpired = useCallback(() => {

@@ -19,6 +19,7 @@ import { completeAudit, startAudit, type AuditResult, type ContainerAudit } from
 import { useAuditQueue } from "./useAuditQueue";
 import { AuditEvidencePanel } from "./AuditEvidencePanel";
 import type { AuditConsumableStatus, AuditFindingType } from "./auditApi";
+import { TemporaryInvitationsPanel } from "../temporary-access/TemporaryInvitationsPanel";
 
 function expectedLabel(row: ContainerAudit["expectedRequirements"][number]) {
   try {
@@ -149,6 +150,7 @@ export function AuditTaskPage() {
   const lastActiveScan = audit.scans.findLast((scan) => !scan.undone);
   return (
     <Stack spacing={2}>
+      {audit?.batchId ? <TemporaryInvitationsPanel auditBatchId={audit.batchId} /> : null}
       <PageHeading
         title={container ? `Container audit: ${container.displayName}` : "Container audit"}
         description={`${container ? `${container.publicCode}. ` : ""}Active-audit work is saved on this device before synchronization. Start and complete while online.`}
@@ -311,6 +313,11 @@ export function AuditTaskPage() {
                             .join(" - ")}{" "}
                           - {scan.outcome.replaceAll("_", " ")}
                         </Typography>
+                        {scan.recordedByDisplayName ? (
+                          <Typography variant="caption" sx={{ display: "block" }}>
+                            Recorded by {scan.recordedByDisplayName}
+                          </Typography>
+                        ) : null}
                         {destination ? (
                           <Typography variant="caption" sx={{ display: "block" }}>
                             Required in {destination}
@@ -605,6 +612,9 @@ export function AuditTaskPage() {
             <Typography key={finding.id}>
               {finding.type.replaceAll("_", " ")}
               {finding.note ? ` - ${finding.note}` : ""}
+              {finding.recordedByDisplayName
+                ? ` · Recorded by ${finding.recordedByDisplayName}`
+                : ""}
               {role === "OWNER" || role === "DEPUTY" ? (
                 <Button component={RouterLink} to={`/review?finding=${finding.id}`} size="small">
                   Review finding

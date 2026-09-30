@@ -27,6 +27,13 @@ public class AuditController {
         return ContainerAuditResponse.from(audits.get(principal, taskId));
     }
 
+    @GetMapping("/tasks/{taskId}/container")
+    public AuditContainerResponse container(
+            @AuthenticationPrincipal TarpeistoPrincipal principal, @PathVariable UUID taskId) {
+        var container = audits.container(principal, taskId);
+        return new AuditContainerResponse(container.id(), container.displayName(), container.publicCode());
+    }
+
     @PostMapping("/tasks/{taskId}/start")
     public ContainerAuditResponse start(
             @AuthenticationPrincipal TarpeistoPrincipal principal,

@@ -5,19 +5,23 @@ type GeneratedExpected = components["schemas"]["AuditExpectedRequirementResponse
 type GeneratedScan = components["schemas"]["AuditScanResponse"];
 type GeneratedFinding = components["schemas"]["AuditFindingResponse"];
 type GeneratedAudit = components["schemas"]["ContainerAuditResponse"];
-type GeneratedAsset = Required<components["schemas"]["AssetResponse"]>;
+type GeneratedAsset = Required<components["schemas"]["AuditContainerResponse"]>;
 
 export type AuditExpectedRequirement = Omit<
   Required<GeneratedExpected>,
   "assetModelId" | "specificAssetId" | "requiredQuantity"
 > &
   Pick<GeneratedExpected, "assetModelId" | "specificAssetId" | "requiredQuantity">;
-export type AuditScan = Required<GeneratedScan>;
+export type AuditScan = Omit<
+  Required<GeneratedScan>,
+  "recordedByUserId" | "recordedByDisplayName"
+> &
+  Partial<GeneratedScan>;
 export type AuditFinding = Omit<
   Required<GeneratedFinding>,
-  "assetId" | "note" | "sourceOperationId"
+  "assetId" | "note" | "sourceOperationId" | "recordedByUserId" | "recordedByDisplayName"
 > &
-  Pick<GeneratedFinding, "assetId" | "note" | "sourceOperationId">;
+  Partial<GeneratedFinding>;
 export type ContainerAudit = Omit<
   Required<GeneratedAudit>,
   "id" | "completionOutcome" | "expectedRequirements" | "scans" | "findings"
@@ -54,9 +58,9 @@ export const getAuditTask = (taskId: string) =>
   read<ContainerAudit>(() =>
     apiClient.GET("/api/v1/audits/tasks/{taskId}", { params: { path: { taskId } } }),
   );
-export const getAuditContainer = (assetId: string) =>
+export const getAuditContainer = (taskId: string) =>
   read<AuditContainer>(() =>
-    apiClient.GET("/api/v1/assets/{assetId}", { params: { path: { assetId } } }),
+    apiClient.GET("/api/v1/audits/tasks/{taskId}/container", { params: { path: { taskId } } }),
   );
 export const startAudit = (taskId: string, containerCode: string) =>
   read<ContainerAudit>(() =>

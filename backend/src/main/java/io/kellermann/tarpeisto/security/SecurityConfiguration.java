@@ -58,11 +58,17 @@ public class SecurityConfiguration {
             TarpeistoOidcUserService oidcUserService,
             OidcAuthenticationSuccessHandler oidcAuthenticationSuccessHandler,
             OidcAuthenticationFailureHandler oidcAuthenticationFailureHandler,
-            NoPersistenceOAuth2AuthorizedClientRepository noPersistenceOAuth2AuthorizedClientRepository)
+            NoPersistenceOAuth2AuthorizedClientRepository noPersistenceOAuth2AuthorizedClientRepository,
+            io.kellermann.tarpeisto.service.TemporaryAccessService temporaryAccess,
+            io.kellermann.tarpeisto.repository.UserRepository users,
+            io.kellermann.tarpeisto.repository.OrganizationMembershipRepository memberships)
             throws Exception {
         http.csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
                 .addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class)
+                .addFilterBefore(
+                        new PrincipalRefreshFilter(temporaryAccess, users, memberships, responseWriter),
+                        org.springframework.security.web.access.intercept.AuthorizationFilter.class)
                 .addFilterAfter(
                         new ExpectedAuditActorFilter(responseWriter),
                         org.springframework.security.web.access.intercept.AuthorizationFilter.class)
@@ -84,6 +90,9 @@ public class SecurityConfiguration {
                             .permitAll();
                     authorize.requestMatchers(HttpMethod.GET, "/api/v1/setup").permitAll();
                     authorize.requestMatchers(HttpMethod.POST, "/api/v1/setup").permitAll();
+                    authorize
+                            .requestMatchers(HttpMethod.POST, "/api/v1/temporary-access/redemptions")
+                            .permitAll();
                     // The session resource is the JSON-API login/logout endpoint (ADR-0001,
                     // ADR-0003): a caller is by definition not yet authenticated when calling
                     // POST, and DELETE (logout) is intentionally idempotent/safe to call without

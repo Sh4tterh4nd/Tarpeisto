@@ -88,6 +88,10 @@ Both local and OIDC authentication end in the same Spring Session JDBC-backed ap
 - CSRF protection on browser mutations
 - No bearer or provider token in `localStorage` or other JavaScript-readable persistent storage
 
+Permanent sessions use a configurable idle lifetime of 30 days by default, with a matching persistent cookie. This allows a phone browser or installed app to reopen without another login. The client verifies the session on foreground/reconnect and may check periodically while visible; browser background timers do not determine persistence. Every authenticated API request validates the account and organization membership against current database state and refreshes the principal's role, so extending the idle window does not extend removed permissions. Logout and account disable retain server-side revocation.
+
+The persistence change addresses idle and browser-restart sign-outs without introducing application JWTs or refresh tokens. Spring Session already provides an opaque browser credential backed by revocable server state. Temporary access retains its independent fixed 24-hour deadline even when its cookie survives a restart.
+
 Provider access and refresh tokens, if retained at all, stay server-side and are encrypted or protected with deployment secrets. Tarpeisto does not require provider API access for initial login, so tokens should not be retained longer than Spring Security needs.
 
 Local logout invalidates the Tarpeisto session. Provider-wide logout is best effort because not every provider supports a uniform end-session flow.
@@ -95,6 +99,8 @@ Local logout invalidates the Tarpeisto session. Provider-wide logout is best eff
 ### Temporary access
 
 Temporary volunteer invitation tokens remain a separate flow. A valid invitation is exchanged for its own narrowly scoped server-side session. Enabling OIDC neither disables nor broadens temporary access.
+
+[ADR-0006](ADR-0006-temporary-volunteer-access.md) defines shared invitations, distinct named actors, audit-only scope, fixed expiry and authoritative revocation checks.
 
 ## Rejected alternatives
 

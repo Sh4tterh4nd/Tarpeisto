@@ -82,19 +82,7 @@ public class SessionAuthenticationService {
                 details.displayName(),
                 details.organizationId(),
                 details.role());
-        Authentication sessionAuthentication = new UsernamePasswordAuthenticationToken(
-                principal,
-                null,
-                List.of(new SimpleGrantedAuthority("ROLE_" + principal.role().name())));
-
-        // Order matters: rotate the session id first (this may replace the underlying
-        // HttpSession), then persist the security context into the (possibly new) session.
-        sessionAuthenticationStrategy.onAuthentication(sessionAuthentication, request, response);
-
-        SecurityContext context = securityContextHolderStrategy.createEmptyContext();
-        context.setAuthentication(sessionAuthentication);
-        securityContextHolderStrategy.setContext(context);
-        securityContextRepository.saveContext(context, request, response);
+        establish(principal, request, response);
 
         rateLimiter.reset(key);
         activityLogService.record(
@@ -105,6 +93,25 @@ public class SessionAuthenticationService {
                 principal.userId(),
                 null);
         return principal;
+    }
+
+    public void establish(TarpeistoPrincipal principal, HttpServletRequest request, HttpServletResponse response) {
+        Authentication sessionAuthentication = new UsernamePasswordAuthenticationToken(
+                principal,
+                null,
+                List.of(new SimpleGrantedAuthority(
+                        principal.temporary()
+                                ? "TEMPORARY_AUDITOR"
+                                : "ROLE_" + principal.role().name())));
+
+        // Order matters: rotate the session id first (this may replace the underlying
+        // HttpSession), then persist the security context into the (possibly new) session.
+        sessionAuthenticationStrategy.onAuthentication(sessionAuthentication, request, response);
+
+        SecurityContext context = securityContextHolderStrategy.createEmptyContext();
+        context.setAuthentication(sessionAuthentication);
+        securityContextHolderStrategy.setContext(context);
+        securityContextRepository.saveContext(context, request, response);
     }
 
     public void logout(HttpServletRequest request, HttpServletResponse response) {

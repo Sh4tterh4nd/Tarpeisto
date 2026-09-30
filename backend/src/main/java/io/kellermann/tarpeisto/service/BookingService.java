@@ -66,6 +66,7 @@ public class BookingService {
 
     @Transactional(readOnly = true)
     public List<BookingView> list(TarpeistoPrincipal p, Instant from, Instant until, UUID cursor, int limit) {
+        if (p != null) p.requirePermanent();
         auth(p);
         if (limit < 1 || limit > 100 || !from.isBefore(until))
             throw new ValidationFailedException("Select a valid date window and a limit from 1 to 100.");
@@ -76,6 +77,7 @@ public class BookingService {
 
     @Transactional(readOnly = true)
     public BookingView get(TarpeistoPrincipal p, UUID id) {
+        if (p != null) p.requirePermanent();
         auth(p);
         return view(p.organizationId(), requireBooking(p.organizationId(), id));
     }
@@ -90,6 +92,7 @@ public class BookingService {
             String notes,
             Instant start,
             Instant end) {
+        if (p != null) p.requirePermanent();
         admin(p);
         lock(p.organizationId());
         UUID commandId = mutationId == null ? UUID.randomUUID() : mutationId;
@@ -135,6 +138,7 @@ public class BookingService {
             String notes,
             Instant start,
             Instant end) {
+        if (p != null) p.requirePermanent();
         admin(p);
         Booking b = lockedDraft(p, id, expectedVersion);
         Map<String, Object> before = history.snapshot(b);
@@ -164,6 +168,7 @@ public class BookingService {
             UUID assetId,
             UUID stockId,
             BigDecimal quantity) {
+        if (p != null) p.requirePermanent();
         admin(p);
         Booking b = lockedDraft(p, id, expectedVersion);
         validateLine(p.organizationId(), type, assetId, stockId, quantity);
@@ -194,6 +199,7 @@ public class BookingService {
 
     @Transactional
     public BookingView removeLine(TarpeistoPrincipal p, UUID id, UUID lineId, long expectedVersion) {
+        if (p != null) p.requirePermanent();
         admin(p);
         Booking b = lockedDraft(p, id, expectedVersion);
         BookingLine l = lines.findByIdAndOrganizationId(lineId, p.organizationId())

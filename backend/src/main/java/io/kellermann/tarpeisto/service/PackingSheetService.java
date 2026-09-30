@@ -17,6 +17,7 @@ public class PackingSheetService {
     }
 
     public byte[] pdf(TarpeistoPrincipal principal, UUID assetId) {
+        if (principal != null) principal.requirePermanent();
         if (principal == null) {
             throw new AccessDeniedException("Authentication required.");
         }

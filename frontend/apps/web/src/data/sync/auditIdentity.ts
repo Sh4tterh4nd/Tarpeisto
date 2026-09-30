@@ -1,19 +1,21 @@
 import { auditDatabase, auditPartition, type AuditDatabase } from "../indexeddb/auditDatabase";
 import type { SessionPrincipal } from "../../features/identity/sessionApi";
+import { temporaryAccessExpired } from "./temporaryDeadline";
 
-const listeners = new Set<() => void>();
+type IdentityStopReason = "stop" | "account-switch";
+const listeners = new Set<(reason: IdentityStopReason) => void>();
 let channel: BroadcastChannel | undefined;
 let identityEpoch = 0;
 export const auditIdentityEpoch = () => identityEpoch;
-function notify() {
+function notify(reason: IdentityStopReason = "stop") {
   identityEpoch++;
-  for (const listener of listeners) listener();
+  for (const listener of listeners) listener(reason);
 }
-export function subscribeAuditIdentityStop(listener: () => void) {
+export function subscribeAuditIdentityStop(listener: (reason: IdentityStopReason) => void) {
   listeners.add(listener);
   if (!channel && typeof BroadcastChannel !== "undefined") {
     channel = new BroadcastChannel("tarpeisto-audit-identity");
-    channel.onmessage = notify;
+    channel.onmessage = () => notify("stop");
   }
   return () => {
     listeners.delete(listener);
@@ -23,10 +25,10 @@ export function subscribeAuditIdentityStop(listener: () => void) {
     }
   };
 }
-export async function stopAuditIdentity() {
+export async function stopAuditIdentity(db: AuditDatabase = auditDatabase) {
   notify();
   channel?.postMessage("stop");
-  await disableAuditRecovery();
+  await disableAuditRecovery(db);
 }
 export async function disableAuditRecovery(db: AuditDatabase = auditDatabase) {
   await db.transaction("rw", db.identities, async () => {
@@ -42,6 +44,10 @@ export async function disableAuditRecovery(db: AuditDatabase = auditDatabase) {
 export async function recoverAuditIdentity() {
   const identity = await auditDatabase.identities.get("last-audit");
   if (!identity?.enabled || !identity.taskId || !identity.principal) return undefined;
+  if (temporaryAccessExpired(identity.principal)) {
+    await stopAuditIdentity();
+    return undefined;
+  }
   const snapshot = await auditDatabase.snapshots.get(
     `${auditPartition(identity.principal)}/${identity.taskId}`,
   );
@@ -50,9 +56,13 @@ export async function recoverAuditIdentity() {
     : undefined;
 }
 export async function verifyAuditIdentity(principal: SessionPrincipal) {
+  if (temporaryAccessExpired(principal)) {
+    await stopAuditIdentity();
+    return;
+  }
   const previous = await auditDatabase.identities.get("last-audit");
   if (previous?.principal && auditPartition(previous.principal) !== auditPartition(principal)) {
-    notify();
+    notify("account-switch");
     channel?.postMessage("stop");
     await disableAuditRecovery();
   }

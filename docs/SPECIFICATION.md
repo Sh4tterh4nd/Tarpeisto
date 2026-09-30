@@ -123,7 +123,9 @@ Tarpeisto is a responsive web application and installable Progressive Web App (P
 - The invitation token is random, unguessable, revocable, and separate from all asset/container QR codes.
 - The invitation and resulting access expire 24 hours after issuance.
 - The volunteer supplies a display name so activity remains attributable.
-- Temporary access grants only scoped Operator/Auditor permissions.
+- Temporary access grants assigned audit operations only: task listing, start/read, scan/correction, findings, consumable observations, evidence, and completion. It does not grant checkout/check-in, standalone audit launch, finding resolution, or administration.
+- An event invitation covers that booking's return audits, including batches created after issuance; an audit-batch invitation covers only that batch.
+- Several volunteers may redeem one invitation. Each fresh named redemption has its own attributable identity; redemption and activity never extend the original expiry.
 - Expiry or revocation ends new API access immediately.
 - Temporary users cannot browse unrelated inventory or organization administration.
 
@@ -134,6 +136,7 @@ Tarpeisto is a responsive web application and installable Progressive Web App (P
 - Supported initial modes are `LOCAL_ONLY` and `LOCAL_AND_OIDC`. An installation may require OIDC for ordinary permanent users only while at least one enabled local Owner recovery account remains usable.
 - Provider configuration includes a display name, issuer URI, client ID, client secret, and scopes. Discovery through the issuer URI is preferred; initial scopes are `openid profile email`.
 - The browser always receives the same Tarpeisto server-side session after either login method. Provider access/refresh tokens remain server-side and no bearer token is stored in browser storage.
+- Permanent sessions survive browser/app restarts with a persistent secure cookie and a configurable idle lifetime of 30 days by default. Foreground/reconnect checks recover current session state; background timers are not required to retain sign-in. Disabled accounts, removed memberships and role changes apply on the next API request.
 - An external identity is keyed by the immutable pair `(issuer, subject)` and linked to an internal user. Email addresses are profile and matching attributes, never the durable external identity key.
 - Automatic linking by email is disabled by default. If enabled by an Owner, it requires an OIDC `email_verified` claim and exactly one matching internal user. Otherwise an Owner must approve or create the link.
 - Just-in-time user creation and provider group/role mapping are not part of the initial release. Organization membership, role, disabled state, and authorization remain authoritative inside Tarpeisto.

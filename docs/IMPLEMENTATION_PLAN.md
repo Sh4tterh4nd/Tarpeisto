@@ -749,6 +749,12 @@ This focused milestone improves established inventory workflows without changing
 - 24-hour lifetime from issuance
 - Volunteer display-name capture
 - Resulting temporary principal/session identity
+- One shareable invitation may be redeemed by several named volunteers. A stable redemption
+  operation UUID returns the same actor on retry; a fresh redemption creates a separate real
+  history actor without a permanent membership or local/OIDC credentials.
+- Invitation secrets are returned only on creation and held in a `/join#token=...` fragment.
+  The browser removes that fragment immediately and exchanges it with CSRF protection for the
+  existing JDBC session. Invitation lists and history never include the secret.
 
 ### 17.2 Permission boundaries
 
@@ -757,6 +763,16 @@ This focused milestone improves established inventory workflows without changing
 - No finding resolution
 - No unrelated inventory browsing
 - Immediate server-side expiry/revocation checks
+- An exact event grant covers its return-audit tasks as they are created; an exact batch grant
+  covers only that batch. The volunteer dashboard shows a waiting state before event tasks exist.
+- Scope checks also apply to direct service calls, both sides of scan moves, finding assets, and
+  evidence/reference media, including evidence finalization after object storage writes.
+- Out-of-scope scanned codes yield an unknown-code observation without inventory identity.
+  Response copies redact unrelated historical destinations/findings while stored facts remain
+  immutable.
+- The persistent audit outbox checks the fixed grant deadline before recovery, recording,
+  synchronization, and completion. Expired/revoked identities stop and preserve unsent rows;
+  another redemption uses a new actor partition.
 
 ### 17.3 Exit criteria
 

@@ -15,6 +15,7 @@ public class BookingImpactService {
     }
 
     public void changed(TarpeistoPrincipal principal) {
+        if (principal != null) principal.requirePermanent();
         reservations.recalculate(principal);
     }
 

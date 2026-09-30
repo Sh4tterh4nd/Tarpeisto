@@ -33,14 +33,16 @@ test("an online return audit starts, scans and completes", async ({ page }) => {
       json: { applicationName: "Tarpeisto", version: "test", oidcConfigured: false },
     }),
   );
-  await page.route("**/api/v1/assets/33333333-3333-3333-3333-333333333333", (route) =>
-    route.fulfill({
-      json: {
-        id: "33333333-3333-3333-3333-333333333333",
-        displayName: "Audit case",
-        publicCode: "7K3MXY",
-      },
-    }),
+  await page.route(
+    "**/api/v1/audits/tasks/11111111-1111-1111-1111-111111111111/container",
+    (route) =>
+      route.fulfill({
+        json: {
+          id: "33333333-3333-3333-3333-333333333333",
+          displayName: "Audit case",
+          publicCode: "7K3MXY",
+        },
+      }),
   );
   await page.route("**/api/v1/audits/tasks/11111111-1111-1111-1111-111111111111", (route) =>
     route.fulfill({ json: { ...baseAudit, state: "READY", scans: [] } }),

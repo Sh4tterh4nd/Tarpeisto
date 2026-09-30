@@ -49,18 +49,21 @@ public class LocationService {
 
     @Transactional(readOnly = true)
     public List<LocationView> list(TarpeistoPrincipal principal) {
+        if (principal != null) principal.requirePermanent();
         requireAuthenticated(principal);
         return views(principal.organizationId());
     }
 
     @Transactional(readOnly = true)
     public LocationView get(TarpeistoPrincipal principal, UUID id) {
+        if (principal != null) principal.requirePermanent();
         requireAuthenticated(principal);
         return view(require(principal.organizationId(), id), index(principal.organizationId()));
     }
 
     @Transactional
     public LocationView create(TarpeistoPrincipal principal, String name, String description, UUID parentId) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         lockOrganization(principal.organizationId());
         validateParent(principal.organizationId(), null, parentId);
@@ -85,6 +88,7 @@ public class LocationService {
             String description,
             UUID parentId,
             long expectedVersion) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         lockOrganization(principal.organizationId());
         Location location = require(principal.organizationId(), id);
@@ -102,6 +106,7 @@ public class LocationService {
 
     @Transactional
     public void archive(TarpeistoPrincipal principal, UUID id, long expectedVersion) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         lockOrganization(principal.organizationId());
         Location location = require(principal.organizationId(), id);
@@ -118,6 +123,7 @@ public class LocationService {
 
     @Transactional
     public void restore(TarpeistoPrincipal principal, UUID id, long expectedVersion) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         lockOrganization(principal.organizationId());
         Location location = require(principal.organizationId(), id);

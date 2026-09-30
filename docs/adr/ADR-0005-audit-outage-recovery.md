@@ -16,6 +16,8 @@ Each snapshot carries a revision. Initial server reads capture the revision befo
 
 Cached identity carries a durable generation. Logout and account changes increment it in IndexedDB, creating a disabled tombstone even before the first audit is cached. Cache writes compare the generation captured before their request; stale replies cannot re-enable offline recovery while a cross-tab notification is delayed. A newly verified same-account session can resume retained work using the current generation.
 
+Temporary volunteer identity also carries the invitation's fixed expiry. Recovery, enqueue, synchronization and completion reject expired identity and disable its durable generation. A fresh redemption uses a distinct user partition and cannot resume another volunteer's commands. The server enforces revocation on the next live request; offline clients enforce the known expiry locally. See [ADR-0006](ADR-0006-temporary-volunteer-access.md).
+
 Audit evidence is tenant-owned, append-only metadata attached to one finding and audit. Upload UUID, associations and checksum define immutable replay semantics. Each S3 attempt owns separate object keys; database finalization shares the organization lock used by audit completion. Replay is checked before completed-state rejection. Database constraints protect same-organization associations and completed evidence.
 
 ## Consequences

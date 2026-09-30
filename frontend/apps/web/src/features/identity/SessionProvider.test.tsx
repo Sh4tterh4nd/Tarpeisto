@@ -4,6 +4,7 @@ import { apiClient } from "@tarpeisto/api-client";
 import type { AppError } from "@tarpeisto/api-client";
 import { SessionProvider } from "./SessionProvider";
 import { useSession } from "./useSession";
+import * as auditIdentity from "../../data/sync/auditIdentity";
 
 function jsonResponse(body: unknown, init: ResponseInit = {}) {
   return new Response(JSON.stringify(body), {
@@ -48,6 +49,114 @@ describe("SessionProvider / useSession", () => {
     await waitFor(() => expect(result.current.status).toBe("authenticated"));
     expect(result.current.principal?.username).toBe("alice");
     expect(result.current.role).toBe("OWNER");
+  });
+
+  it("lets external logout win while an authenticated response verifies its saved audit identity", async () => {
+    vi.mocked(global.fetch).mockImplementation(async () => jsonResponse(OWNER_SESSION));
+    const { result } = renderHook(() => useSession(), { wrapper: SessionProvider });
+    await waitFor(() => expect(result.current.status).toBe("authenticated"));
+    let finish!: (value?: void) => void;
+    const verify = vi.spyOn(auditIdentity, "verifyAuditIdentity").mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const pending = result.current.refresh();
+    await waitFor(() => expect(verify).toHaveBeenCalled());
+    await act(async () => {
+      await auditIdentity.stopAuditIdentity().catch(() => {});
+    });
+    await act(async () => {
+      finish();
+      await pending;
+    });
+    expect(result.current.status).toBe("anonymous");
+    expect(result.current.principal).toBeUndefined();
+  });
+
+  it("never installs an already expired temporary principal from a late server response", async () => {
+    vi.mocked(global.fetch).mockResolvedValue(
+      jsonResponse({
+        ...OWNER_SESSION,
+        role: "OPERATOR_AUDITOR",
+        temporaryAccess: { sessionId: "s", invitationId: "i", expiresAt: "2000-01-01T00:00:00Z" },
+      }),
+    );
+    const { result } = renderHook(() => useSession(), { wrapper: SessionProvider });
+    await waitFor(() => expect(result.current.status).toBe("anonymous"));
+    expect(result.current.principal).toBeUndefined();
+  });
+
+  it("keeps a restored session on transient foreground verification failure", async () => {
+    vi.mocked(global.fetch).mockResolvedValueOnce(jsonResponse(OWNER_SESSION));
+    const { result } = renderHook(() => useSession(), { wrapper: SessionProvider });
+    await waitFor(() => expect(result.current.status).toBe("authenticated"));
+    vi.mocked(global.fetch).mockRejectedValueOnce(new TypeError("Connection interrupted"));
+    await act(async () => {
+      await result.current.refresh();
+    });
+    expect(result.current.status).toBe("authenticated");
+    expect(result.current.principal?.userId).toBe("u1");
+    vi.mocked(global.fetch).mockResolvedValueOnce(
+      jsonResponse({ ...OWNER_SESSION, role: "DEPUTY" }),
+    );
+    await act(async () => {
+      window.dispatchEvent(new Event("focus"));
+    });
+    await waitFor(() => expect(result.current.role).toBe("DEPUTY"));
+  });
+
+  it("does not restore an old in-flight refresh after logout", async () => {
+    vi.mocked(global.fetch).mockResolvedValueOnce(jsonResponse(OWNER_SESSION));
+    const { result } = renderHook(() => useSession(), { wrapper: SessionProvider });
+    await waitFor(() => expect(result.current.status).toBe("authenticated"));
+    let resolveOld!: (response: Response) => void;
+    vi.mocked(global.fetch).mockImplementationOnce(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveOld = resolve;
+        }),
+    );
+    const pending = result.current.refresh();
+    await waitFor(() => expect(resolveOld).toBeDefined());
+    vi.mocked(global.fetch).mockResolvedValueOnce(new Response(null, { status: 204 }));
+    await act(async () => {
+      await result.current.signOut();
+    });
+    await act(async () => {
+      resolveOld(jsonResponse(OWNER_SESSION));
+      await pending;
+    });
+    expect(result.current.status).toBe("anonymous");
+    expect(result.current.principal).toBeUndefined();
+  });
+
+  it("does not overwrite a newly signed-in actor with an older refresh", async () => {
+    vi.mocked(global.fetch).mockResolvedValueOnce(jsonResponse(OWNER_SESSION));
+    const { result } = renderHook(() => useSession(), { wrapper: SessionProvider });
+    await waitFor(() => expect(result.current.status).toBe("authenticated"));
+    let resolveOld!: (response: Response) => void;
+    vi.mocked(global.fetch).mockImplementationOnce(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveOld = resolve;
+        }),
+    );
+    const pending = result.current.refresh();
+    await waitFor(() => expect(resolveOld).toBeDefined());
+    vi.mocked(global.fetch).mockResolvedValueOnce(
+      jsonResponse({ ...OWNER_SESSION, userId: "u2", username: "bob", role: "DEPUTY" }),
+    );
+    await act(async () => {
+      await result.current.signIn({ username: "bob", password: "secret" });
+    });
+    await act(async () => {
+      resolveOld(jsonResponse(OWNER_SESSION));
+      await pending;
+    });
+    expect(result.current.status).toBe("authenticated");
+    expect(result.current.principal?.userId).toBe("u2");
   });
 
   it("falls back to the anonymous state when GET /api/v1/session returns 401", async () => {

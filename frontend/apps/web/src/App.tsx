@@ -20,17 +20,19 @@ import { useSession } from "./features/identity/useSession";
 import { InitialSetupPage } from "./features/setup/InitialSetupPage";
 
 function PrimaryNav() {
-  const { status } = useSession();
+  const { status, principal } = useSession();
   const location = useLocation();
-  const entries = [
-    ["Status", "/"],
-    ["Inventory models", "/inventory"],
-    ["Assets", "/inventory/assets"],
-    ["Containers", "/inventory/containers"],
-    ["Locations", "/inventory/locations"],
-    ["Events", "/events"],
-    ["Scan equipment", "/scan"],
-  ] as const;
+  const entries = principal?.temporaryAccess
+    ? ([["Your audits", "/volunteer"]] as const)
+    : ([
+        ["Status", "/"],
+        ["Inventory models", "/inventory"],
+        ["Assets", "/inventory/assets"],
+        ["Containers", "/inventory/containers"],
+        ["Locations", "/inventory/locations"],
+        ["Events", "/events"],
+        ["Scan equipment", "/scan"],
+      ] as const);
   const activeDestination = entries
     .filter(
       ([, to]) =>
@@ -41,7 +43,12 @@ function PrimaryNav() {
   return (
     <List disablePadding>
       {entries
-        .filter(([label]) => label === "Status" || status === "authenticated")
+        .filter(
+          ([label]) =>
+            label === "Status" ||
+            status === "authenticated" ||
+            (label === "Your audits" && status === "offline-audit"),
+        )
         .map(([label, to]) => (
           <ListItemButton
             key={to}
@@ -59,7 +66,7 @@ function PrimaryNav() {
 }
 
 function AppContent() {
-  const { status } = useSession();
+  const { status, principal } = useSession();
   const location = useLocation();
 
   if (status === "loading") {
@@ -77,6 +84,13 @@ function AppContent() {
   if (location.pathname === "/setup") {
     return <Navigate to={status === "authenticated" ? "/" : "/sign-in"} replace />;
   }
+
+  if (
+    principal?.temporaryAccess &&
+    !["/join", "/sign-in", "/volunteer"].includes(location.pathname) &&
+    !location.pathname.startsWith("/audits/tasks/")
+  )
+    return <Navigate to="/volunteer" replace />;
 
   return (
     <AppShellLayout

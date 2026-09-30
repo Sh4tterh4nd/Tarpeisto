@@ -37,6 +37,7 @@ import io.kellermann.tarpeisto.repository.AssetModelRepository;
 import io.kellermann.tarpeisto.repository.AssetRepository;
 import io.kellermann.tarpeisto.repository.AssetSealHistoryRepository;
 import io.kellermann.tarpeisto.repository.AssetVerificationHistoryRepository;
+import io.kellermann.tarpeisto.repository.AuditActorRepository;
 import io.kellermann.tarpeisto.repository.AuditBatchRepository;
 import io.kellermann.tarpeisto.repository.AuditConsumableObservationRepository;
 import io.kellermann.tarpeisto.repository.AuditExpectedRequirementRepository;
@@ -98,6 +99,8 @@ public class AuditService {
     private final CheckoutManifestConsumableRepository manifestConsumables;
     private final AssetModelRepository models;
     private final BookingReturnStateService returnStates;
+    private final TemporaryAccessService temporaryAccess;
+    private final AuditActorRepository auditActors;
 
     public AuditService(
             AuditTaskRepository tasks,
@@ -124,7 +127,9 @@ public class AuditService {
             BookingRepository bookings,
             CheckoutManifestConsumableRepository manifestConsumables,
             AssetModelRepository models,
-            BookingReturnStateService returnStates) {
+            BookingReturnStateService returnStates,
+            TemporaryAccessService temporaryAccess,
+            AuditActorRepository auditActors) {
         this.tasks = tasks;
         this.dependencies = dependencies;
         this.batches = batches;
@@ -150,6 +155,8 @@ public class AuditService {
         this.manifestConsumables = manifestConsumables;
         this.models = models;
         this.returnStates = returnStates;
+        this.temporaryAccess = temporaryAccess;
+        this.auditActors = auditActors;
     }
 
     @Transactional(readOnly = true)
@@ -157,8 +164,37 @@ public class AuditService {
         if (principal == null) throw new AccessDeniedException("Authentication required.");
         AuditTask task = task(principal, taskId);
         return audits.findByOrganizationIdAndAuditTaskIdAndCurrentAttemptTrue(principal.organizationId(), taskId)
-                .map(a -> view(principal.organizationId(), a))
-                .orElseGet(() -> pendingView(principal.organizationId(), task));
+                .map(a -> view(principal, a))
+                .orElseGet(() -> pendingView(principal, task));
+    }
+
+    @Transactional(readOnly = true)
+    public AuditContainerView container(TarpeistoPrincipal principal, UUID taskId) {
+        if (principal == null) throw new AccessDeniedException("Authentication required.");
+        AuditTask task = task(principal, taskId);
+        Asset asset = assets.findByIdAndOrganizationId(task.getContainerAssetId(), principal.organizationId())
+                .orElseThrow();
+        AssetModel model = models.findByIdAndOrganizationId(asset.getAssetModelId(), principal.organizationId())
+                .orElseThrow();
+        return new AuditContainerView(asset.getId(), assetName(asset, model), asset.getPublicCode());
+    }
+
+    @Transactional(readOnly = true)
+    public List<AssignedAuditTaskView> assignedTasks(TarpeistoPrincipal principal) {
+        return temporaryAccess.assignedTasks(principal).stream()
+                .map(id -> {
+                    var audit = get(principal, id);
+                    var identity = container(principal, id);
+                    return new AssignedAuditTaskView(
+                            id,
+                            audit.batchId(),
+                            identity.id(),
+                            identity.displayName(),
+                            identity.publicCode(),
+                            audit.state(),
+                            audit.blockingReasons());
+                })
+                .toList();
     }
 
     @Transactional
@@ -171,7 +207,7 @@ public class AuditService {
             throw new ValidationFailedException("Scan the assigned container to start this audit.");
         Optional<ContainerAudit> existing =
                 audits.findByOrganizationIdAndAuditTaskIdAndCurrentAttemptTrue(principal.organizationId(), taskId);
-        if (existing.isPresent()) return view(principal.organizationId(), existing.get());
+        if (existing.isPresent()) return view(principal, existing.get());
         if (task.getState() != AuditTaskState.READY)
             throw new ValidationFailedException("This audit is blocked until its child containers are completed.");
         AuditBatch batch = batches.findById(task.getAuditBatchId())
@@ -205,13 +241,14 @@ public class AuditService {
                 "CONTAINER_AUDIT",
                 audit.getId(),
                 Map.of("taskId", taskId, "containerAssetId", target.getId()));
-        return view(principal.organizationId(), audit);
+        return view(principal, audit);
     }
 
     /** Starts or resumes a standalone, bottom-up audit from a scanned container. */
     @Transactional
     public ContainerAuditView launchContainerAudit(
             TarpeistoPrincipal principal, UUID containerId, String containerCode, UUID operationId) {
+        if (principal != null) principal.requirePermanent();
         authorizeOperator(principal);
         lockOrganization(principal);
         String fingerprint = fingerprint(containerId, containerCode);
@@ -326,7 +363,7 @@ public class AuditService {
                 Map.of("containerAssetId", root.getId(), "batchId", batch.getId()));
         return destination.getId().equals(rootTask.getId())
                 ? start(principal, rootTask.getId(), containerCode)
-                : pendingView(principal.organizationId(), destination);
+                : pendingView(principal, destination);
     }
 
     @Transactional
@@ -334,10 +371,12 @@ public class AuditService {
         authorizeOperator(principal);
         ContainerAudit audit = activeAudit(principal, auditId);
         if (!recordOperation(principal, audit, operationId, "SCAN", fingerprint(rawCode)))
-            return view(principal.organizationId(), audit);
+            return view(principal, audit);
         Asset asset;
         try {
             asset = requireAssetCode(principal.organizationId(), rawCode);
+            if (!temporaryAccess.assetAllowed(principal, asset.getId()))
+                throw new ValidationFailedException("Unknown asset code.");
         } catch (ValidationFailedException ex) {
             findings.save(new AuditFinding(
                             UUID.randomUUID(),
@@ -345,12 +384,12 @@ public class AuditService {
                             auditId,
                             null,
                             AuditFindingType.UNKNOWN_CODE,
-                            ex.getMessage(),
+                            principal.temporary() ? "Unknown asset code." : ex.getMessage(),
                             json(Map.of("rawCode", rawCode)),
                             principal.userId(),
                             clock.instant())
                     .withSourceOperation(operationId));
-            return view(principal.organizationId(), audit);
+            return view(principal, audit);
         }
         if (!asset.isActive())
             throw new ValidationFailedException(
@@ -369,7 +408,7 @@ public class AuditService {
                     "CONTAINER_AUDIT",
                     auditId,
                     Map.of("assetId", asset.getId()));
-            return view(principal.organizationId(), audit);
+            return view(principal, audit);
         }
         List<UUID> otherAudits = audits
                 .findAllByOrganizationIdAndAuditBatchIdOrderById(principal.organizationId(), audit.getAuditBatchId())
@@ -403,15 +442,14 @@ public class AuditService {
                 "CONTAINER_AUDIT",
                 auditId,
                 Map.of("assetId", asset.getId(), "outcome", outcome.name()));
-        return view(principal.organizationId(), audit);
+        return view(principal, audit);
     }
 
     @Transactional
     public ContainerAuditView undo(TarpeistoPrincipal principal, UUID auditId, UUID scanId, UUID operationId) {
         authorizeOperator(principal);
         ContainerAudit audit = activeAudit(principal, auditId);
-        if (!recordOperation(principal, audit, operationId, "UNDO", scanId.toString()))
-            return view(principal.organizationId(), audit);
+        if (!recordOperation(principal, audit, operationId, "UNDO", scanId.toString())) return view(principal, audit);
         AuditScan scan = scans.findByIdAndOrganizationIdAndAuditId(scanId, principal.organizationId(), auditId)
                 .orElseThrow(() -> new NotFoundException("Audit scan not found."));
         scan.undo(principal.userId(), clock.instant());
@@ -424,7 +462,7 @@ public class AuditService {
                 "CONTAINER_AUDIT",
                 auditId,
                 Map.of("scanId", scanId));
-        return view(principal.organizationId(), audit);
+        return view(principal, audit);
     }
 
     @Transactional
@@ -433,13 +471,14 @@ public class AuditService {
         authorizeOperator(principal);
         ContainerAudit target = activeAudit(principal, auditId);
         if (!recordOperation(principal, target, operationId, "MOVE_SCAN", sourceScanId.toString()))
-            return view(principal.organizationId(), target);
+            return view(principal, target);
         AuditScan source = scans.findByIdAndOrganizationId(sourceScanId, principal.organizationId())
                 .orElseThrow(() -> new NotFoundException("Source audit scan not found."));
         if (source.getUndoneAt() != null || source.getAuditId().equals(auditId))
             throw new ValidationFailedException("That scan cannot be moved.");
         ContainerAudit sourceAudit = audits.findByOrganizationIdAndId(principal.organizationId(), source.getAuditId())
                 .orElseThrow(() -> new NotFoundException("Source audit scan not found."));
+        temporaryAccess.requireAudit(principal, sourceAudit.getId());
         if (sourceAudit.getState() != ContainerAuditState.IN_PROGRESS)
             throw new ValidationFailedException("Completed audit observations cannot be moved.");
         if (!sourceAudit.getAuditBatchId().equals(target.getAuditBatchId()))
@@ -467,7 +506,7 @@ public class AuditService {
                 "CONTAINER_AUDIT",
                 auditId,
                 Map.of("assetId", asset.getId(), "fromAuditId", source.getAuditId()));
-        return view(principal.organizationId(), target);
+        return view(principal, target);
     }
 
     @Transactional
@@ -475,8 +514,10 @@ public class AuditService {
         authorizeOperator(principal);
         ContainerAudit target = activeAudit(principal, auditId);
         if (!recordOperation(principal, target, operationId, "MOVE_CODE", fingerprint(code)))
-            return view(principal.organizationId(), target);
+            return view(principal, target);
         Asset asset = requireAssetCode(principal.organizationId(), code);
+        if (!temporaryAccess.assetAllowed(principal, asset.getId()))
+            throw new ValidationFailedException("Unknown asset code.");
         List<UUID> otherIds = audits
                 .findAllByOrganizationIdAndAuditBatchIdOrderById(principal.organizationId(), target.getAuditBatchId())
                 .stream()
@@ -493,6 +534,7 @@ public class AuditService {
         AuditScan source = sources.getFirst();
         ContainerAudit sourceAudit = audits.findByOrganizationIdAndId(principal.organizationId(), source.getAuditId())
                 .orElseThrow();
+        temporaryAccess.requireAudit(principal, sourceAudit.getId());
         if (sourceAudit.getState() != ContainerAuditState.IN_PROGRESS)
             throw new ValidationFailedException("Completed audit observations cannot be moved.");
         requireSafePlacement(principal.organizationId(), asset, target.getContainerAssetId());
@@ -517,7 +559,7 @@ public class AuditService {
                 "CONTAINER_AUDIT",
                 auditId,
                 Map.of("assetId", asset.getId(), "fromAuditId", source.getAuditId()));
-        return view(principal.organizationId(), target);
+        return view(principal, target);
     }
 
     @Transactional
@@ -530,8 +572,9 @@ public class AuditService {
             String note) {
         authorizeOperator(principal);
         ContainerAudit audit = activeAudit(principal, auditId);
+        if (assetId != null) temporaryAccess.requireAsset(principal, assetId);
         if (!recordOperation(principal, audit, operationId, "FINDING_" + type.name(), fingerprint(assetId, note)))
-            return view(principal.organizationId(), audit);
+            return view(principal, audit);
         if (assetId != null)
             assets.findByIdAndOrganizationId(assetId, principal.organizationId())
                     .orElseThrow(() -> new NotFoundException("Asset not found."));
@@ -591,7 +634,7 @@ public class AuditService {
                 "CONTAINER_AUDIT",
                 auditId,
                 Map.of("type", type.name()));
-        return view(principal.organizationId(), audit);
+        return view(principal, audit);
     }
 
     @Transactional
@@ -610,7 +653,7 @@ public class AuditService {
                 audit,
                 operationId,
                 "CONSUMABLE_" + status.name(),
-                fingerprint(expectedId, observed, reason))) return view(principal.organizationId(), audit);
+                fingerprint(expectedId, observed, reason))) return view(principal, audit);
         AuditExpectedRequirement row = expected.findByIdAndOrganizationIdAndAuditId(
                         expectedId, principal.organizationId(), auditId)
                 .orElseThrow(() -> new NotFoundException("Expected consumable not found."));
@@ -667,7 +710,7 @@ public class AuditService {
                     json(Map.of("expectedId", expectedId)),
                     principal.userId(),
                     clock.instant()));
-        return view(principal.organizationId(), audit);
+        return view(principal, audit);
     }
 
     @Transactional
@@ -682,7 +725,7 @@ public class AuditService {
         ContainerAudit audit = activeAudit(principal, auditId);
         if (!recordOperation(
                 principal, audit, operationId, "COMPLETE", fingerprint(finalCode, confirmMissing, sealConfirmed)))
-            return view(principal.organizationId(), audit);
+            return view(principal, audit);
         Asset target = requireAssetCode(principal.organizationId(), finalCode);
         if (!target.getId().equals(audit.getContainerAssetId()))
             throw new ValidationFailedException("Rescan the same container to complete this audit.");
@@ -799,7 +842,7 @@ public class AuditService {
                 "CONTAINER_AUDIT",
                 auditId,
                 Map.of("outcome", audit.getCompletionOutcome().name()));
-        return view(principal.organizationId(), audit);
+        return view(principal, audit);
     }
 
     private AuditScanOutcome match(UUID org, UUID auditId, Asset asset, List<AuditScan> active) {
@@ -899,12 +942,14 @@ public class AuditService {
 
     private ContainerAudit activeAudit(TarpeistoPrincipal p, UUID auditId) {
         lockOrganization(p);
+        temporaryAccess.requireAudit(p, auditId);
         ContainerAudit a = audits.findByOrganizationIdAndId(p.organizationId(), auditId)
                 .orElseThrow(() -> new NotFoundException("Audit not found."));
         return a;
     }
 
     private AuditTask task(TarpeistoPrincipal p, UUID taskId) {
+        temporaryAccess.requireTask(p, taskId);
         return tasks.findByOrganizationIdAndId(p.organizationId(), taskId)
                 .orElseThrow(() -> new NotFoundException("Audit task not found."));
     }
@@ -936,6 +981,7 @@ public class AuditService {
         organizations
                 .findWithLockById(principal.organizationId())
                 .orElseThrow(() -> new NotFoundException("Organization not found."));
+        if (principal.temporary()) temporaryAccess.refresh(principal);
     }
 
     private String fingerprint(Object... values) {
@@ -1018,10 +1064,21 @@ public class AuditService {
         }
     }
 
-    private ContainerAuditView pendingView(UUID org, AuditTask task) {
+    private ContainerAuditView pendingView(TarpeistoPrincipal principal, AuditTask task) {
+        UUID org = principal.organizationId();
         List<String> blocked = task.getState() == AuditTaskState.BLOCKED
                 ? dependencies.findAllByOrganizationIdAndIdTaskIdIn(org, List.of(task.getId())).stream()
-                        .map(d -> "Complete child audit " + d.getId().getDependsOnTaskId())
+                        .map(d -> {
+                            if (principal.temporary()) {
+                                try {
+                                    temporaryAccess.requireTask(
+                                            principal, d.getId().getDependsOnTaskId());
+                                } catch (AccessDeniedException denied) {
+                                    return "Waiting for another audit to be completed.";
+                                }
+                            }
+                            return "Complete child audit " + d.getId().getDependsOnTaskId();
+                        })
                         .toList()
                 : List.of();
         return new ContainerAuditView(
@@ -1060,8 +1117,11 @@ public class AuditService {
                 .orElseThrow(() -> new ValidationFailedException("No ready child audit is available yet."));
     }
 
-    private ContainerAuditView view(UUID org, ContainerAudit audit) {
+    private ContainerAuditView view(TarpeistoPrincipal principal, ContainerAudit audit) {
+        UUID org = principal.organizationId();
         List<AuditScan> all = scans.findAllByOrganizationIdAndAuditIdOrderByScannedAtAsc(org, audit.getId());
+        List<AuditFinding> observations = findings.findAllByOrganizationIdAndAuditIdOrderById(org, audit.getId());
+        Map<UUID, String> actors = auditActors.displayNames(org, audit.getId());
         List<AuditExpectedRequirement> rows =
                 expected.findAllByOrganizationIdAndAuditIdOrderByDisplayOrderAsc(org, audit.getId());
         List<AuditExpectedRequirement> unmet = unmet(org, audit);
@@ -1096,16 +1156,21 @@ public class AuditService {
                                 s.getOutcome().name(),
                                 s.getScannedAt(),
                                 s.getUndoneAt() != null,
-                                s.getContextSnapshot()))
+                                redact(principal, s.getContextSnapshot()),
+                                s.getScannedBy(),
+                                actors.get(s.getScannedBy())))
                         .toList(),
-                findings.findAllByOrganizationIdAndAuditIdOrderById(org, audit.getId()).stream()
+                observations.stream()
+                        .filter(f -> f.getAssetId() == null || temporaryAccess.assetAllowed(principal, f.getAssetId()))
                         .map(f -> new AuditFindingView(
                                 f.getId(),
                                 f.getSourceOperationId(),
                                 f.getAssetId(),
                                 f.getType().name(),
                                 f.getNote(),
-                                f.getDetail()))
+                                redact(principal, f.getDetail()),
+                                f.getActor(),
+                                actors.get(f.getActor())))
                         .toList(),
                 List.of());
     }
@@ -1197,6 +1262,42 @@ public class AuditService {
         return asset.getIndividualName() == null
                 ? model.getName() + " " + asset.getUnitNumber()
                 : asset.getIndividualName();
+    }
+
+    /** Redact response copies only; completed observations remain untouched in PostgreSQL. */
+    private String redact(TarpeistoPrincipal principal, String snapshot) {
+        if (!principal.temporary() || snapshot == null) return snapshot;
+        try {
+            var value = mapper.readValue(snapshot, Map.class);
+            return mapper.writeValueAsString(redactMap(principal, value));
+        } catch (RuntimeException malformed) {
+            return "{}";
+        }
+    }
+
+    private Map<String, Object> redactMap(TarpeistoPrincipal principal, Map<?, ?> source) {
+        Map<String, Object> result = new java.util.LinkedHashMap<>();
+        for (var entry : source.entrySet()) {
+            String key = entry.getKey().toString();
+            Object value = entry.getValue();
+            if (key.startsWith("destinationContainer")) {
+                Object destination = source.get("destinationContainerId");
+                if (destination == null
+                        || !temporaryAccess.assetAllowed(principal, UUID.fromString(destination.toString()))) continue;
+            }
+            if (key.equals("suggestions") && value instanceof List<?> suggestions) {
+                value = suggestions.stream()
+                        .filter(s -> s instanceof Map<?, ?> map
+                                && map.get("containerId") != null
+                                && temporaryAccess.assetAllowed(
+                                        principal,
+                                        UUID.fromString(map.get("containerId").toString())))
+                        .toList();
+            } else if (key.equals("scanContext") && value instanceof String nested) value = redact(principal, nested);
+            else if (value instanceof Map<?, ?> map) value = redactMap(principal, map);
+            result.put(key, value);
+        }
+        return result;
     }
 
     private String json(Map<String, Object> map) {

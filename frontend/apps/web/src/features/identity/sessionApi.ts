@@ -15,7 +15,11 @@ export type Role = NonNullable<components["schemas"]["SessionResponse"]["role"]>
  * on error responses). `Required<...>` narrows the generated type instead
  * of duplicating its shape.
  */
-export type SessionPrincipal = Required<components["schemas"]["SessionResponse"]>;
+export type SessionPrincipal = Omit<
+  Required<components["schemas"]["SessionResponse"]>,
+  "temporaryAccess"
+> &
+  Pick<components["schemas"]["SessionResponse"], "temporaryAccess">;
 
 export type LoginCredentials = components["schemas"]["LoginRequest"];
 

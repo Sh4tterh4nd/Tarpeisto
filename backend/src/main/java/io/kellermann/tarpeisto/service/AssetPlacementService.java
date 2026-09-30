@@ -60,12 +60,14 @@ public class AssetPlacementService {
 
     @Transactional(readOnly = true)
     public AssetPlacementView get(TarpeistoPrincipal principal, UUID assetId) {
+        if (principal != null) principal.requirePermanent();
         requireAuthenticated(principal);
         return view(requireAsset(principal.organizationId(), assetId), principal.organizationId());
     }
 
     @Transactional(readOnly = true)
     public List<AssetPlacementView> contents(TarpeistoPrincipal principal, UUID containerAssetId) {
+        if (principal != null) principal.requirePermanent();
         requireAuthenticated(principal);
         requireAsset(principal.organizationId(), containerAssetId);
         return assets
@@ -83,6 +85,7 @@ public class AssetPlacementService {
             UUID locationId,
             UUID parentContainerAssetId,
             long expectedVersion) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         if (locationId != null && parentContainerAssetId != null)
             throw new ValidationFailedException("Choose a location or a container, not both.");

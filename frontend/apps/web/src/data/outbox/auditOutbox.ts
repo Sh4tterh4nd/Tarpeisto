@@ -10,7 +10,8 @@ import {
 } from "../indexeddb/auditDatabase";
 import type { SessionPrincipal } from "../../features/identity/sessionApi";
 import type { AuditContainer, ContainerAudit } from "../../features/audits/auditApi";
-import { auditIdentityEpoch } from "../sync/auditIdentity";
+import { auditIdentityEpoch, stopAuditIdentity } from "../sync/auditIdentity";
+import { temporaryAccessExpired } from "../sync/temporaryDeadline";
 
 export const LEASE_MS = 15_000;
 export const retryDelay = (attempts: number) =>
@@ -28,6 +29,10 @@ export class AuditOutbox {
     expectedIdentityEpoch = auditIdentityEpoch(),
     expectedIdentityGeneration?: number,
   ) {
+    if (temporaryAccessExpired(principal)) {
+      await stopAuditIdentity(this.db);
+      throw new Error("Temporary access has expired. Ask for a new invitation.");
+    }
     const partition = auditPartition(principal);
     return this.db.transaction("rw", this.db.snapshots, this.db.identities, async () => {
       if (auditIdentityEpoch() !== expectedIdentityEpoch)
@@ -50,6 +55,7 @@ export class AuditOutbox {
       )
         return previous;
       await this.db.snapshots.put({
+        temporaryExpiresAt: principal.temporaryAccess?.expiresAt,
         revision: (previous?.revision ?? 0) + 1,
         key: this.key(partition, audit.taskId),
         partition,
@@ -82,6 +88,7 @@ export class AuditOutbox {
     command: AuditCommand,
     bytes?: ArrayBuffer,
   ) {
+    await this.assertTemporaryAccess(partition);
     if (!audit.id || audit.state !== "IN_PROGRESS")
       throw new Error("Start the audit online before recording work.");
     const operationId = command.kind === "photo" ? crypto.randomUUID() : command.body.operationId;
@@ -139,6 +146,7 @@ export class AuditOutbox {
     command: Extract<AuditCommand, { kind: "finding" }>,
     photos: Array<{ fileName: string; contentType: string; bytes: ArrayBuffer }>,
   ) {
+    await this.assertTemporaryAccess(partition);
     return this.db.transaction(
       "rw",
       this.db.commands,
@@ -176,6 +184,7 @@ export class AuditOutbox {
     return () => subscription.unsubscribe();
   }
   async acquire(partition: string, mode: AuditLease["mode"], now = Date.now()) {
+    await this.assertTemporaryAccess(partition);
     return this.db.transaction("rw", this.db.leases, async () => {
       const previous = await this.db.leases.get(partition);
       if (previous && previous.expiresAt > now) return undefined;
@@ -285,6 +294,7 @@ export class AuditOutbox {
     });
   }
   async completionBarrier(lease: AuditLease, auditId: string) {
+    await this.assertTemporaryAccess(lease.partition);
     await this.db.transaction("r", this.db.commands, this.db.leases, async () => {
       await this.assertLease(lease);
       if ((await this.list(lease.partition, auditId)).length)
@@ -292,6 +302,15 @@ export class AuditOutbox {
           "Synchronize or cancel all queued audit work and photographs before completion.",
         );
     });
+  }
+
+  async assertTemporaryAccess(partition: string) {
+    const snapshot = await this.db.snapshots.where("partition").equals(partition).first();
+    const expires = snapshot?.temporaryExpiresAt;
+    if (expires && (!Number.isFinite(Date.parse(expires)) || Date.now() >= Date.parse(expires))) {
+      await stopAuditIdentity(this.db);
+      throw new Error("Temporary access has expired. Ask for a new invitation.");
+    }
   }
 }
 export const auditOutbox = new AuditOutbox();

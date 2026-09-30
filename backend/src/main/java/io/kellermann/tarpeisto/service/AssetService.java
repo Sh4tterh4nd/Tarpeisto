@@ -130,6 +130,7 @@ public class AssetService {
 
     @Transactional(readOnly = true)
     public List<AssetView> list(TarpeistoPrincipal principal, UUID assetModelId, boolean includeInactive) {
+        if (principal != null) principal.requirePermanent();
         requireAuthenticated(principal);
         AssetModelView model = assetModelService.get(principal, assetModelId);
         List<Asset> assets = includeInactive
@@ -152,6 +153,7 @@ public class AssetService {
             String direction,
             int limit,
             String cursor) {
+        if (principal != null) principal.requirePermanent();
         requireAuthenticated(principal);
         if (limit < 1 || limit > 100) {
             throw new ValidationFailedException("limit must be between 1 and 100.");
@@ -229,6 +231,7 @@ public class AssetService {
 
     @Transactional(readOnly = true)
     public AssetView get(TarpeistoPrincipal principal, UUID assetId) {
+        if (principal != null) principal.requirePermanent();
         requireAuthenticated(principal);
         Asset asset = requireAsset(principal.organizationId(), assetId);
         return toView(
@@ -244,6 +247,7 @@ public class AssetService {
      */
     @Transactional(readOnly = true)
     public AssetView getByCode(TarpeistoPrincipal principal, String rawCode) {
+        if (principal != null) principal.requirePermanent();
         requireAuthenticated(principal);
         AssetCodeValidation validation = AssetCode.validate(rawCode);
         if (validation instanceof AssetCodeValidation.Invalid invalid) {
@@ -265,6 +269,7 @@ public class AssetService {
             String individualName,
             LocalDate purchaseDate,
             List<AssetCustomFieldValueInput> values) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         AssetModel assetModel = assetModelService.requireSerializedAssetModel(principal.organizationId(), assetModelId);
         requireIndividualNameIfContainer(assetModel, individualName);
@@ -317,6 +322,7 @@ public class AssetService {
             String individualName,
             LocalDate purchaseDate,
             List<AssetCustomFieldValueInput> values) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         lockOrganization(principal.organizationId());
         Asset predecessor = requireAsset(principal.organizationId(), predecessorId);
@@ -347,6 +353,7 @@ public class AssetService {
     @Transactional
     public List<AssetView> createBulk(
             TarpeistoPrincipal principal, UUID assetModelId, int count, LocalDate purchaseDate) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         if (count < 1) {
             throw new ValidationFailedException("count must be at least 1.");
@@ -396,6 +403,7 @@ public class AssetService {
     /** Upserts one or more values on an existing asset; used both to fill in a bulk-created unit's metadata and to edit an existing value. */
     @Transactional
     public AssetView setValues(TarpeistoPrincipal principal, UUID assetId, List<AssetCustomFieldValueInput> values) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         Asset asset = requireAsset(principal.organizationId(), assetId);
         rejectCheckedOutMutation(principal.organizationId(), assetId);
@@ -412,6 +420,7 @@ public class AssetService {
 
     @Transactional
     public AssetView rename(TarpeistoPrincipal principal, UUID assetId, String individualName) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         Asset asset = requireAsset(principal.organizationId(), assetId);
         AssetModelView model = assetModelService.get(principal, asset.getAssetModelId());
@@ -431,6 +440,7 @@ public class AssetService {
 
     @Transactional
     public AssetView changePurchaseDate(TarpeistoPrincipal principal, UUID assetId, LocalDate purchaseDate) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         Asset asset = requireAsset(principal.organizationId(), assetId);
         asset.setPurchaseDate(purchaseDate, clock.instant());
@@ -448,6 +458,7 @@ public class AssetService {
     @Transactional
     public AssetView changeCondition(
             TarpeistoPrincipal principal, UUID assetId, Condition newCondition, String reason) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         Asset asset = requireAsset(principal.organizationId(), assetId);
         var now = clock.instant();
@@ -487,6 +498,7 @@ public class AssetService {
     @Transactional
     public AssetView changeLifecycleState(
             TarpeistoPrincipal principal, UUID assetId, LifecycleState newLifecycleState, String reason) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         lockOrganization(principal.organizationId());
         Asset asset = requireAsset(principal.organizationId(), assetId);
@@ -526,6 +538,7 @@ public class AssetService {
 
     @Transactional(readOnly = true)
     public List<AssetStateChangeView> history(TarpeistoPrincipal principal, UUID assetId) {
+        if (principal != null) principal.requirePermanent();
         requireAuthenticated(principal);
         requireAsset(principal.organizationId(), assetId);
         return assetStateChangeRepository
@@ -537,6 +550,7 @@ public class AssetService {
 
     @Transactional
     public void archive(TarpeistoPrincipal principal, UUID assetId) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         lockOrganization(principal.organizationId());
         Asset asset = requireAsset(principal.organizationId(), assetId);
@@ -555,6 +569,7 @@ public class AssetService {
 
     @Transactional
     public void restore(TarpeistoPrincipal principal, UUID assetId) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         lockOrganization(principal.organizationId());
         Asset asset = requireAsset(principal.organizationId(), assetId);

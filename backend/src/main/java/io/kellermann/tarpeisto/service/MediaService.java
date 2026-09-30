@@ -63,6 +63,7 @@ public class MediaService {
     private final ContainerAuditRepository audits;
     private final AuditFindingRepository findings;
     private final OrganizationRepository organizations;
+    private final TemporaryAccessService temporaryAccess;
 
     public MediaService(
             MediaObjectRepository mediaObjectRepository,
@@ -75,7 +76,8 @@ public class MediaService {
             ActivityLogService activityLogService,
             ContainerAuditRepository audits,
             AuditFindingRepository findings,
-            OrganizationRepository organizations) {
+            OrganizationRepository organizations,
+            TemporaryAccessService temporaryAccess) {
         this.mediaObjectRepository = mediaObjectRepository;
         this.assetModelRepository = assetModelRepository;
         this.assetRepository = assetRepository;
@@ -87,6 +89,7 @@ public class MediaService {
         this.audits = audits;
         this.findings = findings;
         this.organizations = organizations;
+        this.temporaryAccess = temporaryAccess;
     }
 
     public MediaView uploadModelReference(TarpeistoPrincipal principal, UUID assetModelId, MultipartFile file) {
@@ -110,6 +113,7 @@ public class MediaService {
 
     public MediaView getModelReference(TarpeistoPrincipal principal, UUID assetModelId) {
         requireAuthenticated(principal);
+        temporaryAccess.requireModel(principal, assetModelId);
         requireAssetModel(principal.organizationId(), assetModelId);
         return mediaObjectRepository
                 .findByOrganizationIdAndAssetModelIdAndPurposeAndArchivedAtIsNull(
@@ -120,6 +124,7 @@ public class MediaService {
 
     public MediaView getAssetReference(TarpeistoPrincipal principal, UUID assetId) {
         requireAuthenticated(principal);
+        temporaryAccess.requireAsset(principal, assetId);
         requireAsset(principal.organizationId(), assetId);
         return mediaObjectRepository
                 .findByOrganizationIdAndAssetIdAndPurposeAndArchivedAtIsNull(
@@ -130,6 +135,7 @@ public class MediaService {
 
     public List<MediaView> listContainerLayouts(TarpeistoPrincipal principal, UUID assetId) {
         requireAuthenticated(principal);
+        temporaryAccess.requireAsset(principal, assetId);
         requireContainerAsset(principal.organizationId(), assetId);
         return mediaObjectRepository
                 .findAllByOrganizationIdAndAssetIdAndPurposeAndArchivedAtIsNullOrderByDisplayOrderAsc(
@@ -143,6 +149,11 @@ public class MediaService {
         requireAuthenticated(principal);
         MediaObject media = requireMedia(principal.organizationId(), mediaId);
         if (media.isArchived()) throw new NotFoundException("Image not found.");
+        if (media.getPurpose() == MediaPurpose.AUDIT_EVIDENCE)
+            temporaryAccess.requireAudit(principal, media.getAuditId());
+        else if (media.getPurpose() == MediaPurpose.MODEL_REFERENCE)
+            temporaryAccess.requireModel(principal, media.getAssetModelId());
+        else temporaryAccess.requireAsset(principal, media.getAssetId());
         return mediaStorage.get(thumbnail ? media.getThumbnailObjectKey() : media.getObjectKey());
     }
 
@@ -231,8 +242,9 @@ public class MediaService {
 
     public List<MediaView> listFindingEvidence(TarpeistoPrincipal principal, UUID findingId) {
         requireAuthenticated(principal);
-        findings.findByIdAndOrganizationId(findingId, principal.organizationId())
+        var finding = findings.findByIdAndOrganizationId(findingId, principal.organizationId())
                 .orElseThrow(() -> new NotFoundException("Finding not found."));
+        temporaryAccess.requireAudit(principal, finding.getAuditId());
         return mediaObjectRepository
                 .findAllByOrganizationIdAndFindingIdOrderByCreatedAtAsc(principal.organizationId(), findingId)
                 .stream()
@@ -305,6 +317,7 @@ public class MediaService {
     }
 
     private ContainerAudit requireAudit(TarpeistoPrincipal principal, UUID auditId) {
+        temporaryAccess.requireAudit(principal, auditId);
         return audits.findByOrganizationIdAndId(principal.organizationId(), auditId)
                 .orElseThrow(() -> new NotFoundException("Audit not found."));
     }
@@ -563,6 +576,7 @@ public class MediaService {
 
     private void requireOwnerOrDeputy(TarpeistoPrincipal principal) {
         if (principal == null
+                || principal.temporary()
                 || (principal.role() != OrganizationRole.OWNER && principal.role() != OrganizationRole.DEPUTY)) {
             throw new AccessDeniedException("Owner or Deputy role required.");
         }

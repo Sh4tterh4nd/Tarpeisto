@@ -30,7 +30,8 @@ Read it together with [`DEVELOPMENT_POLICIES.md`](DEVELOPMENT_POLICIES.md) and t
 | 11      | Container packing sheets                                                        | Complete, verified; physical paper/camera acceptance pending                           |
 | QoL     | Inventory navigation, browsing, exact assignment, layouts and safer catalog UX  | Complete, verified                                                                     |
 | 9.2-9.3 | Persistent scan outbox and queued audit photographs                             | Complete, automated verification passed                                                |
-| 12-14   | Temporary access, search, hardening                                             | Not started                                                                            |
+| 12      | Scoped temporary volunteer access and persistent permanent sign-in              | Complete, automated verification passed                                                |
+| 13-14   | Archive, search, dashboard, exports and hardening                                | Not started                                                                            |
 
 Verified at the Phase 8 checkpoint:
 
@@ -107,6 +108,29 @@ Verified at the Phase 9.2/9.3 checkpoint:
 - Deploy the matching application image and apply the explicit Flyway migration step through V18
   before using audit evidence. Existing V1-V17 migration files remain unchanged.
 
+Verified at the Phase 12 checkpoint:
+
+- Backend: **496 tests in 64 suites, 0 failures or errors**, with `spotlessCheck check` passing
+  against PostgreSQL. Coverage includes hashed shared invitations, distinct named actors,
+  retry-safe redemption, fixed 24-hour expiry, tenant and service boundaries, CSRF, decoded QR
+  links, scoped media, and revocation races during redemption, audit mutations and evidence uploads.
+- Frontend: **205 unit tests, 0 failures** (187 web, 11 api-client, 7 shared-ui), with
+  `format:check`, `lint`, workspace typechecks and production PWA build passing. **28 Playwright
+  tests pass** across desktop and mobile configurations, including volunteer join, event waiting,
+  offline replay, revocation, expiry and manager invitation issuance/revocation. These journeys use
+  mocked API routes and real browser storage.
+- A separate live mobile Chromium profile check against PostgreSQL confirmed that the same
+  permanent user remains signed in after closing and reopening the browser. Permanent sign-in
+  retains revocable JDBC cookie sessions with a configurable 30-day idle timeout and persistent
+  cookie. Visible clients check every five minutes and on foreground/reconnect; each API request
+  checks current account/membership state. Temporary grants retain their fixed 24-hour deadline.
+- The live OpenAPI document and generated client were recaptured after V19; regeneration from the
+  snapshot produces no drift. `jibBuildTar` succeeds with the matching frontend embedded.
+- Apply the explicit Flyway migration step through V19 before deploying the matching image.
+  Existing users must sign in once after the upgrade to receive the persistent cookie; existing
+  cookies and session rows retain their prior lifetime. Physical phone/camera acceptance remains
+  manual.
+
 ## 2. How to verify this yourself
 
 Docker Desktop does not work on the primary development workstation (no WSL2 backend), so backend
@@ -141,6 +165,9 @@ things.
 - ADR-0001 carries a dated **amendment replacing Garage with SeaweedFS** as the first-party
   self-hosted object store. The Swarm stack creates its bucket automatically and uses external
   secrets; application code remains on the same S3 API behind a `MediaStorage` interface.
+- [ADR-0006](adr/ADR-0006-temporary-volunteer-access.md) defines fixed-expiry, revocable event/batch
+  invitations, named history actors, scoped audit/media projections and offline expiry enforcement.
+  ADR-0003 now records persistent permanent-account sessions and live account/membership checks.
 
 ## 4. What exists, by area
 
@@ -171,6 +198,7 @@ Migrations (Flyway owns all schema; applied migrations are immutable):
 | `V16`     | Session invalidation after principal rename                                                                                |
 | `V17`     | Standalone container-audit batches                                                                                         |
 | `V18`     | Immutable finding-linked audit evidence, tenant-safe associations and source-operation linkage                             |
+| `V19`     | Tenant-owned fixed-expiry invitations, attributable volunteer sessions and credential/membership-free temporary users      |
 
 API surface is under `/api/v1`. The OpenAPI document at `/v3/api-docs` (enabled only under the `dev`
 profile) is the machine-readable contract; treat it as authoritative over any list here. Broadly:
@@ -225,9 +253,16 @@ Breaking a seal invalidates verification, preserves the completed attempt, creat
 attempt and reblocks dependent parents. Effective audit and event state is recalculated after review,
 repair and seal actions, and replacement assets always receive a new identity and public code.
 
-Authorization is enforced in the **service** layer, not by URL matchers. Owner administers users and
+Phase 12 adds shareable event/batch invitations and scoped volunteer audit access. Each redemption
+creates a distinct named history actor without permanent membership or credentials. Scope, expiry
+and revocation are checked at service boundaries and again under mutation locks. Historical response
+copies redact unrelated destinations without rewriting stored observations; evidence transfer is
+rechecked during finalization. Audit scans and findings expose their recording actor and display name.
+
+Authorization is enforced in the **service** layer, with an additional deny-by-default HTTP allowlist
+for temporary identities. Owner administers users and
 identities; Owner or Deputy administers the catalog, assets, media, locations, containment, stock and
-packing requirements; every authenticated role may read. Cross-organization records are reported as
+packing requirements; every permanent role may read. Cross-organization records are reported as
 missing, never as forbidden, so existence does not leak.
 
 ### Frontend (`frontend/`)
@@ -309,6 +344,14 @@ show progress and retry status; selected unstaged files and queued uploads block
 Uploaded evidence appears on the audit and Owner/Deputy review pages. V18 enforces tenant-safe,
 append-only associations. S3 attempts use separate keys and finalize under organization/audit locks;
 matching upload/checksum replay is accepted after completion and changed-content replay is rejected.
+
+Phase 12 adds creation-only QR/link dialogs and invitation revocation on event and audit pages.
+Volunteers join through a fragment token that is immediately removed from the address, enter their
+name and receive an assigned-task workspace, including a waiting state before event returns exist.
+Temporary routing prevents inventory browsing, and the outbox checks the fixed deadline during
+recovery, recording and replay. Audit observations display the volunteer's name. Permanent session
+restoration checks on foreground, reconnect and every five visible minutes preserve the current
+identity through transient network failures while fencing late replies after logout/account changes.
 
 API types are **generated** from the backend's OpenAPI document into
 `packages/api-client/src/generated/`. Hand-written duplicates of generated request/response shapes
@@ -414,7 +457,7 @@ what was verified. Treat the history as a readable grouping, not a bisectable ti
 
 1. Complete remaining physical label-stock/mobile/P-touch acceptance.
 2. Perform the remaining Phase 11 physical print and camera acceptance.
-3. **Phase 12** - scoped temporary volunteer access.
+3. **Phase 13** - archive behavior, search, operational dashboards and exports.
 
 Phase 9.1 is implemented end to end for online operation: audits freeze direct expectations at start,
 enforce bottom-up execution, match exact requirements before model quantities, retain corrections,

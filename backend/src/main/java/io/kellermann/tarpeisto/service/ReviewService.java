@@ -100,6 +100,7 @@ public class ReviewService {
 
     @Transactional(readOnly = true)
     public List<FindingReviewView> list(TarpeistoPrincipal principal, boolean unresolvedOnly) {
+        if (principal != null) principal.requirePermanent();
         requireReviewer(principal);
         return findings.findAllByOrganizationIdOrderByRecordedAtDesc(principal.organizationId()).stream()
                 .filter(finding -> finding.getAuditId() != null
@@ -114,6 +115,7 @@ public class ReviewService {
 
     @Transactional(readOnly = true)
     public FindingReviewView get(TarpeistoPrincipal principal, UUID findingId) {
+        if (principal != null) principal.requirePermanent();
         requireReviewer(principal);
         return toView(principal.organizationId(), finding(principal.organizationId(), findingId));
     }
@@ -128,6 +130,7 @@ public class ReviewService {
             UUID targetAssetId,
             UUID targetContainerId,
             String repairReference) {
+        if (principal != null) principal.requirePermanent();
         requireReviewer(principal);
         if (operationId == null || action == null)
             throw new ValidationFailedException("A resolution operation ID and action are required.");
@@ -223,6 +226,7 @@ public class ReviewService {
 
     @Transactional
     public RepairView openRepair(TarpeistoPrincipal principal, UUID assetId, UUID sourceFindingId, String reference) {
+        if (principal != null) principal.requirePermanent();
         requireReviewer(principal);
         if (reference == null || reference.isBlank())
             throw new ValidationFailedException("Repair reference or description is required.");
@@ -259,6 +263,7 @@ public class ReviewService {
 
     @Transactional
     public RepairView closeRepair(TarpeistoPrincipal principal, UUID repairId, Condition condition) {
+        if (principal != null) principal.requirePermanent();
         requireReviewer(principal);
         organizations.findWithLockById(principal.organizationId()).orElseThrow();
         AssetRepair repair = repairs.findByIdAndOrganizationId(repairId, principal.organizationId())
@@ -284,6 +289,7 @@ public class ReviewService {
 
     @Transactional(readOnly = true)
     public List<RepairView> repairs(TarpeistoPrincipal principal, UUID assetId) {
+        if (principal != null) principal.requirePermanent();
         if (principal == null) throw new AccessDeniedException("Authentication required.");
         assets.findByIdAndOrganizationId(assetId, principal.organizationId())
                 .orElseThrow(() -> new NotFoundException("Asset not found."));

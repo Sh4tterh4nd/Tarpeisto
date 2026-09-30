@@ -202,6 +202,7 @@ public class ExternalIdentityService {
 
     @Transactional(readOnly = true)
     public List<ExternalIdentityView> listIdentities(TarpeistoPrincipal principal, UUID targetUserId) {
+        if (principal != null) principal.requirePermanent();
         requireOwner(principal);
         requireMembership(principal.organizationId(), targetUserId);
         return identityRepository.findAllByUserIdOrderByCreatedAtAsc(targetUserId).stream()
@@ -213,6 +214,7 @@ public class ExternalIdentityService {
     @Transactional
     public ExternalIdentityView createLink(
             TarpeistoPrincipal principal, UUID targetUserId, String issuer, String subject) {
+        if (principal != null) principal.requirePermanent();
         requireOwner(principal);
         requireMembership(principal.organizationId(), targetUserId);
 
@@ -251,6 +253,7 @@ public class ExternalIdentityService {
      */
     @Transactional
     public void unlink(TarpeistoPrincipal principal, UUID externalIdentityId) {
+        if (principal != null) principal.requirePermanent();
         requireOwner(principal);
         ExternalIdentity identity =
                 identityRepository.findById(externalIdentityId).orElseThrow(ExternalIdentityService::identityNotFound);

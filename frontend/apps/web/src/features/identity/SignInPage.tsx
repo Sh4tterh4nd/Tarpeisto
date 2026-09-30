@@ -43,7 +43,7 @@ function describeSignInError(error: AppError): string {
  * anti-lockout guarantee requires of this page.
  */
 export function SignInPage() {
-  const { status, signIn } = useSession();
+  const { status, principal, signIn } = useSession();
   const location = useLocation();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -86,7 +86,7 @@ export function SignInPage() {
     };
   }, []);
 
-  if (status === "authenticated") {
+  if (status === "authenticated" && !principal?.temporaryAccess) {
     const state = location.state as LocationState | null;
     return <Navigate to={state?.from?.pathname ?? "/"} replace />;
   }

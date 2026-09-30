@@ -10,9 +10,11 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * A permanent Tarpeisto principal (specification section 4). A {@link User} is not itself
- * organization-owned: its organization, role, and authorization context come from its {@link
- * OrganizationMembership} row(s), per the Phase 1 data model.
+ * An attributable Tarpeisto actor (specification section 4). A permanent user's organization and
+ * role come from {@link OrganizationMembership}; a temporary volunteer instead has an immutable,
+ * tenant-owned volunteer session, no membership and no local/OIDC credentials. A {@link User}
+ * is not itself organization-owned. Database constraints prevent volunteer actors from acquiring
+ * permanent membership or authentication.
  *
  * <p>{@code passwordHash} is nullable: a user created for a future OIDC-only login (not yet
  * implemented) may have no local credential at all. It is never exposed outside this entity and

@@ -72,7 +72,7 @@ export function useAuditQueue(taskId: string) {
           if (principal && result.error.kind === "network") setReady({ scope, principal });
           return;
         }
-        const identity = await getAuditContainer(result.data.containerAssetId);
+        const identity = await getAuditContainer(taskId);
         if (!active) return;
         const nextContainer = identity.kind === "ok" ? identity.data : undefined;
         if (principal) {

@@ -11,4 +11,18 @@ public record AuditScanView(
         String outcome,
         Instant scannedAt,
         boolean undone,
-        String contextSnapshot) {}
+        String contextSnapshot,
+        UUID recordedByUserId,
+        String recordedByDisplayName) {
+    public AuditScanView(
+            UUID id,
+            UUID operationId,
+            UUID assetId,
+            String assetCode,
+            String outcome,
+            Instant scannedAt,
+            boolean undone,
+            String contextSnapshot) {
+        this(id, operationId, assetId, assetCode, outcome, scannedAt, undone, contextSnapshot, null, null);
+    }
+}

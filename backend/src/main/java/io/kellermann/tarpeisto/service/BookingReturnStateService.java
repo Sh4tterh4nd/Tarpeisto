@@ -51,6 +51,8 @@ public class BookingReturnStateService {
     private final AssetVerificationHistoryRepository verificationHistory;
     private final AssetSealHistoryRepository sealHistory;
     private final Clock clock;
+    private final TemporaryAccessService temporaryAccess;
+    private final io.kellermann.tarpeisto.repository.OrganizationRepository organizations;
 
     public BookingReturnStateService(
             AuditBatchRepository batches,
@@ -66,7 +68,9 @@ public class BookingReturnStateService {
             AuditScanRepository scans,
             AssetVerificationHistoryRepository verificationHistory,
             AssetSealHistoryRepository sealHistory,
-            Clock clock) {
+            Clock clock,
+            TemporaryAccessService temporaryAccess,
+            io.kellermann.tarpeisto.repository.OrganizationRepository organizations) {
         this.batches = batches;
         this.tasks = tasks;
         this.dependencies = dependencies;
@@ -81,11 +85,19 @@ public class BookingReturnStateService {
         this.verificationHistory = verificationHistory;
         this.sealHistory = sealHistory;
         this.clock = clock;
+        this.temporaryAccess = temporaryAccess;
+        this.organizations = organizations;
     }
 
     /** Review clears an effective attempt without changing its immutable completion outcome. */
     @Transactional
     public void confirmReviewedAudit(TarpeistoPrincipal principal, UUID auditId) {
+        if (principal == null)
+            throw new org.springframework.security.access.AccessDeniedException("Authentication required.");
+        if (principal.temporary()) {
+            organizations.findWithLockById(principal.organizationId()).orElseThrow();
+            temporaryAccess.requireAudit(principal, auditId);
+        }
         ContainerAudit audit = audits.findByOrganizationIdAndId(principal.organizationId(), auditId)
                 .orElseThrow();
         if (!audit.isCurrentAttempt()

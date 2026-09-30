@@ -31,6 +31,7 @@ export interface QueuedAuditCommand {
   progress: number;
 }
 export interface CachedAudit {
+  temporaryExpiresAt?: string;
   revision?: number;
   key: string;
   partition: string;

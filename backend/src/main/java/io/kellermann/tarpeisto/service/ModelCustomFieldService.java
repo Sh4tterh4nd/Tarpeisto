@@ -53,6 +53,7 @@ public class ModelCustomFieldService {
 
     @Transactional(readOnly = true)
     public List<ModelCustomFieldView> list(TarpeistoPrincipal principal, UUID assetModelId) {
+        if (principal != null) principal.requirePermanent();
         requireAuthenticated(principal);
         // A field list is meaningful even for an archived model (historical review), so this does
         // not require the model to still be SERIALIZED_ASSET or active - only that it belongs to
@@ -68,6 +69,7 @@ public class ModelCustomFieldService {
     @Transactional
     public ModelCustomFieldView create(
             TarpeistoPrincipal principal, UUID assetModelId, String name, CustomFieldDataType dataType) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         AssetModel assetModel =
                 assetModelService.requireSerializedAssetModelForCustomFields(principal.organizationId(), assetModelId);
@@ -105,6 +107,7 @@ public class ModelCustomFieldService {
 
     @Transactional
     public ModelCustomFieldView rename(TarpeistoPrincipal principal, UUID assetModelId, UUID fieldId, String newName) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         ModelCustomField field = requireField(principal.organizationId(), assetModelId, fieldId);
         if (!field.getName().equalsIgnoreCase(newName)) {
@@ -124,6 +127,7 @@ public class ModelCustomFieldService {
     @Transactional
     public ModelCustomFieldView changeDataType(
             TarpeistoPrincipal principal, UUID assetModelId, UUID fieldId, CustomFieldDataType newDataType) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         ModelCustomField field = requireField(principal.organizationId(), assetModelId, fieldId);
         requireNoValueDependencyBlocksDataTypeChange(field);
@@ -141,6 +145,7 @@ public class ModelCustomFieldService {
     @Transactional
     public ModelCustomFieldView reorder(
             TarpeistoPrincipal principal, UUID assetModelId, UUID fieldId, int newDisplayOrder) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         ModelCustomField field = requireField(principal.organizationId(), assetModelId, fieldId);
         field.reorder(newDisplayOrder, clock.instant());
@@ -149,6 +154,7 @@ public class ModelCustomFieldService {
 
     @Transactional
     public void archive(TarpeistoPrincipal principal, UUID assetModelId, UUID fieldId) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         ModelCustomField field = requireField(principal.organizationId(), assetModelId, fieldId);
         field.archive(clock.instant());
@@ -163,6 +169,7 @@ public class ModelCustomFieldService {
 
     @Transactional
     public void restore(TarpeistoPrincipal principal, UUID assetModelId, UUID fieldId) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         ModelCustomField field = requireField(principal.organizationId(), assetModelId, fieldId);
         field.restore(clock.instant());

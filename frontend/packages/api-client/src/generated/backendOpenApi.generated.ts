@@ -452,6 +452,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/temporary-access/redemptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["redeem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/temporary-access/invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_2"];
+        put?: never;
+        post: operations["create_2"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/temporary-access/invitations/{invitationId}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["revoke"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/setup": {
         parameters: {
             query?: never;
@@ -619,9 +667,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_2"];
+        get: operations["list_3"];
         put?: never;
-        post: operations["create_2"];
+        post: operations["create_3"];
         delete?: never;
         options?: never;
         head?: never;
@@ -683,9 +731,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_3"];
+        get: operations["list_4"];
         put?: never;
-        post: operations["create_3"];
+        post: operations["create_4"];
         delete?: never;
         options?: never;
         head?: never;
@@ -731,9 +779,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_4"];
+        get: operations["list_5"];
         put?: never;
-        post: operations["create_4"];
+        post: operations["create_5"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1051,7 +1099,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_5"];
+        get: operations["list_6"];
         put?: never;
         post: operations["add"];
         delete?: never;
@@ -1195,9 +1243,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_6"];
+        get: operations["list_7"];
         put?: never;
-        post: operations["create_5"];
+        post: operations["create_6"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1243,9 +1291,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_7"];
+        get: operations["list_8"];
         put?: never;
-        post: operations["create_6"];
+        post: operations["create_7"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1275,9 +1323,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_8"];
+        get: operations["list_9"];
         put?: never;
-        post: operations["create_7"];
+        post: operations["create_8"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1435,9 +1483,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_9"];
+        get: operations["list_10"];
         put?: never;
-        post: operations["create_8"];
+        post: operations["create_9"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1524,6 +1572,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/temporary-access/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["tasks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/packing-requirements/{id}/reservation-impact": {
         parameters: {
             query?: never;
@@ -1595,7 +1659,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_10"];
+        get: operations["list_11"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1756,6 +1820,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["get_5"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audits/tasks/{taskId}/container": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["container"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2372,6 +2452,64 @@ export interface components {
             lastLoginAt?: string;
             active?: boolean;
         };
+        RedeemTemporaryInvitationRequest: {
+            token: string;
+            displayName: string;
+            /** Format: uuid */
+            operationId: string;
+        };
+        SessionResponse: {
+            /** Format: uuid */
+            userId?: string;
+            username?: string;
+            displayName?: string;
+            /** Format: uuid */
+            organizationId?: string;
+            /** @enum {string} */
+            role?: "OWNER" | "DEPUTY" | "OPERATOR_AUDITOR" | "VIEWER";
+            temporaryAccess?: components["schemas"]["TemporaryAccessContext"];
+        };
+        TemporaryAccessContext: {
+            /** Format: uuid */
+            sessionId?: string;
+            /** Format: uuid */
+            invitationId?: string;
+            /** Format: uuid */
+            bookingId?: string;
+            /** Format: uuid */
+            auditBatchId?: string;
+            /** Format: date-time */
+            expiresAt?: string;
+        };
+        CreateTemporaryInvitationRequest: {
+            /** Format: uuid */
+            bookingId?: string;
+            /** Format: uuid */
+            auditBatchId?: string;
+            joinUrl: string;
+        };
+        TemporaryAccessInvitation: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            organizationId?: string;
+            /** Format: uuid */
+            bookingId?: string;
+            /** Format: uuid */
+            auditBatchId?: string;
+            /** Format: date-time */
+            issuedAt?: string;
+            /** Format: date-time */
+            expiresAt?: string;
+            /** Format: date-time */
+            revokedAt?: string;
+        };
+        TemporaryInvitationResponse: {
+            invitation?: components["schemas"]["TemporaryAccessInvitation"];
+            token?: string;
+            joinUrl?: string;
+            qrCodeDataUrl?: string;
+        };
         CompleteInitialSetupRequest: {
             organizationName: string;
             username: string;
@@ -2383,16 +2521,6 @@ export interface components {
         LoginRequest: {
             username: string;
             password: string;
-        };
-        SessionResponse: {
-            /** Format: uuid */
-            userId?: string;
-            username?: string;
-            displayName?: string;
-            /** Format: uuid */
-            organizationId?: string;
-            /** @enum {string} */
-            role?: "OWNER" | "DEPUTY" | "OPERATOR_AUDITOR" | "VIEWER";
         };
         CloseRepairRequest: {
             /** @enum {string} */
@@ -2624,6 +2752,9 @@ export interface components {
             type?: string;
             note?: string;
             detail?: string;
+            /** Format: uuid */
+            recordedByUserId?: string;
+            recordedByDisplayName?: string;
         };
         AuditScanResponse: {
             /** Format: uuid */
@@ -2638,6 +2769,9 @@ export interface components {
             scannedAt?: string;
             undone?: boolean;
             contextSnapshot?: string;
+            /** Format: uuid */
+            recordedByUserId?: string;
+            recordedByDisplayName?: string;
         };
         ContainerAuditResponse: {
             /** Format: uuid */
@@ -2874,6 +3008,18 @@ export interface components {
             format: "A4_70X36_24" | "A4_97X42_3_12";
             calibration?: components["schemas"]["AssetLabelCalibrationParameters"];
         };
+        AssignedAuditTaskView: {
+            /** Format: uuid */
+            taskId?: string;
+            /** Format: uuid */
+            batchId?: string;
+            /** Format: uuid */
+            containerAssetId?: string;
+            displayName?: string;
+            publicCode?: string;
+            state?: string;
+            blockingReasons?: string[];
+        };
         InitialSetupStatusResponse: {
             setupRequired?: boolean;
         };
@@ -2920,6 +3066,12 @@ export interface components {
             snapshot?: {
                 [key: string]: unknown;
             };
+        };
+        AuditContainerResponse: {
+            /** Format: uuid */
+            id?: string;
+            displayName?: string;
+            publicCode?: string;
         };
         AssetSearchPageResponse: {
             items?: components["schemas"]["AssetSearchResponse"][];
@@ -3867,6 +4019,97 @@ export interface operations {
             };
         };
     };
+    redeem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RedeemTemporaryInvitationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SessionResponse"];
+                };
+            };
+        };
+    };
+    list_2: {
+        parameters: {
+            query?: {
+                bookingId?: string;
+                auditBatchId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TemporaryAccessInvitation"][];
+                };
+            };
+        };
+    };
+    create_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTemporaryInvitationRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TemporaryInvitationResponse"];
+                };
+            };
+        };
+    };
+    revoke: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invitationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     status: {
         parameters: {
             query?: never;
@@ -4191,7 +4434,7 @@ export interface operations {
             };
         };
     };
-    list_2: {
+    list_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -4211,7 +4454,7 @@ export interface operations {
             };
         };
     };
-    create_2: {
+    create_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -4309,7 +4552,7 @@ export interface operations {
             };
         };
     };
-    list_3: {
+    list_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -4329,7 +4572,7 @@ export interface operations {
             };
         };
     };
-    create_3: {
+    create_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -4393,7 +4636,7 @@ export interface operations {
             };
         };
     };
-    list_4: {
+    list_5: {
         parameters: {
             query?: {
                 from?: string;
@@ -4418,7 +4661,7 @@ export interface operations {
             };
         };
     };
-    create_4: {
+    create_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -4939,7 +5182,7 @@ export interface operations {
             };
         };
     };
-    list_5: {
+    list_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -5255,7 +5498,7 @@ export interface operations {
             };
         };
     };
-    list_6: {
+    list_7: {
         parameters: {
             query?: never;
             header?: never;
@@ -5275,7 +5518,7 @@ export interface operations {
             };
         };
     };
-    create_5: {
+    create_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -5370,7 +5613,7 @@ export interface operations {
             };
         };
     };
-    list_7: {
+    list_8: {
         parameters: {
             query?: never;
             header?: never;
@@ -5392,7 +5635,7 @@ export interface operations {
             };
         };
     };
-    create_6: {
+    create_7: {
         parameters: {
             query?: never;
             header?: never;
@@ -5439,7 +5682,7 @@ export interface operations {
             };
         };
     };
-    list_8: {
+    list_9: {
         parameters: {
             query?: never;
             header?: never;
@@ -5462,7 +5705,7 @@ export interface operations {
             };
         };
     };
-    create_7: {
+    create_8: {
         parameters: {
             query?: never;
             header?: never;
@@ -5710,7 +5953,7 @@ export interface operations {
             };
         };
     };
-    list_9: {
+    list_10: {
         parameters: {
             query?: {
                 includeInactive?: boolean;
@@ -5734,7 +5977,7 @@ export interface operations {
             };
         };
     };
-    create_8: {
+    create_9: {
         parameters: {
             query?: never;
             header?: never;
@@ -5878,6 +6121,26 @@ export interface operations {
             };
         };
     };
+    tasks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AssignedAuditTaskView"][];
+                };
+            };
+        };
+    };
     reservationImpact: {
         parameters: {
             query?: never;
@@ -5986,7 +6249,7 @@ export interface operations {
             };
         };
     };
-    list_10: {
+    list_11: {
         parameters: {
             query?: {
                 unresolvedOnly?: boolean;
@@ -6225,6 +6488,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ContainerAuditResponse"];
+                };
+            };
+        };
+    };
+    container: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                taskId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AuditContainerResponse"];
                 };
             };
         };

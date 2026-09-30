@@ -42,6 +42,7 @@ public class ModelCustomFieldOptionService {
 
     @Transactional(readOnly = true)
     public List<ModelCustomFieldOptionView> list(TarpeistoPrincipal principal, UUID assetModelId, UUID fieldId) {
+        if (principal != null) principal.requirePermanent();
         requireAuthenticated(principal);
         modelCustomFieldService.requireFieldForOptionAccess(principal.organizationId(), assetModelId, fieldId);
         return optionRepository
@@ -54,6 +55,7 @@ public class ModelCustomFieldOptionService {
     @Transactional
     public ModelCustomFieldOptionView create(
             TarpeistoPrincipal principal, UUID assetModelId, UUID fieldId, String value) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         ModelCustomField field = modelCustomFieldService.requireActiveDropdownFieldForOptionCreation(
                 principal.organizationId(), assetModelId, fieldId);
@@ -86,6 +88,7 @@ public class ModelCustomFieldOptionService {
     @Transactional
     public ModelCustomFieldOptionView rename(
             TarpeistoPrincipal principal, UUID assetModelId, UUID fieldId, UUID optionId, String newValue) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         modelCustomFieldService.requireFieldForOptionAccess(principal.organizationId(), assetModelId, fieldId);
         ModelCustomFieldOption option = requireOption(principal.organizationId(), fieldId, optionId);
@@ -106,6 +109,7 @@ public class ModelCustomFieldOptionService {
     @Transactional
     public ModelCustomFieldOptionView reorder(
             TarpeistoPrincipal principal, UUID assetModelId, UUID fieldId, UUID optionId, int newDisplayOrder) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         modelCustomFieldService.requireFieldForOptionAccess(principal.organizationId(), assetModelId, fieldId);
         ModelCustomFieldOption option = requireOption(principal.organizationId(), fieldId, optionId);
@@ -115,6 +119,7 @@ public class ModelCustomFieldOptionService {
 
     @Transactional
     public void archive(TarpeistoPrincipal principal, UUID assetModelId, UUID fieldId, UUID optionId) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         modelCustomFieldService.requireFieldForOptionAccess(principal.organizationId(), assetModelId, fieldId);
         ModelCustomFieldOption option = requireOption(principal.organizationId(), fieldId, optionId);
@@ -130,6 +135,7 @@ public class ModelCustomFieldOptionService {
 
     @Transactional
     public void restore(TarpeistoPrincipal principal, UUID assetModelId, UUID fieldId, UUID optionId) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         modelCustomFieldService.requireFieldForOptionAccess(principal.organizationId(), assetModelId, fieldId);
         ModelCustomFieldOption option = requireOption(principal.organizationId(), fieldId, optionId);

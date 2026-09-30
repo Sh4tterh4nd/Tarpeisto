@@ -74,6 +74,7 @@ public class AssetSealService {
 
     @Transactional
     public void setSealable(TarpeistoPrincipal principal, UUID assetId, boolean sealable) {
+        if (principal != null) principal.requirePermanent();
         requireReviewer(principal);
         organizations.findWithLockById(principal.organizationId()).orElseThrow();
         Asset asset = asset(principal.organizationId(), assetId);
@@ -96,6 +97,7 @@ public class AssetSealService {
 
     @Transactional
     public void breakSeal(TarpeistoPrincipal principal, UUID assetId, String note) {
+        if (principal != null) principal.requirePermanent();
         requireReviewer(principal);
         organizations.findWithLockById(principal.organizationId()).orElseThrow();
         Asset asset = asset(principal.organizationId(), assetId);
@@ -136,6 +138,7 @@ public class AssetSealService {
     /** Packing and physical-content changes revoke verification and dependent readiness. */
     @Transactional
     public void invalidate(TarpeistoPrincipal principal, UUID assetId, String note) {
+        if (principal != null) principal.requirePermanent();
         Asset asset = asset(principal.organizationId(), assetId);
         if (asset.getLastVerifiedAuditId() != null) invalidateVerification(principal, asset);
         if (asset.isSealable()
@@ -185,6 +188,7 @@ public class AssetSealService {
 
     @Transactional(readOnly = true)
     public List<SealHistoryView> history(TarpeistoPrincipal principal, UUID assetId) {
+        if (principal != null) principal.requirePermanent();
         if (principal == null) throw new AccessDeniedException("Authentication required.");
         assets.findByIdAndOrganizationId(assetId, principal.organizationId())
                 .orElseThrow(() -> new NotFoundException("Asset not found."));

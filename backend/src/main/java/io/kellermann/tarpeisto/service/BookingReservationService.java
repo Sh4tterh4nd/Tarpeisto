@@ -105,12 +105,14 @@ public class BookingReservationService {
 
     @Transactional(readOnly = true)
     public BookingReservationPreviewView preview(TarpeistoPrincipal p, UUID id) {
+        if (p != null) p.requirePermanent();
         BookingService.auth(p);
         return evaluate(p.organizationId(), requireBooking(p.organizationId(), id), load(p.organizationId()));
     }
 
     @Transactional
     public BookingReservationPreviewView reserve(TarpeistoPrincipal p, UUID id, long version) {
+        if (p != null) p.requirePermanent();
         BookingService.admin(p);
         lock(p.organizationId());
         Booking b = locked(p, id, version);
@@ -136,6 +138,7 @@ public class BookingReservationService {
 
     @Transactional
     public void cancel(TarpeistoPrincipal p, UUID id, long version) {
+        if (p != null) p.requirePermanent();
         BookingService.admin(p);
         lock(p.organizationId());
         Booking b = locked(p, id, version);
@@ -158,6 +161,7 @@ public class BookingReservationService {
     /** Called below inventory workflows; it never calls those workflows back. Caller holds the organization lock. */
     @Transactional
     public void recalculate(TarpeistoPrincipal p) {
+        if (p != null) p.requirePermanent();
         BookingService.admin(p);
         lock(p.organizationId());
         assets.flush();

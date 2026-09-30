@@ -41,6 +41,43 @@ describe("durable audit outbox", () => {
     vi.restoreAllMocks();
     await db.delete();
   });
+  it("stops expired volunteer recovery and preserves queued rows without replaying them for a new volunteer", async () => {
+    const now = Date.now();
+    const clock = vi.spyOn(Date, "now").mockReturnValue(now);
+    const volunteer: SessionPrincipal = {
+      ...principal,
+      userId: "volunteer-one",
+      role: "OPERATOR_AUDITOR",
+      temporaryAccess: {
+        sessionId: "session",
+        invitationId: "invitation",
+        expiresAt: new Date(now + 1000).toISOString(),
+      },
+    };
+    const key = auditPartition(volunteer);
+    await outbox.cache(volunteer, audit);
+    await outbox.enqueue(key, audit, scan("volunteer-scan"));
+    clock.mockReturnValue(now + 1000);
+    await expect(outbox.enqueue(key, audit, scan("expired-scan"))).rejects.toThrow("expired");
+    await expect(outbox.acquire(key, "drain")).rejects.toThrow("expired");
+    await expect(outbox.cache(volunteer, audit)).rejects.toThrow("expired");
+    const stopped = await db.identities.get("last-audit");
+    expect(stopped?.enabled).toBe(false);
+    expect(stopped?.generation).toBeGreaterThan(0);
+    expect(await outbox.list(key)).toHaveLength(1);
+    const next = {
+      ...volunteer,
+      userId: "volunteer-two",
+      temporaryAccess: {
+        ...volunteer.temporaryAccess,
+        sessionId: "different-session",
+        expiresAt: new Date(now + 5000).toISOString(),
+      },
+    };
+    await outbox.cache(next, audit);
+    expect(await outbox.list(auditPartition(next))).toEqual([]);
+    expect(await outbox.list(key)).toHaveLength(1);
+  });
   it("persists immutable operation payloads and FIFO order through database reopen, partitioned by actor", async () => {
     const command = scan("one");
     await outbox.enqueue(partition, audit, command);

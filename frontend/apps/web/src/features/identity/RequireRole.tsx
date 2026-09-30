@@ -28,8 +28,16 @@ export interface RequireRoleProps {
  * makes the request, not prevented here.
  */
 export function RequireRole({ allow, children }: RequireRoleProps) {
-  const { status, role, offlineAuditTaskId } = useSession();
+  const { status, role, principal, offlineAuditTaskId } = useSession();
   const location = useLocation();
+  if (
+    principal?.temporaryAccess &&
+    location.pathname !== "/volunteer" &&
+    !location.pathname.startsWith("/audits/tasks/")
+  )
+    return <Navigate to="/volunteer" replace />;
+  if (location.pathname === "/volunteer" && principal && !principal.temporaryAccess)
+    return <Navigate to="/" replace />;
   if (status === "offline-audit" && location.pathname !== `/audits/tasks/${offlineAuditTaskId}`)
     return <Navigate to={`/audits/tasks/${offlineAuditTaskId}`} replace />;
 

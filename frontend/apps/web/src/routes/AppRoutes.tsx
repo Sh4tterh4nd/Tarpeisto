@@ -8,6 +8,8 @@ import { RequireRole } from "../features/identity/RequireRole";
 import { SignInPage } from "../features/identity/SignInPage";
 import { UsersPage } from "../features/identity/UsersPage";
 import { NotFoundPage } from "./NotFoundPage";
+import { VolunteerJoinPage } from "../features/temporary-access/VolunteerJoinPage";
+import { VolunteerDashboardPage } from "../features/temporary-access/VolunteerDashboardPage";
 
 const CatalogPage = lazy(() =>
   import("../features/inventory/CatalogPage").then((module) => ({ default: module.CatalogPage })),
@@ -65,6 +67,15 @@ function LoadingPage() {
 export function AppRoutes() {
   return (
     <Routes>
+      <Route path="/join" element={<VolunteerJoinPage />} />
+      <Route
+        path="/volunteer"
+        element={
+          <RequireRole allow={["OPERATOR_AUDITOR"]}>
+            <VolunteerDashboardPage />
+          </RequireRole>
+        }
+      />
       <Route path="/" element={<ApplicationInfoPage />} />
       <Route
         path="/scan"

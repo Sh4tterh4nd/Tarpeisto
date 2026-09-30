@@ -6,6 +6,7 @@ import { uploadAuditEvidence } from "../../features/audits/auditEvidenceApi";
 import type { AuditResult, ContainerAudit } from "../../features/audits/auditApi";
 import { stopAuditIdentity, subscribeAuditIdentityStop } from "./auditIdentity";
 import { webConnectivityCapability } from "../../platform/web/webConnectivityCapability";
+import { temporaryAccessExpired } from "./temporaryDeadline";
 
 export function temporaryAuditFailure(error: AppError) {
   return (
@@ -101,6 +102,10 @@ export async function sendAuditCommand(
   }
 }
 export async function verifyLiveAuditActor(principal: SessionPrincipal) {
+  if (temporaryAccessExpired(principal)) {
+    await stopAuditIdentity();
+    throw new Error("Temporary access has expired. Ask for a new invitation.");
+  }
   const session = await fetchCurrentSession();
   if (
     session.kind !== "authenticated" ||
@@ -143,7 +148,14 @@ export class AuditSync {
     this.unsubscribeConnectivity?.();
   }
   async tick() {
-    if (this.stopped || this.running || webConnectivityCapability.getStatus() === "offline") return;
+    if (this.stopped || this.running) return;
+    if (temporaryAccessExpired(this.principal)) {
+      await stopAuditIdentity(this.outbox.db);
+      this.stop();
+      this.report("Temporary access has expired. Ask for a new invitation.");
+      return;
+    }
+    if (webConnectivityCapability.getStatus() === "offline") return;
     this.running = true;
     this.controller = new AbortController();
     let lease: AuditLease | undefined;
@@ -172,6 +184,7 @@ export class AuditSync {
         )
           break;
         await this.outbox.sending(lease, row);
+        await this.outbox.assertTemporaryAccess(partition);
         const heldLease = lease;
         const result = await sendAuditCommand(row, this.controller.signal, this.outbox, (value) => {
           void this.outbox.sending(heldLease, row, value).catch(() => this.controller.abort());
@@ -179,6 +192,10 @@ export class AuditSync {
         if (this.stopped) break;
         if (result.kind === "ok") await this.outbox.acknowledge(lease, row, result.data);
         else {
+          if (result.error.status === 401) {
+            await stopAuditIdentity(this.outbox.db);
+            break;
+          }
           await this.outbox.failure(
             lease,
             row,

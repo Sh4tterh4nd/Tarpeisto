@@ -46,6 +46,7 @@ import {
   type CheckoutManifest,
 } from "./eventsApi";
 import { EventCheckoutPanel } from "./EventCheckoutPanel";
+import { TemporaryInvitationsPanel } from "../temporary-access/TemporaryInvitationsPanel";
 
 const MUTATING_ROLES = new Set(["OWNER", "DEPUTY"]);
 type LineKind = "CONTAINER" | "ASSET" | "CONSUMABLE";
@@ -502,6 +503,7 @@ export function EventDetailPage() {
         </Stack>
       </Stack>
       {error ? <Alert severity="error">{error}</Alert> : null}
+      <TemporaryInvitationsPanel bookingId={booking.id} />
       {booking.reservationStatus === "ATTENTION_REQUIRED" ? (
         <Alert severity="warning">
           This reservation needs attention because inventory or packing changed. Preview it before

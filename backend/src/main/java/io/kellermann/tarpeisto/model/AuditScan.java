@@ -93,6 +93,10 @@ public class AuditScan {
         return scannedAt;
     }
 
+    public UUID getScannedBy() {
+        return scannedBy;
+    }
+
     public String getContextSnapshot() {
         return contextSnapshot;
     }

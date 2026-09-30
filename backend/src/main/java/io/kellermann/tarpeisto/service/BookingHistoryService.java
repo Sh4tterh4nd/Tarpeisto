@@ -40,6 +40,7 @@ public class BookingHistoryService {
 
     @Transactional(readOnly = true)
     public List<BookingHistoryView> list(TarpeistoPrincipal p, UUID id, UUID cursor, int limit) {
+        if (p != null) p.requirePermanent();
         if (p == null) throw new org.springframework.security.access.AccessDeniedException("Authentication required.");
         bookings.findByIdAndOrganizationId(id, p.organizationId())
                 .orElseThrow(() -> new NotFoundException("Booking not found."));
@@ -116,6 +117,7 @@ public class BookingHistoryService {
     }
 
     public void record(TarpeistoPrincipal p, Booking b, String action, Map<String, Object> before) {
+        if (p != null) p.requirePermanent();
         Map<String, Object> change = new LinkedHashMap<>();
         change.put("before", before);
         change.put("after", snapshot(b));

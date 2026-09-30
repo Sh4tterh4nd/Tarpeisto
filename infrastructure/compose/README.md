@@ -59,6 +59,24 @@ Docker Swarm secrets are immutable. Rotate a secret by creating a new secret nam
 stack's external secret mapping, and redeploying. Remove the old secret only after the rollout is
 healthy.
 
+Permanent-user sessions use a persistent, `HttpOnly`, `Secure`, `SameSite=Lax` cookie and a
+30-day JDBC idle timeout by default. Set `TARPEISTO_SESSION_TIMEOUT` (for example `30d` or `7d`)
+to configure both the cookie lifetime and the timeout for newly created sessions. The cookie
+lifetime starts when the cookie is issued; ordinary API activity advances the JDBC idle deadline
+but does not promise indefinite browser-cookie renewal. Sessions and cookies issued before this
+upgrade keep their earlier limits until the user signs in again. Browser foreground/reconnect
+checks verify the current account and role; correctness does not depend on a phone running timers
+while idle. Disabling an account, removing its membership, or changing its role takes effect on
+its next API request.
+
+Temporary invitations and their volunteer grants have a separate fixed expiry of 24 hours from
+invitation issuance. Persistent cookies, activity, retry, and reopening the PWA never extend that
+deadline. Apply Flyway V19 with the normal migration/upgrade procedure before using temporary
+access. Owners and Deputies create an event invitation on its detail page, or an exact audit-batch
+invitation on an audit task. Share the creation-only QR/link immediately; only its hash is retained,
+so an existing invitation cannot reveal its link again. Revoking the invitation ends all resulting
+volunteer grants. Keep invitation links out of logs, screenshots, and public documents.
+
 ## Traefik deployment
 
 If Traefik owns the public endpoint, use `docker-stack.traefik.example.yml` as the starting point

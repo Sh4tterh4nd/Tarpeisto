@@ -29,8 +29,27 @@ import org.springframework.security.core.AuthenticatedPrincipal;
  * (every field, not just the username) overflows it.
  */
 public record TarpeistoPrincipal(
-        UUID userId, String username, String displayName, UUID organizationId, OrganizationRole role)
+        UUID userId,
+        String username,
+        String displayName,
+        UUID organizationId,
+        OrganizationRole role,
+        TemporaryAccessContext temporaryAccess)
         implements Serializable, AuthenticatedPrincipal {
+
+    public TarpeistoPrincipal(
+            UUID userId, String username, String displayName, UUID organizationId, OrganizationRole role) {
+        this(userId, username, displayName, organizationId, role, null);
+    }
+
+    public boolean temporary() {
+        return temporaryAccess != null;
+    }
+
+    public void requirePermanent() {
+        if (temporary())
+            throw new org.springframework.security.access.AccessDeniedException("Permanent membership required.");
+    }
 
     @Override
     public String getName() {

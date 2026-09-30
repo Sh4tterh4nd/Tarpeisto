@@ -57,4 +57,64 @@ describe("AuditTaskPage", () => {
     expect(screen.getByText(/Complete child audit task-child/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Start audit" })).toBeInTheDocument();
   });
+
+  it("shows the volunteer actor on scans and findings while older snapshots remain readable", async () => {
+    api.getAuditTask.mockResolvedValue({
+      kind: "ok",
+      data: {
+        id: "audit-1",
+        taskId: "task-1",
+        batchId: "batch-1",
+        containerAssetId: "container-1",
+        state: "IN_PROGRESS",
+        expectedRequirements: [],
+        blockingReasons: [],
+        scans: [
+          {
+            id: "scan-1",
+            operationId: "op-1",
+            assetId: "asset-1",
+            assetCode: "CHILD1",
+            outcome: "EXPECTED_EXACT",
+            scannedAt: "2026-09-30T12:00:00Z",
+            undone: false,
+            contextSnapshot: "{}",
+            recordedByUserId: "volunteer-1",
+            recordedByDisplayName: "Volunteer One",
+          },
+          {
+            id: "scan-old",
+            operationId: "op-old",
+            assetId: "asset-old",
+            assetCode: "OLD001",
+            outcome: "EXTRA",
+            scannedAt: "2026-09-30T11:00:00Z",
+            undone: true,
+            contextSnapshot: "{}",
+          },
+        ],
+        findings: [
+          {
+            id: "finding-1",
+            assetId: "asset-1",
+            type: "DAMAGED",
+            note: "Cracked cover",
+            detail: "{}",
+            recordedByUserId: "volunteer-2",
+            recordedByDisplayName: "Volunteer Two",
+          },
+        ],
+      },
+    });
+    render(
+      <MemoryRouter initialEntries={["/audits/tasks/task-1"]}>
+        <Routes>
+          <Route path="/audits/tasks/:taskId" element={<AuditTaskPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText("Recorded by Volunteer One")).toBeInTheDocument();
+    expect(screen.getByText(/Cracked cover · Recorded by Volunteer Two/)).toBeInTheDocument();
+    expect(screen.getByText(/OLD001/)).toBeInTheDocument();
+  });
 });

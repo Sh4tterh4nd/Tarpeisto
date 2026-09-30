@@ -50,6 +50,7 @@ public class CategoryService {
 
     @Transactional(readOnly = true)
     public List<CategoryView> list(TarpeistoPrincipal principal) {
+        if (principal != null) principal.requirePermanent();
         requireOrganizationMember(principal);
         return categoryRepository.findAllByOrganizationIdOrderByNameAsc(principal.organizationId()).stream()
                 .map(CategoryView::from)
@@ -58,6 +59,7 @@ public class CategoryService {
 
     @Transactional
     public CategoryView create(TarpeistoPrincipal principal, String name, String color) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         lockOrganization(principal.organizationId());
         requireNameAvailable(principal.organizationId(), name);
@@ -86,6 +88,7 @@ public class CategoryService {
 
     @Transactional
     public CategoryView rename(TarpeistoPrincipal principal, UUID categoryId, String newName, String newColor) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         lockOrganization(principal.organizationId());
         Category category = requireCategory(principal.organizationId(), categoryId);
@@ -110,6 +113,7 @@ public class CategoryService {
 
     @Transactional
     public void archive(TarpeistoPrincipal principal, UUID categoryId) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         lockOrganization(principal.organizationId());
         Category category = requireCategory(principal.organizationId(), categoryId);
@@ -125,6 +129,7 @@ public class CategoryService {
 
     @Transactional
     public void restore(TarpeistoPrincipal principal, UUID categoryId) {
+        if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
         lockOrganization(principal.organizationId());
         Category category = requireCategory(principal.organizationId(), categoryId);
@@ -140,6 +145,7 @@ public class CategoryService {
 
     @Transactional
     public void delete(TarpeistoPrincipal principal, UUID categoryId) {
+        if (principal != null) principal.requirePermanent();
         requireOwner(principal);
         lockOrganization(principal.organizationId());
         Category category = requireCategory(principal.organizationId(), categoryId);
