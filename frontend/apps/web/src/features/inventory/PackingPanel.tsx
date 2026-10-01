@@ -110,10 +110,12 @@ export function PackingPanel({
   containerAssetId,
   canManage,
   onContentsChanged,
+  showDownload = true,
 }: {
   containerAssetId: string;
   canManage: boolean;
   onContentsChanged?: () => void;
+  showDownload?: boolean;
 }) {
   const [requirements, setRequirements] = useState<PackingRequirementRecord[]>();
   const [preview, setPreview] = useState<PackingPreviewRecord>();
@@ -471,9 +473,11 @@ export function PackingPanel({
               </Typography>
             </div>
             <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
-              <Button onClick={() => void downloadSheet()} disabled={packingSheetBusy}>
-                {packingSheetBusy ? "Preparing sheet." : "Download packing sheet"}
-              </Button>
+              {showDownload ? (
+                <Button onClick={() => void downloadSheet()} disabled={packingSheetBusy}>
+                  {packingSheetBusy ? "Preparing sheet." : "Download packing sheet"}
+                </Button>
+              ) : null}
               {canManage ? (
                 <>
                   <Button onClick={() => setTemplateLibraryOpen(true)}>Manage templates</Button>
@@ -488,7 +492,7 @@ export function PackingPanel({
             </Stack>
           </Stack>
           {error ? <Alert severity="error">{error}</Alert> : null}
-          {packingSheetError ? (
+          {showDownload && packingSheetError ? (
             <Alert
               severity="error"
               action={

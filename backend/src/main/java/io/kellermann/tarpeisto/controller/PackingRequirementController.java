@@ -1,6 +1,7 @@
 package io.kellermann.tarpeisto.controller;
 
 import io.kellermann.tarpeisto.security.TarpeistoPrincipal;
+import io.kellermann.tarpeisto.service.PackingContentsService;
 import io.kellermann.tarpeisto.service.PackingRequirementService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -21,9 +22,20 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1")
 public class PackingRequirementController {
     private final PackingRequirementService service;
+    private final PackingContentsService contents;
 
-    public PackingRequirementController(PackingRequirementService service) {
+    public PackingRequirementController(PackingRequirementService service, PackingContentsService contents) {
         this.service = service;
+        this.contents = contents;
+    }
+
+    @GetMapping("/assets/{assetId}/packing-contents")
+    @io.swagger.v3.oas.annotations.Operation(operationId = "packingContents")
+    public PackingContentsResponse contents(
+            @AuthenticationPrincipal TarpeistoPrincipal principal,
+            @PathVariable UUID assetId,
+            @RequestParam(required = false) String cursor) {
+        return PackingContentsResponse.from(contents.get(principal, assetId, cursor));
     }
 
     @GetMapping("/assets/{containerAssetId}/packing-requirements")

@@ -99,6 +99,41 @@ public class AssetSealService {
     }
 
     @Transactional
+    public void applySeal(TarpeistoPrincipal principal, UUID assetId, long expectedVersion) {
+        if (principal != null) principal.requirePermanent();
+        requireReviewer(principal);
+        organizations.findWithLockById(principal.organizationId()).orElseThrow();
+        Asset asset = asset(principal.organizationId(), assetId);
+        AssetModel model = models.findByIdAndOrganizationId(asset.getAssetModelId(), principal.organizationId())
+                .orElseThrow(() -> new NotFoundException("Asset model not found."));
+        if (!asset.isActive() || model.isArchived() || !model.isCanContainAssets() || !asset.isSealable())
+            throw new ValidationFailedException("Choose an active sealable container.");
+        if (asset.getSealState() == io.kellermann.tarpeisto.model.SealState.APPLIED) return;
+        if (asset.getVersion() != expectedVersion)
+            throw new io.kellermann.tarpeisto.exception.PackingConflictException(
+                    "The asset changed. Refresh before applying a physical seal.");
+        invalidate(principal, assetId, "Physical seal applied; verification requires an audit.");
+        asset.applySeal(clock.instant());
+        history.save(new AssetSealHistory(
+                UUID.randomUUID(),
+                principal.organizationId(),
+                assetId,
+                SealHistoryAction.APPLIED,
+                null,
+                null,
+                principal.userId(),
+                clock.instant()));
+        activity.record(
+                principal.organizationId(),
+                principal.userId(),
+                "ASSET_SEAL_APPLIED",
+                "ASSET",
+                assetId,
+                java.util.Map.of());
+        bookingImpact.changed(principal);
+    }
+
+    @Transactional
     public void breakSeal(TarpeistoPrincipal principal, UUID assetId, String note) {
         if (principal != null) principal.requirePermanent();
         requireReviewer(principal);

@@ -119,6 +119,26 @@ test("an owner downloads a container packing sheet", async ({ page }) => {
       await route.fulfill({ json: [] });
       return;
     }
+    if (path === `/api/v1/assets/${assetId}/packing-contents`) {
+      await route.fulfill({
+        json: {
+          containerAssetId: assetId,
+          complete: true,
+          totalAssetCount: 0,
+          totalRequirementCount: 0,
+          totalConsumableCount: 0,
+          matchedCount: 0,
+          extraCount: 0,
+          misplacedCount: 0,
+          inactiveCount: 0,
+          requirements: [],
+          assets: [],
+          consumables: [],
+          nextCursor: null,
+        },
+      });
+      return;
+    }
     if (path === `/api/v1/assets/${assetId}/packing-preview`) {
       await route.fulfill({
         json: {
@@ -140,9 +160,7 @@ test("an owner downloads a container packing sheet", async ({ page }) => {
   });
 
   await page.goto(`/inventory/assets/${assetId}`);
-  const packingPanel = page.getByRole("button", { name: /Packing sheet/ });
-  await expect(packingPanel).toBeVisible();
-  await packingPanel.click();
+  await expect(page.getByRole("heading", { name: "Direct contents" })).toBeVisible();
 
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download packing sheet" }).click();

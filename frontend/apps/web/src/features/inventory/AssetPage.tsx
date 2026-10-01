@@ -1,614 +1,606 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import ArchiveIcon from "@mui/icons-material/Archive";
+import { useCallback, useEffect, useRef, useState } from "react";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import EditIcon from "@mui/icons-material/Edit";
-import UnarchiveIcon from "@mui/icons-material/Unarchive";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
+import Collapse from "@mui/material/Collapse";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import Divider from "@mui/material/Divider";
-import List from "@mui/material/List";
-import ListItem from "@mui/material/ListItem";
-import ListItemText from "@mui/material/ListItemText";
+import IconButton from "@mui/material/IconButton";
+import Link from "@mui/material/Link";
+import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
-import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { Link as RouterLink, useParams } from "react-router-dom";
 import { PageHeading } from "@tarpeisto/shared-ui";
 import { useSession } from "../identity/useSession";
 import {
-  changeAssetCondition,
-  changeAssetLifecycle,
+  breakAssetSeal,
   errorMessage,
   getAsset,
   getAssetModel,
+  getAssetPlacement,
   listAssetHistory,
-  listCustomFieldOptions,
-  listCustomFields,
-  renameAsset,
+  listAssetRepairs,
   setAssetArchived,
-  setAssetPurchaseDate,
-  setAssetValues,
-  type AssetHistoryRecord,
   type AssetRecord,
-  type AssetValueInput,
-  type CustomFieldOptionRecord,
-  type CustomFieldRecord,
+  type AssetModelRecord,
+  type AssetPlacementRecord,
+  type AssetHistoryRecord,
+  type RepairRecord,
 } from "./inventoryApi";
-import { MediaPanel } from "./MediaPanel";
-import { AssetPlacementPanel } from "./AssetPlacementPanel";
-import { PackingPanel } from "./PackingPanel";
+import { formatModelDescription } from "./formatModelDescription";
+import { AssetContentsCard } from "./AssetContentsCard";
+import { AssetDetailsEditor } from "./AssetDetailsEditor";
+import { AssetRepairDialog } from "./AssetRepairDialog";
 import { AssetLabelExportDialog } from "./AssetLabelExportDialog";
-import { AssetReviewPanel } from "./AssetReviewPanel";
+import { MediaPanel } from "./MediaPanel";
+import { PackingPanel } from "./PackingPanel";
+import { downloadPackingSheet, savePackingSheet } from "./packingSheetApi";
 
-interface AssetDetailsDialogProps {
-  asset: AssetRecord;
-  onClose: () => void;
-  onSaved: () => Promise<void>;
-}
-
-function AssetDetailsDialog({ asset, onClose, onSaved }: AssetDetailsDialogProps) {
-  const [fields, setFields] = useState<CustomFieldRecord[]>();
-  const [options, setOptions] = useState<Record<string, CustomFieldOptionRecord[]>>({});
-  const [individualName, setIndividualName] = useState(asset.individualName ?? "");
-  const [purchaseDate, setPurchaseDate] = useState(asset.purchaseDate ?? "");
-  const [values, setValues] = useState<Record<string, string>>(() =>
-    Object.fromEntries(
-      asset.values.map((value) => [
-        value.fieldId,
-        value.stringValue || value.dateValue || value.optionId || "",
-      ]),
-    ),
-  );
-  const [error, setError] = useState<string>();
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    void (async () => {
-      const result = await listCustomFields(asset.assetModelId);
-      if (result.kind === "error") {
-        setError(errorMessage(result.error));
-        return;
-      }
-      const active = result.data.filter((field) => !field.archived);
-      setFields(active);
-      const loaded = await Promise.all(
-        active
-          .filter((field) => field.dataType === "DROPDOWN")
-          .map(
-            async (field) =>
-              [field.id, await listCustomFieldOptions(asset.assetModelId, field.id, true)] as const,
-          ),
-      );
-      const next: Record<string, CustomFieldOptionRecord[]> = {};
-      for (const [fieldId, optionResult] of loaded) {
-        if (optionResult.kind === "error") {
-          setError(errorMessage(optionResult.error));
-          return;
-        }
-        next[fieldId] = optionResult.data.filter(
-          (option) =>
-            !option.archived ||
-            option.id === asset.values.find((value) => value.fieldId === fieldId)?.optionId,
-        );
-      }
-      setOptions(next);
-    })();
-  }, [asset.assetModelId, asset.values]);
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    if (!fields || saving) return;
-    setSaving(true);
-    setError(undefined);
-    const renamed = await renameAsset(asset.id, individualName.trim() || undefined);
-    if (renamed.kind === "error") {
-      setSaving(false);
-      setError(errorMessage(renamed.error));
-      return;
-    }
-    const dated = await setAssetPurchaseDate(asset.id, purchaseDate || undefined);
-    if (dated.kind === "error") {
-      setSaving(false);
-      setError(errorMessage(dated.error));
-      await onSaved();
-      return;
-    }
-    const inputs: AssetValueInput[] = fields.map((field) => {
-      const value = values[field.id] ?? "";
-      if (field.dataType === "DATE") return { fieldId: field.id, dateValue: value };
-      if (field.dataType === "DROPDOWN") return { fieldId: field.id, optionId: value };
-      return { fieldId: field.id, stringValue: value };
-    });
-    const updated = await setAssetValues(asset.id, inputs);
-    setSaving(false);
-    if (updated.kind === "error") {
-      setError(errorMessage(updated.error));
-      await onSaved();
-      return;
-    }
-    await onSaved();
-    onClose();
-  }
-
-  const complete = fields?.every((field) => Boolean(values[field.id]?.trim())) ?? false;
-
-  return (
-    <Dialog open onClose={onClose} fullWidth maxWidth="sm">
-      <Stack component="form" onSubmit={submit}>
-        <DialogTitle>Edit asset details</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ pt: 1 }}>
-            {error ? <Alert severity="error">{error}</Alert> : null}
-            <TextField
-              label="Individual name (optional)"
-              value={individualName}
-              onChange={(event) => setIndividualName(event.target.value)}
-              autoFocus
-            />
-            <TextField
-              label="Purchase date (optional)"
-              type="date"
-              value={purchaseDate}
-              onChange={(event) => setPurchaseDate(event.target.value)}
-              slotProps={{ inputLabel: { shrink: true } }}
-            />
-            {!fields ? <CircularProgress size={20} /> : null}
-            {fields?.map((field) =>
-              field.dataType === "DROPDOWN" ? (
-                <TextField
-                  key={field.id}
-                  select
-                  label={field.name}
-                  value={values[field.id] ?? ""}
-                  onChange={(event) =>
-                    setValues((current) => ({ ...current, [field.id]: event.target.value }))
-                  }
-                  required
-                >
-                  {(options[field.id] ?? []).map((option) => (
-                    <MenuItem key={option.id} value={option.id}>
-                      {option.value}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              ) : (
-                <TextField
-                  key={field.id}
-                  label={field.name}
-                  type={field.dataType === "DATE" ? "date" : "text"}
-                  value={values[field.id] ?? ""}
-                  onChange={(event) =>
-                    setValues((current) => ({ ...current, [field.id]: event.target.value }))
-                  }
-                  required
-                  slotProps={
-                    field.dataType === "DATE" ? { inputLabel: { shrink: true } } : undefined
-                  }
-                />
-              ),
-            )}
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={onClose}>Cancel</Button>
-          <Button type="submit" variant="contained" disabled={saving || !complete}>
-            Save details
-          </Button>
-        </DialogActions>
-      </Stack>
-    </Dialog>
-  );
-}
-
-function StateDialog({
-  asset,
-  kind,
-  onClose,
-  onSaved,
-}: {
-  asset: AssetRecord;
-  kind: "condition" | "lifecycle";
-  onClose: () => void;
-  onSaved: () => Promise<void>;
-}) {
-  const [value, setValue] = useState<string>(
-    kind === "condition" ? asset.condition : asset.lifecycleState,
-  );
-  const [reason, setReason] = useState("");
-  const [error, setError] = useState<string>();
-  const [saving, setSaving] = useState(false);
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    if (saving) return;
-    setSaving(true);
-    setError(undefined);
-    const result =
-      kind === "condition"
-        ? await changeAssetCondition(
-            asset.id,
-            value as "GOOD" | "DAMAGED",
-            reason.trim() || undefined,
-          )
-        : await changeAssetLifecycle(
-            asset.id,
-            value as "ACTIVE" | "LOST" | "DESTROYED" | "RETIRED",
-            reason.trim() || undefined,
-          );
-    setSaving(false);
-    if (result.kind === "error") {
-      setError(errorMessage(result.error));
-      return;
-    }
-    await onSaved();
-    onClose();
-  }
-
-  const options =
-    kind === "condition"
-      ? [
-          ["GOOD", "Good"],
-          ["DAMAGED", "Damaged"],
-        ]
-      : [
-          ["ACTIVE", "Active"],
-          ["LOST", "Lost"],
-          ["DESTROYED", "Destroyed"],
-          ["RETIRED", "Retired"],
-        ];
-
-  return (
-    <Dialog open onClose={onClose} fullWidth maxWidth="xs">
-      <Stack component="form" onSubmit={submit}>
-        <DialogTitle>Change {kind}</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ pt: 1 }}>
-            {error ? <Alert severity="error">{error}</Alert> : null}
-            <TextField
-              select
-              label={kind === "condition" ? "Condition" : "Lifecycle"}
-              value={value}
-              onChange={(event) => setValue(event.target.value)}
-            >
-              {options.map(([optionValue, label]) => (
-                <MenuItem key={optionValue} value={optionValue}>
-                  {label}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              label="Reason (optional)"
-              value={reason}
-              onChange={(event) => setReason(event.target.value)}
-              multiline
-              minRows={2}
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={onClose}>Cancel</Button>
-          <Button type="submit" variant="contained" disabled={saving}>
-            Record change
-          </Button>
-        </DialogActions>
-      </Stack>
-    </Dialog>
-  );
-}
-
+/** Reset the complete surface, drafts and dialogs whenever the route or authenticated identity changes. */
 export function AssetPage() {
   const { assetId } = useParams();
-  const { role } = useSession();
-  const canManage = role === "OWNER" || role === "DEPUTY";
+  const { principal, role } = useSession();
+  if (!assetId) return null;
+  return (
+    <AssetDetail
+      key={`${principal?.organizationId}:${principal?.userId}:${role}:${assetId}`}
+      assetId={assetId}
+      canManage={role === "OWNER" || role === "DEPUTY"}
+    />
+  );
+}
+function AssetDetail({ assetId, canManage }: { assetId: string; canManage: boolean }) {
   const [asset, setAsset] = useState<AssetRecord>();
+  const [model, setModel] = useState<AssetModelRecord>();
+  const [placement, setPlacement] = useState<AssetPlacementRecord>();
+  const [repairs, setRepairs] = useState<RepairRecord[]>([]);
   const [history, setHistory] = useState<AssetHistoryRecord[]>([]);
-  const [containerCapable, setContainerCapable] = useState(false);
-  const [error, setError] = useState<{ routeId: string; message: string }>();
-  const [dialog, setDialog] = useState<{
-    routeId: string;
-    kind: "details" | "condition" | "lifecycle";
-  }>();
-  const [actionError, setActionError] = useState<{ routeId: string; message: string }>();
-  const [archiveBusyRouteId, setArchiveBusyRouteId] = useState<string>();
-  const [labelExportOpen, setLabelExportOpen] = useState(false);
-  const [placementRevision, setPlacementRevision] = useState(0);
-  const loadRequest = useRef(0);
-
+  const [error, setError] = useState<string>();
+  const [actionError, setActionError] = useState<string>();
+  const [editing, setEditing] = useState(false);
+  const [expanded, setExpanded] = useState(true);
+  const [menu, setMenu] = useState<HTMLElement | null>(null);
+  const [archiveConfirm, setArchiveConfirm] = useState(false);
+  const [repairMode, setRepairMode] = useState<"open" | "manage" | "view">();
+  const [labels, setLabels] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [draftBusy, setDraftBusy] = useState(false);
+  const [downloadBusy, setDownloadBusy] = useState(false);
+  const [downloadError, setDownloadError] = useState<string>();
+  const [revision, setRevision] = useState(0);
+  const generation = useRef<symbol | undefined>(undefined);
+  const alive = useRef(true);
   const load = useCallback(async () => {
-    const request = ++loadRequest.current;
-    if (!assetId) return;
-    const [assetResult, historyResult] = await Promise.all([
+    const epoch = Symbol();
+    generation.current = epoch;
+    const [ar, pr, rr, hr] = await Promise.all([
       getAsset(assetId),
+      getAssetPlacement(assetId),
+      listAssetRepairs(assetId),
       listAssetHistory(assetId),
     ]);
-    if (request !== loadRequest.current) return;
-    if (assetResult.kind === "error") {
-      setAsset(undefined);
-      setError({ routeId: assetId, message: errorMessage(assetResult.error) });
+    if (!alive.current || epoch !== generation.current) return;
+    const failure = [ar, pr, rr, hr].find((result) => result.kind === "error");
+    if (failure?.kind === "error") {
+      setError(errorMessage(failure.error));
       return;
     }
-    if (historyResult.kind === "error") {
-      setAsset(undefined);
-      setError({ routeId: assetId, message: errorMessage(historyResult.error) });
+    if (ar.kind !== "ok" || pr.kind !== "ok" || rr.kind !== "ok" || hr.kind !== "ok") return;
+    const mr = await getAssetModel(ar.data.assetModelId);
+    if (!alive.current || epoch !== generation.current) return;
+    if (mr.kind === "error") {
+      setError(errorMessage(mr.error));
       return;
     }
-    const modelResult = await getAssetModel(assetResult.data.assetModelId);
-    if (request !== loadRequest.current) return;
-    if (modelResult.kind === "error") {
-      setAsset(undefined);
-      setError({ routeId: assetId, message: errorMessage(modelResult.error) });
-      return;
-    }
-    setAsset(assetResult.data);
-    setHistory(historyResult.data);
-    setContainerCapable(modelResult.data.canContainAssets);
+    setAsset(ar.data);
+    setModel(mr.data);
+    setPlacement(pr.data);
+    setRepairs(rr.data);
+    setHistory(hr.data);
     setError(undefined);
   }, [assetId]);
-
   useEffect(() => {
-    void (async () => {
-      await load();
-    })();
+    alive.current = true;
+    const timer = setTimeout(() => {
+      void load();
+    }, 0);
+    return () => {
+      alive.current = false;
+      generation.current = undefined;
+      clearTimeout(timer);
+    };
   }, [load]);
-
-  async function toggleArchive() {
-    if (!asset || asset.id !== assetId || archiveBusyRouteId === asset.id) return;
-    setArchiveBusyRouteId(asset.id);
-    setActionError(undefined);
-    const result = await setAssetArchived(asset.id, !asset.archived);
-    if (result) {
-      setActionError({ routeId: asset.id, message: errorMessage(result) });
-    } else {
-      await load();
-      setActionError(undefined);
-    }
-    setArchiveBusyRouteId((busyRouteId) => (busyRouteId === asset.id ? undefined : busyRouteId));
+  async function saved() {
+    await load();
+    if (alive.current) setRevision((current) => current + 1);
   }
-
-  const currentError = error && error.routeId === assetId ? error.message : undefined;
-  const currentActionError =
-    actionError && actionError.routeId === assetId ? actionError.message : undefined;
-  const archiveBusy = archiveBusyRouteId === asset?.id;
-
-  if (currentError) return <Alert severity="error">Could not load the asset: {currentError}</Alert>;
-  if (!asset || asset.id !== assetId) {
-    return (
-      <Stack direction="row" spacing={2} sx={{ alignItems: "center", py: 5 }}>
+  async function archive() {
+    if (!asset || busy) return;
+    setBusy(true);
+    setActionError(undefined);
+    const failure = await setAssetArchived(assetId, !asset.archived);
+    if (!alive.current) return;
+    setBusy(false);
+    if (failure) {
+      setActionError(errorMessage(failure));
+      return;
+    }
+    setArchiveConfirm(false);
+    setEditing(false);
+    await saved();
+  }
+  async function openSeal() {
+    if (busy) return;
+    setBusy(true);
+    setActionError(undefined);
+    const failure = await breakAssetSeal(assetId);
+    if (!alive.current) return;
+    setBusy(false);
+    if (failure) {
+      setActionError(errorMessage(failure));
+      return;
+    }
+    await saved();
+  }
+  async function download() {
+    if (downloadBusy) return;
+    setDownloadBusy(true);
+    setDownloadError(undefined);
+    const result = await downloadPackingSheet(assetId);
+    if (!alive.current) return;
+    setDownloadBusy(false);
+    if (result.kind === "error") {
+      setDownloadError(errorMessage(result.error));
+      return;
+    }
+    savePackingSheet(result.data, assetId);
+  }
+  if (!asset || !model || !placement)
+    return error ? (
+      <Alert
+        severity="error"
+        action={
+          <Button color="inherit" onClick={() => void load()}>
+            Retry
+          </Button>
+        }
+      >
+        Could not load the asset: {error}
+      </Alert>
+    ) : (
+      <Stack direction="row" spacing={2} sx={{ py: 5 }}>
         <CircularProgress size={24} />
         <Typography role="status">Loading asset.</Typography>
       </Stack>
     );
-  }
-
+  const openRepairs = repairs.filter((repair) => !repair.closedAt);
+  const parentName = placement.parentContainerAssetId ? placement.effectivePath.at(-2) : undefined;
+  const locationName = placement.directLocationId
+    ? placement.effectivePath.slice(0, -1).join(" / ")
+    : undefined;
   return (
     <>
       <Button
         component={RouterLink}
         to={`/inventory/models/${asset.assetModelId}`}
         startIcon={<ArrowBackIcon />}
-        sx={{ mb: 1 }}
+        sx={{ mb: 1, minHeight: 44 }}
       >
         {asset.assetModelName}
       </Button>
       <PageHeading
         title={asset.displayName}
-        description={`${asset.assetModelName} · unit ${asset.unitNumber}`}
+        description={formatModelDescription(model.description)}
         actions={
-          <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
-            {!containerCapable ? (
-              <Button onClick={() => setLabelExportOpen(true)}>Export label</Button>
+          <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+            {!model.canContainAssets ? (
+              <Button onClick={() => setLabels(true)} sx={{ minHeight: 44 }}>
+                Export label
+              </Button>
             ) : null}
-            {canManage ? (
-              <Stack direction="row" spacing={1}>
+            {editing ? (
+              <>
                 <Button
-                  startIcon={<EditIcon />}
-                  onClick={() => setDialog({ routeId: asset.id, kind: "details" })}
-                  disabled={archiveBusy}
+                  disabled={draftBusy}
+                  onClick={() => setEditing(false)}
+                  sx={{ minHeight: 44 }}
                 >
-                  Edit details
+                  Cancel
                 </Button>
                 <Button
-                  color={asset.archived ? "primary" : "warning"}
-                  startIcon={asset.archived ? <UnarchiveIcon /> : <ArchiveIcon />}
-                  onClick={() => void toggleArchive()}
-                  disabled={archiveBusy}
+                  disabled={draftBusy}
+                  variant="contained"
+                  onClick={() => setEditing(false)}
+                  sx={{ minHeight: 44 }}
                 >
-                  {archiveBusy ? "Saving…" : asset.archived ? "Restore" : "Archive"}
+                  Done
                 </Button>
-              </Stack>
+              </>
             ) : null}
           </Stack>
         }
       />
-      {currentActionError ? (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setActionError(undefined)}>
-          {currentActionError}
-        </Alert>
-      ) : null}
-      {asset.lifecycleState === "LOST" ? (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          This asset is marked lost. An Owner or Deputy must restore it before normal use.
-        </Alert>
-      ) : null}
-      {asset.metadataIncomplete ? (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          Required model-defined values are missing. Edit details to complete this asset's metadata.
-        </Alert>
-      ) : null}
-
+      <Menu
+        id="asset-actions-menu"
+        anchorEl={menu}
+        open={Boolean(menu)}
+        onClose={() => setMenu(null)}
+      >
+        <MenuItem
+          onClick={() => {
+            setMenu(null);
+            setEditing(true);
+            setExpanded(true);
+          }}
+          sx={{ minHeight: 44 }}
+        >
+          Edit
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            setMenu(null);
+            setRepairMode("open");
+          }}
+          sx={{ minHeight: 44 }}
+        >
+          Open repair
+        </MenuItem>
+        {model.canContainAssets && asset.sealable ? (
+          <MenuItem
+            disabled={busy}
+            onClick={() => {
+              setMenu(null);
+              void openSeal();
+            }}
+            sx={{ minHeight: 44 }}
+          >
+            Open seal
+          </MenuItem>
+        ) : null}
+        <MenuItem
+          onClick={() => {
+            setMenu(null);
+            setActionError(undefined);
+            setArchiveConfirm(true);
+          }}
+          sx={{ minHeight: 44 }}
+        >
+          {asset.archived ? "Restore" : "Archive"}
+        </MenuItem>
+      </Menu>
       <Stack spacing={3}>
+        {error ? (
+          <Alert
+            severity="error"
+            action={
+              <Button color="inherit" onClick={() => void load()}>
+                Retry
+              </Button>
+            }
+          >
+            Could not refresh the asset: {error}
+          </Alert>
+        ) : null}
+        {actionError && !archiveConfirm ? <Alert severity="error">{actionError}</Alert> : null}
+        {asset.archived ? <Alert severity="info">This asset is archived.</Alert> : null}
+        {asset.lifecycleState === "LOST" ? (
+          <Alert severity="error">
+            This asset is marked lost. An Owner or Deputy must restore it before normal use.
+          </Alert>
+        ) : null}
+        {asset.metadataIncomplete ? (
+          <Alert severity="warning">
+            Required model-defined values are missing. Edit to complete this asset's metadata.
+          </Alert>
+        ) : null}
         <Box
           sx={{
             display: "grid",
-            gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(2, minmax(0, 1fr))" },
+            gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(0, 1.1fr) minmax(0, 1fr)" },
             gap: 3,
             alignItems: "start",
           }}
         >
-          <Paper variant="outlined" sx={{ minWidth: 0, width: "100%" }}>
-            {asset.values.length > 0 ? (
-              <>
-                <Typography variant="h3" sx={{ p: 2 }}>
-                  Unit values
+          <Paper variant="outlined" sx={{ minWidth: 0, overflow: "hidden" }}>
+            <Stack
+              direction="row"
+              sx={{
+                p: 2,
+                bgcolor: "primary.main",
+                color: "primary.contrastText",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <Box>
+                <Typography variant="body2">Public asset code</Typography>
+                <Typography
+                  component="div"
+                  sx={{
+                    fontFamily: "monospace",
+                    fontSize: { xs: "1.8rem", sm: "2rem" },
+                    fontWeight: 800,
+                    letterSpacing: 3,
+                    overflowWrap: "anywhere",
+                  }}
+                >
+                  {asset.publicCode}
                 </Typography>
-                <Divider />
-                <List disablePadding>
-                  {[...asset.values]
-                    .sort((a, b) => a.displayOrder - b.displayOrder)
-                    .map((value) => (
-                      <ListItem key={value.fieldId} divider>
-                        <ListItemText
-                          primary={value.fieldName}
-                          secondary={
-                            value.stringValue || value.dateValue || value.optionValue || "Missing"
-                          }
-                        />
-                      </ListItem>
-                    ))}
-                </List>
-              </>
-            ) : null}
-            <Box sx={{ p: 2, bgcolor: "primary.main", color: "primary.contrastText" }}>
-              <Typography variant="body2">Public asset code</Typography>
-              <Typography
-                component="div"
-                sx={{
-                  fontFamily: "monospace",
-                  fontSize: "2rem",
-                  fontWeight: 800,
-                  letterSpacing: 4,
-                }}
-              >
-                {asset.publicCode}
-              </Typography>
-            </Box>
-            {asset.purchaseDate ? (
-              <Typography sx={{ p: 2 }}>
-                <Typography component="span" color="text.secondary">
-                  Purchase date:{" "}
-                </Typography>
-                {asset.purchaseDate}
-              </Typography>
+              </Box>
+
+              <Stack direction="row" sx={{ flexShrink: 0 }}>
+                {" "}
+                {canManage ? (
+                  <IconButton
+                    disabled={draftBusy || busy}
+                    aria-label="Asset actions"
+                    aria-controls={menu ? "asset-actions-menu" : undefined}
+                    aria-haspopup="true"
+                    aria-expanded={Boolean(menu)}
+                    onClick={(event) => setMenu(event.currentTarget)}
+                    sx={{ width: 44, height: 44, color: "inherit" }}
+                  >
+                    <MoreVertIcon />
+                  </IconButton>
+                ) : null}
+                <IconButton
+                  aria-label={expanded ? "Collapse asset details" : "Expand asset details"}
+                  aria-expanded={expanded}
+                  onClick={() => setExpanded((current) => !current)}
+                  sx={{ color: "inherit", width: 44, height: 44 }}
+                >
+                  <ExpandMoreIcon sx={{ transform: expanded ? "rotate(180deg)" : undefined }} />
+                </IconButton>
+              </Stack>
+            </Stack>
+            <Collapse in={expanded}>
+              {editing ? (
+                <AssetDetailsEditor
+                  asset={asset}
+                  placement={placement}
+                  containerCapable={model.canContainAssets}
+                  onSaved={saved}
+                  onBusyChange={setDraftBusy}
+                />
+              ) : (
+                <Stack spacing={2} sx={{ p: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    {asset.assetModelName} / Unit {asset.unitNumber}
+                  </Typography>
+                  {asset.purchaseDate ? (
+                    <Typography>
+                      <Box component="span" sx={{ color: "text.secondary" }}>
+                        Purchase date:{" "}
+                      </Box>
+                      {asset.purchaseDate}
+                    </Typography>
+                  ) : null}
+                  <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">
+                        Condition
+                      </Typography>
+                      <Typography sx={{ fontWeight: 600 }}>
+                        {asset.condition === "GOOD" ? "Good" : "Damaged"}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">
+                        Lifecycle
+                      </Typography>
+                      <Typography sx={{ fontWeight: 600 }}>
+                        {asset.lifecycleState.charAt(0) +
+                          asset.lifecycleState.slice(1).toLowerCase()}
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <Divider />
+                  <Box>
+                    <Typography variant="body2" color="text.secondary">
+                      Direct location
+                    </Typography>
+                    <Typography>{locationName || "No direct location"}</Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="body2" color="text.secondary">
+                      Parent container
+                    </Typography>
+                    {parentName ? (
+                      <Link
+                        component={RouterLink}
+                        to={`/inventory/assets/${placement.parentContainerAssetId}`}
+                      >
+                        {parentName}
+                      </Link>
+                    ) : (
+                      <Typography>No parent container</Typography>
+                    )}
+                  </Box>
+                  {model.canContainAssets ? (
+                    <>
+                      <Divider />
+                      <Box>
+                        <Typography variant="body2" color="text.secondary">
+                          Seal
+                        </Typography>
+                        <Typography>
+                          {!asset.sealable
+                            ? "Not sealable"
+                            : asset.sealState === "VERIFIED"
+                              ? "Verified"
+                              : asset.sealState === "APPLIED"
+                                ? "Applied - verification required"
+                                : asset.sealState === "INVALIDATED"
+                                  ? "Invalidated - verification required"
+                                  : "Open - verification required"}
+                        </Typography>
+                        {asset.sealVerifiedAt && asset.sealState === "VERIFIED" ? (
+                          <Typography variant="body2" color="text.secondary">
+                            Verified {new Date(asset.sealVerifiedAt).toLocaleString()}
+                          </Typography>
+                        ) : null}
+                      </Box>
+                    </>
+                  ) : null}
+                  {openRepairs.length ? (
+                    <Alert severity="warning">
+                      <Typography sx={{ fontWeight: 700 }}>In repair</Typography>
+                      {openRepairs.map((repair) => (
+                        <Typography key={repair.id} variant="body2">
+                          {repair.referenceOrDescription}
+                        </Typography>
+                      ))}
+                    </Alert>
+                  ) : null}
+                  {asset.values.length ? (
+                    <>
+                      <Divider />
+                      {[...asset.values]
+                        .sort((a, b) => a.displayOrder - b.displayOrder)
+                        .map((value) => (
+                          <Box key={value.fieldId}>
+                            <Typography variant="body2" color="text.secondary">
+                              {value.fieldName}
+                            </Typography>
+                            <Typography sx={{ overflowWrap: "anywhere" }}>
+                              {value.stringValue ||
+                                value.dateValue ||
+                                value.optionValue ||
+                                "Missing"}
+                            </Typography>
+                          </Box>
+                        ))}
+                    </>
+                  ) : null}
+                </Stack>
+              )}
+            </Collapse>
+            {editing ? (
+              <Box sx={{ px: 2, pb: 2 }}>
+                <Button onClick={() => setRepairMode("manage")} sx={{ minHeight: 44 }}>
+                  Repairs and history
+                </Button>
+              </Box>
+            ) : history.length || repairs.length || model.canContainAssets ? (
+              <Box sx={{ px: 2, pb: 2 }}>
+                <Button onClick={() => setRepairMode("view")} sx={{ minHeight: 44 }}>
+                  View history
+                </Button>
+              </Box>
             ) : null}
           </Paper>
-          <Box sx={{ minWidth: 0, width: "100%" }}>
+          <Box sx={{ minWidth: 0 }}>
             <MediaPanel
               assetId={asset.id}
               fallbackAssetModelId={asset.assetModelId}
-              containerCapable={containerCapable}
-              canManage={canManage}
+              containerCapable={model.canContainAssets}
+              canManage={canManage && editing}
             />
           </Box>
         </Box>
-        <Stack
-          direction={{ xs: "column", md: "row" }}
-          spacing={3}
-          sx={{ alignItems: "flex-start" }}
-        >
-          <Box sx={{ flex: 1, width: "100%" }}>
-            <AssetPlacementPanel
-              key={`${asset.id}-${placementRevision}`}
-              assetId={asset.id}
-              canManage={canManage}
-            />
-          </Box>
-          <Paper variant="outlined" sx={{ width: { xs: "100%", md: 360 }, p: 2 }}>
-            <Typography variant="h3">Current state</Typography>
-            <Stack spacing={1.5} sx={{ mt: 1 }}>
-              <Box>
-                <Typography variant="body2" color="text.secondary">
-                  Condition
-                </Typography>
-                <Typography sx={{ fontWeight: 700 }}>
-                  {asset.condition === "GOOD" ? "Good" : "Damaged"}
-                </Typography>
-                {canManage ? (
-                  <Button
-                    size="small"
-                    onClick={() => setDialog({ routeId: asset.id, kind: "condition" })}
-                  >
-                    Change
-                  </Button>
-                ) : null}
-              </Box>
-              <Box>
-                <Typography variant="body2" color="text.secondary">
-                  Lifecycle
-                </Typography>
-                <Typography sx={{ fontWeight: 700 }}>{asset.lifecycleState}</Typography>
-                {canManage ? (
-                  <Button
-                    size="small"
-                    onClick={() => setDialog({ routeId: asset.id, kind: "lifecycle" })}
-                  >
-                    Change
-                  </Button>
-                ) : null}
-              </Box>
-            </Stack>
-          </Paper>
-        </Stack>
-        <AssetReviewPanel
-          key={asset.id}
-          assetId={asset.id}
-          canManage={canManage}
-          containerCapable={containerCapable}
-          lifecycleState={asset.lifecycleState}
-          sealable={asset.sealable}
-          sealState={asset.sealState}
-          sealVerifiedAt={asset.sealVerifiedAt ?? undefined}
-          lastVerifiedAt={asset.lastVerifiedAt ?? undefined}
-          replacesAssetId={asset.replacesAssetId ?? undefined}
-        />
-        {containerCapable ? (
+        {model.canContainAssets ? (
+          <AssetContentsCard
+            assetId={asset.id}
+            revision={revision}
+            downloadAction={
+              <Button
+                onClick={() => void download()}
+                disabled={downloadBusy}
+                sx={{ minHeight: 44 }}
+              >
+                {downloadBusy ? "Preparing sheet." : "Download packing sheet"}
+              </Button>
+            }
+            downloadError={downloadError}
+            onDownloadRetry={() => void download()}
+          />
+        ) : null}
+        {model.canContainAssets && editing ? (
           <PackingPanel
             containerAssetId={asset.id}
             canManage={canManage}
-            onContentsChanged={() => setPlacementRevision((value) => value + 1)}
+            showDownload={false}
+            onContentsChanged={() => {
+              void saved();
+            }}
           />
         ) : null}
-        {history.length > 0 ? (
-          <Paper variant="outlined">
-            <Typography variant="h3" sx={{ p: 2 }}>
+        {editing && history.length ? (
+          <Paper variant="outlined" sx={{ p: 2 }}>
+            <Typography variant="h3" sx={{ mb: 1 }}>
               Condition and lifecycle history
             </Typography>
-            <Divider />
-            <List disablePadding>
-              {history.map((item) => (
-                <ListItem key={item.id} divider alignItems="flex-start">
-                  <ListItemText
-                    primary={`${item.changeType === "CONDITION" ? "Condition" : "Lifecycle"}: ${item.previousValue} → ${item.newValue}`}
-                    secondary={`${new Date(item.changedAt).toLocaleString()}${item.reason ? ` · ${item.reason}` : ""}`}
-                  />
-                </ListItem>
+            <Stack spacing={1}>
+              {history.map((row) => (
+                <Typography key={row.id} variant="body2">
+                  {row.changeType === "CONDITION" ? "Condition" : "Lifecycle"}: {row.previousValue}
+                  {" \u2192 "}
+                  {row.newValue} / {new Date(row.changedAt).toLocaleString()}
+                  {row.reason ? ` / ${row.reason}` : ""}
+                </Typography>
               ))}
-            </List>
+            </Stack>
           </Paper>
         ) : null}
       </Stack>
-
-      {dialog?.routeId === asset.id && dialog.kind === "details" ? (
-        <AssetDetailsDialog asset={asset} onClose={() => setDialog(undefined)} onSaved={load} />
-      ) : null}
-      {dialog?.routeId === asset.id &&
-      (dialog.kind === "condition" || dialog.kind === "lifecycle") ? (
-        <StateDialog
+      <Dialog
+        open={archiveConfirm}
+        onClose={() => {
+          if (!busy) setArchiveConfirm(false);
+        }}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>{asset.archived ? "Restore asset?" : "Archive asset?"}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2}>
+            {actionError ? <Alert severity="error">{actionError}</Alert> : null}
+            <Typography>
+              {asset.archived
+                ? "Restore this asset to ordinary inventory lists."
+                : "Hide this asset from ordinary inventory lists. Its history remains available."}
+            </Typography>
+            <Typography sx={{ fontWeight: 700 }}>
+              {asset.displayName} ({asset.publicCode})
+            </Typography>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button disabled={busy} onClick={() => setArchiveConfirm(false)}>
+            Cancel
+          </Button>
+          <Button
+            disabled={busy}
+            color={asset.archived ? "primary" : "warning"}
+            variant="contained"
+            onClick={() => void archive()}
+          >
+            {asset.archived ? "Restore asset" : "Archive asset"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      {repairMode ? (
+        <AssetRepairDialog
           asset={asset}
-          kind={dialog.kind}
-          onClose={() => setDialog(undefined)}
-          onSaved={load}
+          repairs={repairs}
+          mode={repairMode}
+          stateHistory={history}
+          onSaved={saved}
+          onClose={() => setRepairMode(undefined)}
         />
       ) : null}
-      {labelExportOpen && !containerCapable ? (
-        <AssetLabelExportDialog assetIds={[asset.id]} onClose={() => setLabelExportOpen(false)} />
+      {labels ? (
+        <AssetLabelExportDialog assetIds={[asset.id]} onClose={() => setLabels(false)} />
       ) : null}
     </>
   );

@@ -1220,6 +1220,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/assets/{assetId}/seal/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["applySeal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/assets/{assetId}/restore": {
         parameters: {
             query?: never;
@@ -2108,6 +2124,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["packingSheetPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assets/{assetId}/packing-contents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["packingContents"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3106,6 +3138,10 @@ export interface components {
         BreakSealRequest: {
             note?: string;
         };
+        ApplySealRequest: {
+            /** Format: int64 */
+            expectedVersion: number;
+        };
         CreateReplacementAssetRequest: {
             individualName?: string;
             /** Format: date */
@@ -3410,6 +3446,69 @@ export interface components {
             action?: "APPLIED" | "BROKEN" | "VERIFIED" | "INVALIDATED";
             /** Format: date-time */
             occurredAt?: string;
+        };
+        PackingContentConsumableResponse: {
+            /** Format: uuid */
+            assetModelId?: string;
+            assetModelName?: string;
+            unitLabel?: string;
+            quantity?: number;
+            archived?: boolean;
+        };
+        PackingContentEntryResponse: {
+            asset?: components["schemas"]["PackingContentIdentityResponse"];
+            /** @enum {string} */
+            status?: "MATCHED" | "EXTRA" | "MISPLACED" | "INACTIVE";
+            /** Format: uuid */
+            requirementId?: string;
+        };
+        PackingContentIdentityResponse: {
+            /** Format: uuid */
+            assetId?: string;
+            publicCode?: string;
+            displayName?: string;
+            /** Format: uuid */
+            assetModelId?: string;
+            assetModelName?: string;
+            active?: boolean;
+        };
+        PackingContentRequirementResponse: {
+            /** Format: uuid */
+            id?: string;
+            /** @enum {string} */
+            type?: "SPECIFIC_ASSET" | "MODEL_QUANTITY" | "CONSUMABLE_QUANTITY";
+            /** Format: uuid */
+            assetModelId?: string;
+            assetModelName?: string;
+            unitLabel?: string;
+            requiredQuantity?: number;
+            presentQuantity?: number;
+            missingQuantity?: number;
+            satisfied?: boolean;
+            exactAsset?: components["schemas"]["PackingContentIdentityResponse"];
+        };
+        PackingContentsResponse: {
+            /** Format: uuid */
+            containerAssetId?: string;
+            complete?: boolean;
+            /** Format: int32 */
+            totalAssetCount?: number;
+            /** Format: int32 */
+            matchedCount?: number;
+            /** Format: int32 */
+            extraCount?: number;
+            /** Format: int32 */
+            misplacedCount?: number;
+            /** Format: int32 */
+            inactiveCount?: number;
+            /** Format: int32 */
+            totalRequirementCount?: number;
+            /** Format: int32 */
+            totalConsumableCount?: number;
+            requirements?: components["schemas"]["PackingContentRequirementResponse"][];
+            assets?: components["schemas"]["PackingContentEntryResponse"][];
+            consumables?: components["schemas"]["PackingContentConsumableResponse"][];
+            nextCursor?: string;
         };
         AssetStateChangeResponse: {
             /** Format: uuid */
@@ -5735,6 +5834,30 @@ export interface operations {
             };
         };
     };
+    applySeal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApplySealRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     restore_3: {
         parameters: {
             query?: never;
@@ -7256,6 +7379,30 @@ export interface operations {
                 };
                 content: {
                     "application/pdf": string;
+                };
+            };
+        };
+    };
+    packingContents: {
+        parameters: {
+            query?: {
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PackingContentsResponse"];
                 };
             };
         };

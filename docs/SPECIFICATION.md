@@ -881,6 +881,7 @@ Rules:
 - Non-sealable containers do not receive seal prompts.
 - Finishing an audit for a sealable container asks for confirmation that a seal was applied.
 - Opening/breaking a seal marks it unsealed and invalidates the sealed assertion.
+- An Owner/Deputy may record a physically applied seal from container Edit mode. This records an applied, unverified seal with actor/time history and invalidates previous physical verification; it never substitutes for an audit or releases event custody. Repeating an already applied state does not append duplicate history.
 - Packing or verified-content changes invalidate the applicable sealed/verified state.
 - Checkout displays expected and reported seal state but does not mandate an outbound audit.
 - Returning a container still creates an audit task; an intact seal does not initially bypass return auditing.
@@ -999,9 +1000,11 @@ Packing-list layout starts at 12 pt:
 - Inventory has distinct Asset Models and Assets views. Models show catalog definitions; Assets show individual serialized units and containers.
 - Asset-model and asset tables support header-click ascending/descending sort. Models filter by category and tracking mode; physical assets filter by category and by equipment/container type, because quantity-tracked models do not create physical assets.
 - Archiving an asset model requires a second explicit confirmation before the archive mutation is submitted.
-- Asset detail presents the title first; beneath it, the public-code block follows the unit-values block, with the reference photograph to the right. Placement is below, with condition and lifecycle to its right. Current condition and lifecycle remain visible. Empty unit-value and state-history sections are omitted rather than shown as empty panels.
+- Asset detail presents the title and compact model description first. Stored description lines are joined for display with a comma unless the preceding line ends in a full stop; storage and multiline editing retain the original text.
+- On desktop, an expanded public-code details card is on the left and reference/layout photographs remain on the right. The card shows purchase date, a two-column Condition/Lifecycle row, direct location and then parent container, container-only seal status, any open repair, and finally custom-field values. Empty custom-field and state-history sections are omitted.
+- Normal asset detail is read-only, with history available to every permanent role. An Owner/Deputy opens the card's three-dot menu for Edit, Open repair, or Archive; Archive requires explicit confirmation. Edit mode exposes name, purchase date, custom fields, placement and state controls. Containers also expose sealability and physical seal-state controls; verified state remains audit-derived. A sealable container's menu additionally offers Open seal.
 - Asset-model detail presents the reference photograph on the right, category and unit-definition fields stacked on the left, and physical units at the bottom.
-- Container detail keeps the packing sheet/content preview in a collapsed section by default because the direct contents remain the primary on-page view.
+- Container detail displays direct contents in a separate card below the identity/photos row. Exact requirements show linked asset names/codes. Interchangeable requirements show a model count and expand to linked individual asset codes. Extra, misplaced or inactive contents appear first in orange; missing requirements are red with an alert icon. Consumable quantities remain visible without individual asset codes. Packing/template management is available in Edit mode. Download packing sheet remains visible at the top of the contents card in both modes.
 
 ## 23.6 Scanner camera startup
 

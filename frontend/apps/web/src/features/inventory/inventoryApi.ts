@@ -754,3 +754,94 @@ export function transferStock(
     }),
   );
 }
+
+export type PackingContentIdentity = Required<
+  components["schemas"]["PackingContentIdentityResponse"]
+>;
+export type PackingContentEntry = Omit<
+  Required<components["schemas"]["PackingContentEntryResponse"]>,
+  "asset"
+> & { asset: PackingContentIdentity };
+export type PackingContentRequirement = Omit<
+  Required<components["schemas"]["PackingContentRequirementResponse"]>,
+  "exactAsset"
+> & { exactAsset?: PackingContentIdentity };
+export type PackingContentConsumable = Required<
+  components["schemas"]["PackingContentConsumableResponse"]
+>;
+export type PackingContents = Omit<
+  Required<components["schemas"]["PackingContentsResponse"]>,
+  "assets" | "requirements" | "consumables"
+> & {
+  assets: PackingContentEntry[];
+  requirements: PackingContentRequirement[];
+  consumables: PackingContentConsumable[];
+};
+export type RepairRecord = Required<components["schemas"]["RepairResponse"]>;
+export type SealHistoryRecord = Required<components["schemas"]["SealHistoryView"]>;
+
+export function getPackingContents(assetId: string, cursor?: string) {
+  return read<PackingContents>(() =>
+    apiClient.GET("/api/v1/assets/{assetId}/packing-contents", {
+      params: { path: { assetId }, query: { cursor } },
+    }),
+  );
+}
+export function listAssetRepairs(assetId: string) {
+  return read<RepairRecord[]>(() =>
+    apiClient.GET("/api/v1/assets/{assetId}/repairs", { params: { path: { assetId } } }),
+  );
+}
+export function listSealHistory(assetId: string) {
+  return read<SealHistoryRecord[]>(() =>
+    apiClient.GET("/api/v1/assets/{assetId}/seal/history", { params: { path: { assetId } } }),
+  );
+}
+export function openAssetRepair(assetId: string, referenceOrDescription: string) {
+  return read<RepairRecord>(() =>
+    apiClient.POST("/api/v1/assets/{assetId}/repairs", {
+      params: { path: { assetId } },
+      body: { referenceOrDescription },
+    }),
+  );
+}
+export function closeAssetRepair(repairId: string, resultingCondition: "GOOD" | "DAMAGED") {
+  return read<RepairRecord>(() =>
+    apiClient.POST("/api/v1/repairs/{repairId}/close", {
+      params: { path: { repairId } },
+      body: { resultingCondition },
+    }),
+  );
+}
+export function createAssetReplacement(assetId: string, individualName?: string) {
+  return read<AssetRecord>(() =>
+    apiClient.POST("/api/v1/assets/{assetId}/replacement", {
+      params: { path: { assetId } },
+      body: { individualName, values: [] },
+    }),
+  );
+}
+export function setAssetSealable(assetId: string, sealable: boolean) {
+  return command(() =>
+    apiClient.PUT("/api/v1/assets/{assetId}/sealable", {
+      params: { path: { assetId } },
+      body: { sealable },
+    }),
+  );
+}
+export function applyAssetSeal(assetId: string, input: components["schemas"]["ApplySealRequest"]) {
+  return command(() =>
+    apiClient.POST("/api/v1/assets/{assetId}/seal/apply", {
+      params: { path: { assetId } },
+      body: input,
+    }),
+  );
+}
+export function breakAssetSeal(assetId: string, note?: string) {
+  return command(() =>
+    apiClient.POST("/api/v1/assets/{assetId}/seal/break", {
+      params: { path: { assetId } },
+      body: { note },
+    }),
+  );
+}

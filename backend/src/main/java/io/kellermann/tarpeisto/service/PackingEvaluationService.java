@@ -15,10 +15,12 @@ import io.kellermann.tarpeisto.security.TarpeistoPrincipal;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -66,6 +68,15 @@ public class PackingEvaluationService {
         }
         List<Asset> contents = assets.findAllByOrganizationIdAndParentContainerAssetIdOrderByUnitNumberAsc(
                 p.organizationId(), container);
+        List<UUID> contentIds = contents.stream().map(Asset::getId).toList();
+        Set<UUID> pinnedAssetIds = contentIds.isEmpty()
+                ? Set.of()
+                : Set.copyOf(requirements.findPinnedAssetIds(p.organizationId(), contentIds));
+        List<ConsumableStock> balances = stockBalances.findAllByOrganizationIdAndContainerAssetIdOrderByCreatedAtAsc(
+                p.organizationId(), container);
+        Map<UUID, BigDecimal> stockByModel = balances.stream()
+                .collect(Collectors.toMap(ConsumableStock::getAssetModelId, ConsumableStock::getQuantity));
+        Map<UUID, List<UUID>> matchedByRequirement = new LinkedHashMap<>();
         Set<UUID> usedAssetIds = new HashSet<>();
         List<UUID> satisfied = new ArrayList<>();
         List<UUID> missing = new ArrayList<>();
@@ -78,6 +89,7 @@ public class PackingEvaluationService {
             if (contents.stream()
                     .anyMatch(asset -> asset.getId().equals(row.getSpecificAssetId()) && asset.isActive())) {
                 usedAssetIds.add(row.getSpecificAssetId());
+                matchedByRequirement.put(row.getId(), List.of(row.getSpecificAssetId()));
                 satisfied.add(row.getId());
             } else {
                 missing.add(row.getId());
@@ -88,6 +100,7 @@ public class PackingEvaluationService {
                 continue;
             }
             int remaining = row.getRequiredQuantity().intValueExact();
+            List<UUID> matched = new ArrayList<>();
             for (Asset candidate : contents) {
                 if (remaining == 0) {
                     break;
@@ -95,13 +108,14 @@ public class PackingEvaluationService {
                 if (!candidate.isActive()
                         || usedAssetIds.contains(candidate.getId())
                         || !candidate.getAssetModelId().equals(row.getAssetModelId())
-                        || requirements.existsByOrganizationIdAndSpecificAssetIdAndArchivedAtIsNull(
-                                p.organizationId(), candidate.getId())) {
+                        || pinnedAssetIds.contains(candidate.getId())) {
                     continue;
                 }
                 usedAssetIds.add(candidate.getId());
+                matched.add(candidate.getId());
                 remaining--;
             }
+            matchedByRequirement.put(row.getId(), List.copyOf(matched));
             if (remaining == 0) {
                 satisfied.add(row.getId());
             } else {
@@ -114,11 +128,7 @@ public class PackingEvaluationService {
             }
             BigDecimal observed = observations != null && observations.get(row.getId()) != null
                     ? observations.get(row.getId())
-                    : stockBalances
-                            .findByOrganizationIdAndAssetModelIdAndContainerAssetId(
-                                    p.organizationId(), row.getAssetModelId(), container)
-                            .map(ConsumableStock::getQuantity)
-                            .orElse(BigDecimal.ZERO);
+                    : stockByModel.getOrDefault(row.getAssetModelId(), BigDecimal.ZERO);
             boolean supplied = observed.compareTo(row.getRequiredQuantity()) >= 0;
             consumables.add(new PackingPreviewView.ConsumableRequirementStatus(
                     row.getId(), row.getAssetModelId(), row.getRequiredQuantity(), observed, supplied));
@@ -132,8 +142,7 @@ public class PackingEvaluationService {
                 .filter(Asset::isActive)
                 .map(Asset::getId)
                 .filter(id -> !usedAssetIds.contains(id))
-                .filter(id -> requirements.existsByOrganizationIdAndSpecificAssetIdAndArchivedAtIsNull(
-                        p.organizationId(), id))
+                .filter(pinnedAssetIds::contains)
                 .toList();
         List<UUID> extras = contents.stream()
                 .filter(Asset::isActive)
@@ -149,10 +158,23 @@ public class PackingEvaluationService {
                 consumables);
 
         return new Evaluation(
-                preview, Set.copyOf(usedAssetIds), contents.stream().anyMatch(asset -> !asset.isActive()));
+                preview,
+                Set.copyOf(usedAssetIds),
+                contents.stream().anyMatch(asset -> !asset.isActive()),
+                Map.copyOf(matchedByRequirement),
+                rows,
+                contents,
+                balances);
     }
 
-    public record Evaluation(PackingPreviewView preview, Set<UUID> matchedAssetIds, boolean inactiveDirectContents) {}
+    public record Evaluation(
+            PackingPreviewView preview,
+            Set<UUID> matchedAssetIds,
+            boolean inactiveDirectContents,
+            Map<UUID, List<UUID>> matchedAssetIdsByRequirement,
+            List<PackingRequirement> requirements,
+            List<Asset> directContents,
+            List<ConsumableStock> balances) {}
 
     private Asset requireContainerForRead(UUID org, UUID id) {
         Asset a = assets.findByIdAndOrganizationId(id, org)

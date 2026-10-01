@@ -3333,6 +3333,38 @@
         }
       }
     },
+    "/api/v1/assets/{assetId}/seal/apply": {
+      "post": {
+        "tags": ["asset-controller"],
+        "operationId": "applySeal",
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplySealRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
     "/api/v1/assets/{assetId}/restore": {
       "post": {
         "tags": ["asset-controller"],
@@ -5674,6 +5706,43 @@
                 "schema": {
                   "type": "string",
                   "format": "byte"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{assetId}/packing-contents": {
+      "get": {
+        "tags": ["packing-requirement-controller"],
+        "operationId": "packingContents",
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackingContentsResponse"
                 }
               }
             }
@@ -8221,6 +8290,17 @@
           }
         }
       },
+      "ApplySealRequest": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        },
+        "required": ["expectedVersion"]
+      },
       "CreateReplacementAssetRequest": {
         "type": "object",
         "properties": {
@@ -9021,6 +9101,167 @@
           "occurredAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "PackingContentConsumableResponse": {
+        "type": "object",
+        "properties": {
+          "assetModelId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetModelName": {
+            "type": "string"
+          },
+          "unitLabel": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "archived": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PackingContentEntryResponse": {
+        "type": "object",
+        "properties": {
+          "asset": {
+            "$ref": "#/components/schemas/PackingContentIdentityResponse"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["MATCHED", "EXTRA", "MISPLACED", "INACTIVE"]
+          },
+          "requirementId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "PackingContentIdentityResponse": {
+        "type": "object",
+        "properties": {
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "publicCode": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "assetModelId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetModelName": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PackingContentRequirementResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["SPECIFIC_ASSET", "MODEL_QUANTITY", "CONSUMABLE_QUANTITY"]
+          },
+          "assetModelId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetModelName": {
+            "type": "string"
+          },
+          "unitLabel": {
+            "type": "string"
+          },
+          "requiredQuantity": {
+            "type": "number"
+          },
+          "presentQuantity": {
+            "type": "number"
+          },
+          "missingQuantity": {
+            "type": "number"
+          },
+          "satisfied": {
+            "type": "boolean"
+          },
+          "exactAsset": {
+            "$ref": "#/components/schemas/PackingContentIdentityResponse"
+          }
+        }
+      },
+      "PackingContentsResponse": {
+        "type": "object",
+        "properties": {
+          "containerAssetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "complete": {
+            "type": "boolean"
+          },
+          "totalAssetCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "matchedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "extraCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "misplacedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "inactiveCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalRequirementCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalConsumableCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "requirements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PackingContentRequirementResponse"
+            }
+          },
+          "assets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PackingContentEntryResponse"
+            }
+          },
+          "consumables": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PackingContentConsumableResponse"
+            }
+          },
+          "nextCursor": {
+            "type": "string"
           }
         }
       },

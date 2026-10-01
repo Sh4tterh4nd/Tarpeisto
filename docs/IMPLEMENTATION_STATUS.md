@@ -223,6 +223,41 @@ Verified at the obsolete packing finding checkpoint:
   patterns**. `jibBuildTar` passes with the matching production frontend embedded. No database
   migration or configuration change is required.
 
+Verified at the asset-detail redesign checkpoint:
+
+- Asset detail now groups identity, purchase date, condition/lifecycle, placement, container seal,
+  open repair and custom values in an expanded public-code card beside reference/layout photos.
+  Normal view is read-only; its menu opens Edit, repair, confirmed Archive/Restore and conditional
+  Open seal. Edit contains section saves and packing/template management; every permanent role
+  retains read-only state, repair and seal history.
+- Stored multiline model descriptions retain their original text. Asset and model headings join
+  display lines with commas, or spaces after a full stop, without changing capitalization.
+- A separate Direct contents card uses the authoritative packing matcher: linked exact assets,
+  expandable interchangeable counts/codes, orange extra/misplaced/inactive items first, red missing
+  quantities with alert icons, and consumable units. Packing-sheet download remains at the top in
+  both modes. Tenant-bound revision cursors page assets, requirements and stock balances separately
+  at 100 rows each; changed packing requires refresh instead of mixing stale pages.
+- Manual physical seal application is Owner/Deputy-only, version-guarded and repeat-safe for an
+  already applied state. It appends actor/time history, invalidates verification when changed, and
+  leaves completed audit observations intact. Placement/seal drafts retain the observed version;
+  conflicts preserve other drafts and offer an explicit reload.
+- Backend: **560 tests in 77 suites, 0 failures, errors or skips**, with `spotlessCheck check`
+  passing against PostgreSQL. New regressions cover bounded paging, global exact pins, inactive
+  contents, decimal stock, stale cursors, immutable completed audit facts and HTTP role/CSRF/tenant
+  boundaries.
+- Frontend: **230 unit tests, 0 failures** (212 web in 43 files, 11 api-client, 7 shared-ui), with
+  formatting, lint and workspace typechecks passing. All **46 Playwright tests pass** on desktop
+  and mobile, including edit failure/retry, contents expansion/paging, confirmed archive, read-only
+  history and packing-sheet download. `jibBuildTar` passes with the matching production frontend.
+- Live PostgreSQL/browser checks confirm exact/interchangeable matching, missing requirements,
+  problem ordering, repeat-safe physical seal actions, repair open/close and preserved multiline
+  storage. Desktop and phone Chromium screenshots were inspected in normal and Edit views; linked
+  contents navigate to the respective asset, ordinary equipment hides seal state, and neither
+  profile has horizontal overflow. Physical phone/camera/printer acceptance remains manual.
+- The live OpenAPI document and generated client include packing contents and physical seal apply;
+  regeneration from the snapshot produces no drift. The authorization matrix covers **171 concrete
+  routes from 169 declared patterns**. No database migration or configuration change is required.
+
 ## 2. How to verify this yourself
 
 Docker Desktop does not work on the primary development workstation (no WSL2 backend), so backend

@@ -234,6 +234,16 @@ public class AssetController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/assets/{assetId}/seal/apply")
+    @org.springframework.web.bind.annotation.ResponseStatus(HttpStatus.NO_CONTENT)
+    public ResponseEntity<Void> applySeal(
+            @AuthenticationPrincipal TarpeistoPrincipal principal,
+            @PathVariable UUID assetId,
+            @Valid @RequestBody ApplySealRequest request) {
+        assetSealService.applySeal(principal, assetId, request.expectedVersion());
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/assets/{assetId}/seal/break")
     public ResponseEntity<Void> breakSeal(
             @AuthenticationPrincipal TarpeistoPrincipal principal,

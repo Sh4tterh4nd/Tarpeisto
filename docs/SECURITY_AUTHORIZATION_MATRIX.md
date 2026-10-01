@@ -1,6 +1,6 @@
 # REST authorization matrix
 
-This is the reviewed application REST inventory for Phase 14.1. The runtime MVC drift gate reads this table, independently of OpenAPI, and rejects missing, stale or duplicate method/path rows. Spring declares 167 method/path patterns; the two packing archive/restore regex patterns expand into 169 concrete reviewed routes below. Any additional regex alternative must gain its own reviewed row. Dynamic variable names remain part of the contract.
+This is the reviewed application REST inventory for Phase 14.1. The runtime MVC drift gate reads this table, independently of OpenAPI, and rejects missing, stale or duplicate method/path rows. Spring declares 169 method/path patterns; the two packing archive/restore regex patterns expand into 171 concrete reviewed routes below. Any additional regex alternative must gain its own reviewed row. Dynamic variable names remain part of the contract.
 
 O = Owner, D = Deputy, OA = **OPERATOR_AUDITOR**, V = Viewer, T = temporary named volunteer, A = anonymous. Y permits entry subject to the scope/business checks; N denies; S permits only the current invitation assignment; C permits initial setup only while setup is required. A permanent session is revalidated against enabled account/current membership/current role before authorization. Temporary sessions are revalidated against their immutable deadline and revocation on every request; the temporary HTTP allowlist and service scope checks both apply.
 
@@ -73,6 +73,7 @@ For global user operations, the service first resolves the target membership in 
 | GET | /api/v1/assets/{assetId}/media/reference | MediaController#getAssetReference -> MediaService.getAssetReference | Y | Y | Y | Y | S | N | org media owner/purpose; T references/evidence inside assignment | safe | none |
 | POST | /api/v1/assets/{assetId}/media/reference | MediaController#uploadAssetReference -> MediaService.uploadAssetReference | Y | Y | N | N | N | N | org media owner/purpose; T references/evidence inside assignment | required | none |
 | PUT | /api/v1/assets/{assetId}/name | AssetController#rename -> AssetService.rename | Y | Y | N | N | N | N | org | required | none |
+| GET | /api/v1/assets/{assetId}/packing-contents | PackingRequirementController#contents -> PackingContentsService.get | Y | Y | Y | Y | N | N | org container and referenced identities; authoritative whole packing; bounded tenant/container-bound cursor | safe | none |
 | GET | /api/v1/assets/{assetId}/packing-sheet.pdf | PackingSheetController#pdf -> PackingSheetService.pdf | Y | Y | Y | Y | N | N | org | safe | none |
 | GET | /api/v1/assets/{assetId}/placement | AssetController#placement -> AssetPlacementService.get | Y | Y | Y | Y | N | N | org | safe | none |
 | PUT | /api/v1/assets/{assetId}/placement | AssetController#move -> AssetPlacementService.move | Y | Y | N | N | N | N | org | required | none |
@@ -81,6 +82,7 @@ For global user operations, the service first resolves the target membership in 
 | POST | /api/v1/assets/{assetId}/repairs | ReviewController#openRepair -> ReviewService.openRepair | Y | Y | N | N | N | N | org completed finding/reviewer or asset repair history | required | none |
 | POST | /api/v1/assets/{assetId}/replacement | AssetController#createReplacement -> AssetService.createReplacement | Y | Y | N | N | N | N | org | required | none |
 | POST | /api/v1/assets/{assetId}/restore | AssetController#restore -> AssetService.restore | Y | Y | N | N | N | N | org | required | none |
+| POST | /api/v1/assets/{assetId}/seal/apply | AssetController#applySeal -> AssetSealService.applySeal | Y | Y | N | N | N | N | org active sealable container; physical applied state only; no verification or custody release | required | none |
 | POST | /api/v1/assets/{assetId}/seal/break | AssetController#breakSeal -> AssetSealService.breakSeal | Y | Y | N | N | N | N | org | required | none |
 | GET | /api/v1/assets/{assetId}/seal/history | AssetController#sealHistory -> AssetSealService.history | Y | Y | Y | Y | N | N | org | safe | none |
 | PUT | /api/v1/assets/{assetId}/sealable | AssetController#setSealable -> AssetSealService.setSealable | Y | Y | N | N | N | N | org | required | none |

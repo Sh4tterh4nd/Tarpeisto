@@ -1,3 +1,4 @@
+import { formatModelDescription } from "./formatModelDescription";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import EditIcon from "@mui/icons-material/Edit";
@@ -319,7 +320,7 @@ export function AssetModelPage() {
       </Button>
       <PageHeading
         title={model.name}
-        description={model.description || "No model description."}
+        description={formatModelDescription(model.description) || "No model description."}
         actions={
           canManage ? (
             <Button startIcon={<EditIcon />} onClick={() => setEditRouteId(model.id)}>

@@ -703,9 +703,10 @@ This focused milestone improves established inventory workflows without changing
 
 - Replace manual exact-asset code entry with code/name search and selection.
 - Offer a checkbox to assign the chosen exact asset to the container immediately. Requirement creation and current-parent assignment are one authorized, tenant-scoped transaction when selected.
-- Present asset detail as title, then unit values and public code, with reference photo to the right; below, show placement with current condition and lifecycle to its right. Omit empty unit-value and state-history sections while retaining visible condition and lifecycle.
+- Present asset detail as title and compact multiline-description preview, then an expanded public-code card at left and reference/layout photos at right. Within the card show purchase date, two-column Condition/Lifecycle, direct location then parent container, container-only seal status, any open repair, and custom values last. Keep normal details read-only and omit empty custom-value/history sections.
+- Put Edit, Open repair and confirmed Archive/Restore in the card's three-dot menu, with Open seal for sealable containers. Edit mode contains metadata, placement, state, repair and seal controls; manual seal application remains unverified and retains history.
 - Present asset-model detail with reference photo on the right, category and unit-definition fields stacked at left, and physical units at the bottom.
-- Collapse the packing sheet/content preview on container detail by default while retaining direct contents as the primary view.
+- Show direct contents in a separate card: linked exact names/codes, expandable interchangeable counts with linked codes, orange extra/misplaced items first, red missing requirements with alert icons, and consumable quantities. Keep packing/template administration in Edit and packing-sheet download visible in both modes; any supplementary document preview remains collapsed.
 - Exclude containers from ordinary asset-label PDF and P-touch export. Use only the container contents/packing sheet: duplicated A5 landscape halves on A4, a category-colored identity bar, and direct requirements below it.
 
 ### 14.3 Scanner startup and acceptance criteria
