@@ -2175,6 +2175,34 @@
         }
       }
     },
+    "/api/v1/findings/reconcile-packing": {
+      "post": {
+        "tags": ["review-controller"],
+        "operationId": "reconcilePacking",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackingReconciliationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/categories": {
       "get": {
         "tags": ["category-controller"],
@@ -7454,6 +7482,22 @@
           "containerAssetId": {
             "type": "string",
             "format": "uuid"
+          }
+        }
+      },
+      "PackingReconciliationResponse": {
+        "type": "object",
+        "properties": {
+          "inspectedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "dismissedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "nextCursor": {
+            "type": "string"
           }
         }
       },

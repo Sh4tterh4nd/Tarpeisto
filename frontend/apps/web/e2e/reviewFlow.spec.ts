@@ -24,6 +24,9 @@ test("an owner confirms a permanent review decision before resolving it", async 
       body: JSON.stringify({ title: "Not found", status: 404 }),
     }),
   );
+  await page.route("**/api/v1/findings/reconcile-packing*", (route) =>
+    route.fulfill({ json: { inspectedCount: 0, dismissedCount: 0, nextCursor: null } }),
+  );
   await page.route("**/api/v1/session", (route) =>
     route.fulfill({
       json: {

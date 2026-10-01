@@ -1,6 +1,6 @@
 # REST authorization matrix
 
-This is the reviewed application REST inventory for Phase 14.1. The runtime MVC drift gate reads this table, independently of OpenAPI, and rejects missing, stale or duplicate method/path rows. Spring declares 166 method/path patterns; the two packing archive/restore regex patterns expand into 168 concrete reviewed routes below. Any additional regex alternative must gain its own reviewed row. Dynamic variable names remain part of the contract.
+This is the reviewed application REST inventory for Phase 14.1. The runtime MVC drift gate reads this table, independently of OpenAPI, and rejects missing, stale or duplicate method/path rows. Spring declares 167 method/path patterns; the two packing archive/restore regex patterns expand into 169 concrete reviewed routes below. Any additional regex alternative must gain its own reviewed row. Dynamic variable names remain part of the contract.
 
 O = Owner, D = Deputy, OA = **OPERATOR_AUDITOR**, V = Viewer, T = temporary named volunteer, A = anonymous. Y permits entry subject to the scope/business checks; N denies; S permits only the current invitation assignment; C permits initial setup only while setup is required. A permanent session is revalidated against enabled account/current membership/current role before authorization. Temporary sessions are revalidated against their immutable deadline and revocation on every request; the temporary HTTP allowlist and service scope checks both apply.
 
@@ -136,6 +136,7 @@ For global user operations, the service first resolves the target membership in 
 | GET | /api/v1/findings | ReviewController#list -> ReviewService.list | Y | Y | N | N | N | N | org completed finding/reviewer or asset repair history | safe | none |
 | GET | /api/v1/findings/{findingId} | ReviewController#get -> ReviewService.get | Y | Y | N | N | N | N | org completed finding/reviewer or asset repair history | safe | none |
 | GET | /api/v1/findings/{findingId}/evidence | MediaController#findingEvidence -> MediaService.listFindingEvidence | Y | Y | Y | Y | S | N | org media owner/purpose; T references/evidence inside assignment | safe | none |
+| POST | /api/v1/findings/reconcile-packing | ReviewController#reconcilePacking -> PackingFindingReconciliationService.sweep | Y | Y | N | N | N | N | org bounded completed serialized packing findings; tenant-bound cursor; current whole packing complete; no verification/custody release | required | none |
 | POST | /api/v1/findings/{findingId}/resolutions | ReviewController#resolve -> ReviewService.resolve | Y | Y | N | N | N | N | org completed finding/reviewer or asset repair history | required | none |
 | GET | /api/v1/locations | LocationController#list -> LocationService.list | Y | Y | Y | Y | N | N | org | safe | none |
 | POST | /api/v1/locations | LocationController#create -> LocationService.create | Y | Y | N | N | N | N | org | required | none |

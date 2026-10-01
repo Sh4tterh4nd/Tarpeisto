@@ -16,6 +16,8 @@ vi.mock("virtual:pwa-register/react", () => ({
 }));
 
 function applicationReadFixture(url: string) {
+  if (url.includes("/api/v1/findings/reconcile-packing"))
+    return Response.json({ inspectedCount: 0, dismissedCount: 0 });
   if (url.includes("/api/v1/dashboard"))
     return {
       queues: [

@@ -609,6 +609,7 @@ Implement in this order:
 - Review queue for Owners/Deputies
 - Finding detail with audit context, photos, notes, and asset history
 - Append-only resolutions
+- Automatically dismiss obsolete generated serialized packing discrepancies when current contents fully match current requirements; retain manual, damage, label, consumable and exact-manifest review work and invalidated verification
 - Resolution actions defined in the specification
 - Event state recalculation after resolution
 

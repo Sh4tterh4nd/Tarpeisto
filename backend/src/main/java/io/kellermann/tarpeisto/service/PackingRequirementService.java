@@ -9,7 +9,6 @@ import io.kellermann.tarpeisto.model.Asset;
 import io.kellermann.tarpeisto.model.AssetCode;
 import io.kellermann.tarpeisto.model.AssetCodeValidation;
 import io.kellermann.tarpeisto.model.AssetModel;
-import io.kellermann.tarpeisto.model.ConsumableStock;
 import io.kellermann.tarpeisto.model.OrganizationRole;
 import io.kellermann.tarpeisto.model.PackingRequirement;
 import io.kellermann.tarpeisto.model.PackingRequirementHistory;
@@ -19,7 +18,6 @@ import io.kellermann.tarpeisto.model.PackingTemplateRequirement;
 import io.kellermann.tarpeisto.repository.AssetModelRepository;
 import io.kellermann.tarpeisto.repository.AssetRepository;
 import io.kellermann.tarpeisto.repository.CheckoutManifestAssetRepository;
-import io.kellermann.tarpeisto.repository.ConsumableStockRepository;
 import io.kellermann.tarpeisto.repository.OrganizationRepository;
 import io.kellermann.tarpeisto.repository.PackingRequirementHistoryRepository;
 import io.kellermann.tarpeisto.repository.PackingRequirementRepository;
@@ -56,7 +54,8 @@ public class PackingRequirementService {
     private final PackingTemplateRequirementRepository templateRequirements;
     private final AssetRepository assets;
     private final AssetModelRepository models;
-    private final ConsumableStockRepository stockBalances;
+    private final PackingEvaluationService evaluation;
+    private final PackingFindingReconciliationService reconciliation;
     private final PackingRequirementHistoryRepository histories;
     private final OrganizationRepository organizations;
     private final ActivityLogService activity;
@@ -73,7 +72,8 @@ public class PackingRequirementService {
             PackingTemplateRequirementRepository templateRequirements,
             AssetRepository assets,
             AssetModelRepository models,
-            ConsumableStockRepository stockBalances,
+            PackingEvaluationService evaluation,
+            PackingFindingReconciliationService reconciliation,
             PackingRequirementHistoryRepository histories,
             OrganizationRepository organizations,
             ActivityLogService activity,
@@ -88,7 +88,8 @@ public class PackingRequirementService {
         this.templateRequirements = templateRequirements;
         this.assets = assets;
         this.models = models;
-        this.stockBalances = stockBalances;
+        this.evaluation = evaluation;
+        this.reconciliation = reconciliation;
         this.histories = histories;
         this.organizations = organizations;
         this.activity = activity;
@@ -131,116 +132,9 @@ public class PackingRequirementService {
                 .orElseThrow(() -> new NotFoundException("Asset not found."));
     }
 
-    /**
-     * Evaluates only direct serialized contents. Exact requirements reserve their named asset
-     * first; any asset pinned anywhere else in the organization is not eligible for an
-     * interchangeable-model requirement.
-     */
     @Transactional(readOnly = true)
     public PackingPreviewView preview(TarpeistoPrincipal p, UUID container, Map<UUID, BigDecimal> observations) {
-        if (p != null) p.requirePermanent();
-        auth(p);
-        requireContainerForRead(p.organizationId(), container);
-        List<PackingRequirement> rows = requirements
-                .findAllByOrganizationIdAndContainerAssetIdOrderByDisplayOrderAsc(p.organizationId(), container)
-                .stream()
-                .filter(row -> !row.isArchived())
-                .toList();
-        if (observations != null) {
-            Set<UUID> consumableIds = new HashSet<>();
-            for (PackingRequirement row : rows)
-                if (row.getRequirementType() == PackingRequirementType.CONSUMABLE_QUANTITY)
-                    consumableIds.add(row.getId());
-            for (Map.Entry<UUID, BigDecimal> observation : observations.entrySet()) {
-                if (!consumableIds.contains(observation.getKey()))
-                    throw new ValidationFailedException(
-                            "Observation must reference this container's active consumable requirement.");
-                validateQuantity(observation.getValue(), false);
-            }
-        }
-        List<Asset> contents = assets.findAllByOrganizationIdAndParentContainerAssetIdOrderByUnitNumberAsc(
-                p.organizationId(), container);
-        Set<UUID> usedAssetIds = new HashSet<>();
-        List<UUID> satisfied = new ArrayList<>();
-        List<UUID> missing = new ArrayList<>();
-        List<PackingPreviewView.ConsumableRequirementStatus> consumables = new ArrayList<>();
-
-        for (PackingRequirement row : rows) {
-            if (row.getRequirementType() != PackingRequirementType.SPECIFIC_ASSET) {
-                continue;
-            }
-            if (contents.stream()
-                    .anyMatch(asset -> asset.getId().equals(row.getSpecificAssetId()) && asset.isActive())) {
-                usedAssetIds.add(row.getSpecificAssetId());
-                satisfied.add(row.getId());
-            } else {
-                missing.add(row.getId());
-            }
-        }
-        for (PackingRequirement row : rows) {
-            if (row.getRequirementType() != PackingRequirementType.MODEL_QUANTITY) {
-                continue;
-            }
-            int remaining = row.getRequiredQuantity().intValueExact();
-            for (Asset candidate : contents) {
-                if (remaining == 0) {
-                    break;
-                }
-                if (!candidate.isActive()
-                        || usedAssetIds.contains(candidate.getId())
-                        || !candidate.getAssetModelId().equals(row.getAssetModelId())
-                        || requirements.existsByOrganizationIdAndSpecificAssetIdAndArchivedAtIsNull(
-                                p.organizationId(), candidate.getId())) {
-                    continue;
-                }
-                usedAssetIds.add(candidate.getId());
-                remaining--;
-            }
-            if (remaining == 0) {
-                satisfied.add(row.getId());
-            } else {
-                missing.add(row.getId());
-            }
-        }
-        for (PackingRequirement row : rows) {
-            if (row.getRequirementType() != PackingRequirementType.CONSUMABLE_QUANTITY) {
-                continue;
-            }
-            BigDecimal observed = observations != null && observations.get(row.getId()) != null
-                    ? observations.get(row.getId())
-                    : stockBalances
-                            .findByOrganizationIdAndAssetModelIdAndContainerAssetId(
-                                    p.organizationId(), row.getAssetModelId(), container)
-                            .map(ConsumableStock::getQuantity)
-                            .orElse(BigDecimal.ZERO);
-            boolean supplied = observed.compareTo(row.getRequiredQuantity()) >= 0;
-            consumables.add(new PackingPreviewView.ConsumableRequirementStatus(
-                    row.getId(), row.getAssetModelId(), row.getRequiredQuantity(), observed, supplied));
-            if (supplied) {
-                satisfied.add(row.getId());
-            } else {
-                missing.add(row.getId());
-            }
-        }
-        List<UUID> misplaced = contents.stream()
-                .filter(Asset::isActive)
-                .map(Asset::getId)
-                .filter(id -> !usedAssetIds.contains(id))
-                .filter(id -> requirements.existsByOrganizationIdAndSpecificAssetIdAndArchivedAtIsNull(
-                        p.organizationId(), id))
-                .toList();
-        List<UUID> extras = contents.stream()
-                .filter(Asset::isActive)
-                .map(Asset::getId)
-                .filter(id -> !usedAssetIds.contains(id) && !misplaced.contains(id))
-                .toList();
-        return new PackingPreviewView(
-                missing.isEmpty() && misplaced.isEmpty() && extras.isEmpty(),
-                satisfied,
-                missing,
-                extras,
-                misplaced,
-                consumables);
+        return evaluation.evaluate(p, container, observations).preview();
     }
 
     @Transactional
@@ -395,6 +289,7 @@ public class PackingRequirementService {
                 throw new io.kellermann.tarpeisto.exception.PackingRemovalConfirmationException(affected);
         }
         Map<String, Object> before = snapshot(row);
+        reconciliation.schedule(p, row.getContainerAssetId(), row.getSpecificAssetId());
         row.change(type, model, asset, quantity, clock.instant());
         history(p, row, "UPDATED", before, snapshot(row));
         requirements.flush();
@@ -926,6 +821,7 @@ public class PackingRequirementService {
             Map<String, Object> before,
             Map<String, Object> after) {
         seals.invalidate(principal, row.getContainerAssetId(), "Packing requirements changed.");
+        reconciliation.schedule(principal, row.getContainerAssetId(), row.getSpecificAssetId());
         histories.save(new PackingRequirementHistory(
                 UUID.randomUUID(),
                 principal.organizationId(),

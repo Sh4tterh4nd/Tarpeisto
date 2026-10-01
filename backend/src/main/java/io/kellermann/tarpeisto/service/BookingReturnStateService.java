@@ -160,6 +160,12 @@ public class BookingReturnStateService {
 
     @Transactional
     public void recalculateForBatch(UUID organizationId, UUID batchId) {
+        recalculateForBatch(organizationId, batchId, true);
+    }
+
+    /** Reconciliation may update readiness without granting physical custody release. */
+    @Transactional
+    public void recalculateForBatch(UUID organizationId, UUID batchId, boolean releaseCustody) {
         AuditBatch batch =
                 batches.findByIdAndOrganizationId(batchId, organizationId).orElseThrow();
         List<AuditTask> batchTasks = tasks.findAllByOrganizationIdAndAuditBatchIdOrderById(organizationId, batchId);
@@ -179,7 +185,7 @@ public class BookingReturnStateService {
                 .allMatch(task -> currentAudit(organizationId, task)
                         .map(audit -> audit.getState() == ContainerAuditState.COMPLETED)
                         .orElse(false));
-        if (auditsCurrentAndComplete) {
+        if (auditsCurrentAndComplete && releaseCustody) {
             // Every observation in the current attempts has now been reviewed. Physical return
             // facts and formal accounting remain distinct, and neither is rewritten.
             manifestAssets.findAllByOrganizationIdAndManifestIdOrderById(organizationId, batch.getManifestId()).stream()

@@ -2,9 +2,15 @@ import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { AppError } from "@tarpeisto/api-client";
+import { reconcilePackingUntilComplete } from "../review/reviewApi";
 import { DashboardPage } from "./DashboardPage";
 import { getDashboard, getDashboardPage, type DashboardPage as QueuePage } from "./dashboardApi";
 
+vi.mock("../review/reviewApi", () => ({
+  reconcilePackingUntilComplete: vi.fn().mockResolvedValue({ kind: "ok", data: undefined }),
+  reviewError: (error: { message: string }) => error.message,
+}));
 vi.mock("./dashboardApi", () => ({ getDashboard: vi.fn(), getDashboardPage: vi.fn() }));
 const session = vi.hoisted(() => ({
   principal: { userId: "owner", organizationId: "org", role: "OWNER" },
@@ -29,7 +35,11 @@ const initial: QueuePage = {
 };
 
 describe("operational workboard", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    session.principal = { userId: "owner", organizationId: "org", role: "OWNER" };
+    vi.mocked(reconcilePackingUntilComplete).mockResolvedValue({ kind: "ok", data: undefined });
+  });
   it("retains dependency context and appends the next queue page without losing earlier tasks", async () => {
     vi.mocked(getDashboard).mockResolvedValue({ kind: "ok", data: { queues: [initial] } });
     vi.mocked(getDashboardPage).mockResolvedValue({
@@ -137,5 +147,56 @@ describe("operational workboard", () => {
     await act(async () => resolveOld({ kind: "ok", data: { queues: [initial] } }));
     expect(screen.queryByText("Cable case (ABC123)")).not.toBeInTheDocument();
     session.principal = { userId: "owner", organizationId: "org", role: "OWNER" };
+  });
+  it("waits for the full packing sweep before fetching queues and exposes failure retry", async () => {
+    vi.mocked(reconcilePackingUntilComplete).mockResolvedValueOnce({
+      kind: "error",
+      error: AppError.network(new Error("Offline")),
+    });
+    vi.mocked(getDashboard).mockResolvedValue({ kind: "ok", data: { queues: [initial] } });
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText(/Packing review refresh failed/)).toBeInTheDocument();
+    expect(getDashboard).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("button", { name: "Refresh workboard" }));
+    await screen.findByText("Cable case (ABC123)");
+    expect(reconcilePackingUntilComplete).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(reconcilePackingUntilComplete).mock.invocationCallOrder[1]).toBeLessThan(
+      vi.mocked(getDashboard).mock.invocationCallOrder[0]!,
+    );
+  });
+
+  it("never sweeps for a Viewer and cancels a pending old-manager sweep on identity change", async () => {
+    let finish: (
+      value: Awaited<ReturnType<typeof reconcilePackingUntilComplete>>,
+    ) => void = () => {};
+    let isCurrent: () => boolean = () => true;
+    vi.mocked(reconcilePackingUntilComplete).mockImplementationOnce((current) => {
+      isCurrent = current;
+      return new Promise((resolve) => {
+        finish = resolve;
+      });
+    });
+    vi.mocked(getDashboard).mockResolvedValue({ kind: "ok", data: { queues: [initial] } });
+    const view = render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
+    await vi.waitFor(() => expect(reconcilePackingUntilComplete).toHaveBeenCalledTimes(1));
+    session.principal = { userId: "viewer", organizationId: "new-org", role: "VIEWER" };
+    view.rerender(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
+    await screen.findByText("Cable case (ABC123)");
+    expect(isCurrent()).toBe(false);
+    await act(async () => finish({ kind: "ok", data: undefined }));
+    expect(getDashboard).toHaveBeenCalledTimes(1);
+    expect(reconcilePackingUntilComplete).toHaveBeenCalledTimes(1);
   });
 });

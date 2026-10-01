@@ -10,6 +10,9 @@ test("app shell loads and a valid public code resolves to an asset", async ({ pa
       body: JSON.stringify({ title: "Not found", status: 404 }),
     }),
   );
+  await page.route("**/api/v1/findings/reconcile-packing*", (route) =>
+    route.fulfill({ json: { inspectedCount: 0, dismissedCount: 0, nextCursor: null } }),
+  );
   await page.route("**/api/v1/session", (route) =>
     route.fulfill({
       json: {

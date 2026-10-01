@@ -833,6 +833,8 @@ Possible resolutions include:
 
 Resolution stores actor, timestamp, optional note, and resulting state changes. Completed audit observations remain immutable; resolutions are appended separately.
 
+When current direct contents fully match the current packing requirements, obsolete automatically generated serialized packing findings are dismissed automatically when their original requirement or scan can be validated. Each dismissal records the responsible Owner/Deputy, timestamp and reason. This applies to serialized requirement shortages and direct extra/misplaced scans, including findings from earlier audit attempts. Damage, unreadable labels, unknown codes, manually reported discrepancies, consumable observations and exact event-manifest discrepancies continue to require review. Automatic dismissal does not restore an invalidated seal or physical verification, rewrite a completed audit, or mark an unreturned manifest asset returned.
+
 ## 20. Repairs and replacements
 
 ### 20.1 Repair record

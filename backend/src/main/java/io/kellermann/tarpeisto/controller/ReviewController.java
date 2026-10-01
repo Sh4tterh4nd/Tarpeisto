@@ -1,6 +1,7 @@
 package io.kellermann.tarpeisto.controller;
 
 import io.kellermann.tarpeisto.security.TarpeistoPrincipal;
+import io.kellermann.tarpeisto.service.PackingFindingReconciliationService;
 import io.kellermann.tarpeisto.service.ReviewService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -21,9 +22,18 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1")
 public class ReviewController {
     private final ReviewService review;
+    private final PackingFindingReconciliationService reconciliation;
 
-    public ReviewController(ReviewService review) {
+    public ReviewController(ReviewService review, PackingFindingReconciliationService reconciliation) {
         this.review = review;
+        this.reconciliation = reconciliation;
+    }
+
+    @PostMapping("/findings/reconcile-packing")
+    public PackingReconciliationResponse reconcilePacking(
+            @AuthenticationPrincipal TarpeistoPrincipal principal, @RequestParam(required = false) String cursor) {
+        var result = reconciliation.sweep(principal, cursor);
+        return new PackingReconciliationResponse(result.inspectedCount(), result.dismissedCount(), result.nextCursor());
     }
 
     @GetMapping("/findings")

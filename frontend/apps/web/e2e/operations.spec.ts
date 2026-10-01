@@ -11,6 +11,9 @@ async function permanentSession(page: Page) {
       json: { title: "Not found", status: 404 },
     }),
   );
+  await page.route("**/api/v1/findings/reconcile-packing*", (route) =>
+    route.fulfill({ json: { inspectedCount: 0, dismissedCount: 0, nextCursor: null } }),
+  );
   await page.route("**/api/v1/session", (route) =>
     route.fulfill({
       json: {
@@ -299,4 +302,67 @@ test("restoring an archived user requires an explicit enable action", async ({ p
   await expect(enable).toBeChecked();
   expect(archived).toBe(false);
   expect(enabled).toBe(true);
+});
+
+test("owner workboard reconciles every stale packing page before loading review counts", async ({
+  page,
+}) => {
+  await permanentSession(page);
+  const calls: string[] = [];
+  let stale = 105;
+  await page.route("**/api/v1/findings/reconcile-packing*", async (route) => {
+    expect(route.request().method()).toBe("POST");
+    const cursor = new URL(route.request().url()).searchParams.get("cursor");
+    calls.push(cursor ? "sweep-two" : "sweep-one");
+    if (!cursor) {
+      stale -= 100;
+      return route.fulfill({
+        json: { inspectedCount: 100, dismissedCount: 100, nextCursor: "last-five" },
+      });
+    }
+    expect(cursor).toBe("last-five");
+    stale = 0;
+    return route.fulfill({ json: { inspectedCount: 5, dismissedCount: 5, nextCursor: null } });
+  });
+  await page.route("**/api/v1/dashboard", (route) => {
+    calls.push("dashboard");
+    expect(stale).toBe(0);
+    return route.fulfill({
+      json: { queues: [{ queue: "REVIEW", count: stale, items: [], nextCursor: null }] },
+    });
+  });
+  await page.goto("/");
+  await expect(page.getByText("No findings need review.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Review finding" })).toHaveCount(0);
+  expect(calls).toEqual(["sweep-one", "sweep-two", "dashboard"]);
+});
+
+test("Viewer and operator workboards only read queues without a reconciliation POST", async ({
+  page,
+}) => {
+  await permanentSession(page);
+  let posts = 0;
+  await page.route("**/api/v1/findings/reconcile-packing*", (route) => {
+    posts++;
+    return route.fulfill({ json: { inspectedCount: 0, dismissedCount: 0 } });
+  });
+  await page.route("**/api/v1/dashboard", (route) =>
+    route.fulfill({ json: { queues: [{ queue: "REVIEW", count: 0, items: [] }] } }),
+  );
+  for (const role of ["VIEWER", "OPERATOR_AUDITOR"]) {
+    await page.route("**/api/v1/session", (route) =>
+      route.fulfill({
+        json: {
+          userId: user,
+          username: "reader",
+          displayName: "Reader",
+          organizationId: org,
+          role,
+        },
+      }),
+    );
+    await page.goto("/");
+    await expect(page.getByText("No findings need review.")).toBeVisible();
+  }
+  expect(posts).toBe(0);
 });

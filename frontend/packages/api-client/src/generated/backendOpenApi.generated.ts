@@ -788,6 +788,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/findings/reconcile-packing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["reconcilePacking"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/categories": {
         parameters: {
             query?: never;
@@ -2813,6 +2829,13 @@ export interface components {
             auditTaskId?: string;
             /** Format: uuid */
             containerAssetId?: string;
+        };
+        PackingReconciliationResponse: {
+            /** Format: int32 */
+            inspectedCount?: number;
+            /** Format: int32 */
+            dismissedCount?: number;
+            nextCursor?: string;
         };
         CreateCategoryRequest: {
             name: string;
@@ -4955,6 +4978,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["FindingReviewResponse"];
+                };
+            };
+        };
+    };
+    reconcilePacking: {
+        parameters: {
+            query?: {
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PackingReconciliationResponse"];
                 };
             };
         };

@@ -36,6 +36,7 @@ public class AssetPlacementService {
     private final CheckoutManifestAssetRepository checkoutManifestAssets;
     private final Clock clock;
     private final AssetSealService seals;
+    private final PackingFindingReconciliationService reconciliation;
 
     public AssetPlacementService(
             AssetRepository assets,
@@ -46,6 +47,7 @@ public class AssetPlacementService {
             BookingImpactService bookingImpact,
             CheckoutManifestAssetRepository checkoutManifestAssets,
             AssetSealService seals,
+            PackingFindingReconciliationService reconciliation,
             Clock clock) {
         this.assets = assets;
         this.models = models;
@@ -56,6 +58,7 @@ public class AssetPlacementService {
         this.checkoutManifestAssets = checkoutManifestAssets;
         this.clock = clock;
         this.seals = seals;
+        this.reconciliation = reconciliation;
     }
 
     @Transactional(readOnly = true)
@@ -142,6 +145,8 @@ public class AssetPlacementService {
         }
         // Flush makes the version included in this response usable for a consecutive move.
         assets.flush();
+        reconciliation.schedule(principal, previousParentContainerAssetId);
+        reconciliation.schedule(principal, parentContainerAssetId);
         bookingImpact.changed(principal);
         return view(asset, principal.organizationId());
     }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -9,6 +9,7 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { Link as RouterLink } from "react-router-dom";
 import { PageHeading } from "@tarpeisto/shared-ui";
+import { reconcilePackingUntilComplete, reviewError } from "../review/reviewApi";
 import { useSession } from "../identity/useSession";
 import {
   getDashboard,
@@ -50,6 +51,12 @@ export function DashboardPage() {
     principal?.organizationId,
     principal?.role,
   ]);
+  const identity = useRef(identityKey);
+  useLayoutEffect(() => {
+    identity.current = identityKey;
+  }, [identityKey]);
+  const canReconcile =
+    !principal?.temporaryAccess && (principal?.role === "OWNER" || principal?.role === "DEPUTY");
   const [loadedIdentityKey, setLoadedIdentityKey] = useState<string>();
   const [pages, setPages] = useState<QueuePage[]>();
   const [error, setError] = useState<string>();
@@ -64,8 +71,20 @@ export function DashboardPage() {
     setLoading(true);
     setPending(undefined);
     setError(undefined);
+    const isCurrent = () => generation === epoch.current && identity.current === identityKey;
+    if (canReconcile) {
+      const reconciliation = await reconcilePackingUntilComplete(isCurrent);
+      if (!isCurrent() || reconciliation.kind === "cancelled") return;
+      if (reconciliation.kind === "error") {
+        setError(
+          `Packing review refresh failed: ${reviewError(reconciliation.error)}. Retry with Refresh workboard.`,
+        );
+        setLoading(false);
+        return;
+      }
+    }
     const result = await getDashboard();
-    if (generation !== epoch.current) return;
+    if (!isCurrent()) return;
     setLoading(false);
     if (result.kind === "error") {
       setError(result.error.problem?.detail ?? result.error.message);
@@ -73,7 +92,7 @@ export function DashboardPage() {
     }
     setPages(result.data.queues);
     setLoadedIdentityKey(identityKey);
-  }, [identityKey]);
+  }, [identityKey, canReconcile]);
   useEffect(() => {
     const timer = window.setTimeout(() => void reload());
     return () => {
@@ -87,7 +106,7 @@ export function DashboardPage() {
     setPending(page.queue);
     setError(undefined);
     const result = await getDashboardPage(page.queue, page.nextCursor);
-    if (generation !== epoch.current) return;
+    if (generation !== epoch.current || identity.current !== identityKey) return;
     setPending(undefined);
     if (result.kind === "error") {
       setError(result.error.problem?.detail ?? result.error.message);

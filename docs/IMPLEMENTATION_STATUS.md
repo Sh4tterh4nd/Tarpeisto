@@ -194,6 +194,35 @@ Verified at the first Phase 14 security checkpoint:
   and migration rehearsals; physical browser/camera/printer checks and the complete event rehearsal.
   Publication and deployment remain separate operator actions.
 
+Verified at the obsolete packing finding checkpoint:
+
+- Backend: **554 tests in 76 suites, 0 failures, errors or skips**, with `spotlessCheck check`
+  passing against PostgreSQL. Fifteen reconciliation integration tests cover final-state callbacks,
+  rollback, concurrent retries, cursor boundaries, role/CSRF enforcement and conservative exclusions.
+- Frontend: **221 unit tests, 0 failures** (203 web in 43 files, 11 api-client, 7 shared-ui), with
+  formatting, lint and workspace typechecks passing. The full suite passes with two test workers;
+  the default concurrent run hit existing scanner and asset-page timeouts. All **42 Playwright
+  tests pass** on desktop and mobile, including sweep-before-count ordering and read-only roles.
+- Current packing mutations append attributed `DISMISS` resolutions for proven obsolete generated
+  serialized shortages and direct extra/misplaced scans when the whole current packing is complete.
+  Reconciliation evaluates the final outer transaction state, including template and exact-asset
+  assignment operations; failures roll back both the mutation and its resolutions.
+- Owner/Deputy workboard and review refreshes reconcile existing findings through bounded,
+  tenant-bound cursor pages before reading the queues. Other roles never initiate reconciliation.
+  Refresh failures offer retry, and identity changes cancel old replies and further sweep pages.
+- Completed audit observations and reports retain their original facts and appended resolutions.
+  Manual, damage, label, consumable and event-manifest discrepancies remain reviewable; inactive
+  contents and active audit attempts prevent automatic dismissal. Reconciliation does not restore
+  verification or release event custody.
+- Live PostgreSQL acceptance scanned twenty cables against ten required, then raised the packing
+  quantity to twenty: all ten extra findings disappeared from review and workboard counts while
+  remaining in history and CSV. A repeated sweep added nothing, the invalidated audit task remained
+  ready for fresh verification, and ten present against twenty required retained its shortage.
+- The live OpenAPI snapshot and generated client include the new reconciliation POST; regeneration
+  produces no drift. The authorization matrix covers **169 concrete routes from 167 declared
+  patterns**. `jibBuildTar` passes with the matching production frontend embedded. No database
+  migration or configuration change is required.
+
 ## 2. How to verify this yourself
 
 Docker Desktop does not work on the primary development workstation (no WSL2 backend), so backend

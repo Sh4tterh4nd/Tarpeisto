@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -11,6 +11,7 @@ import Checkbox from "@mui/material/Checkbox";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import { useSearchParams } from "react-router-dom";
 import { PageHeading } from "@tarpeisto/shared-ui";
+import { useSession } from "../identity/useSession";
 import { AuditEvidencePanel } from "../audits/AuditEvidencePanel";
 import {
   type FindingReview,
@@ -19,6 +20,7 @@ import {
   listFindings,
   resolveFinding,
   reviewError,
+  reconcilePackingUntilComplete,
 } from "./reviewApi";
 
 const ACTIONS: Array<{ action: ResolutionAction; label: string; permanent?: boolean }> = [
@@ -35,6 +37,26 @@ const ACTIONS: Array<{ action: ResolutionAction; label: string; permanent?: bool
 
 export function ReviewPage() {
   const [searchParams] = useSearchParams();
+  const { principal } = useSession();
+  const identityKey = JSON.stringify([
+    principal?.userId,
+    principal?.organizationId,
+    principal?.role,
+  ]);
+  const identity = useRef(identityKey);
+  useLayoutEffect(() => {
+    identity.current = identityKey;
+  }, [identityKey]);
+  const epoch = useRef(0);
+  const invalidateRequests = useCallback(() => {
+    ++epoch.current;
+  }, []);
+  const previousIdentity = useRef(identityKey);
+  const canReconcile =
+    !principal?.temporaryAccess && (principal?.role === "OWNER" || principal?.role === "DEPUTY");
+  const [loadedIdentityKey, setLoadedIdentityKey] = useState<string>();
+  const [reload, setReload] = useState(0);
+  const [loading, setLoading] = useState(true);
   const [findings, setFindings] = useState<FindingReview[]>([]);
   const [selectedId, setSelectedId] = useState<string | undefined>(
     () => searchParams.get("finding") ?? undefined,
@@ -48,32 +70,75 @@ export function ReviewPage() {
   const [confirmPermanent, setConfirmPermanent] = useState(false);
   const [error, setError] = useState<string>();
   const selected = useMemo(
-    () => findings.find((finding) => finding.id === selectedId) ?? findings[0],
-    [findings, selectedId],
+    () =>
+      loadedIdentityKey === identityKey
+        ? (findings.find((finding) => finding.id === selectedId) ?? findings[0])
+        : undefined,
+    [findings, selectedId, loadedIdentityKey, identityKey],
   );
   useEffect(() => {
     let active = true;
-    void listFindings(true).then((result) => {
-      if (!active) return;
-      if (result.kind === "ok") {
-        setFindings(result.data);
-        setSelectedId((current) => current ?? result.data[0]?.id);
-      } else setError(reviewError(result.error));
+    const generation = ++epoch.current;
+    const isCurrent = () =>
+      active && generation === epoch.current && identity.current === identityKey;
+    const identityChanged = previousIdentity.current !== identityKey;
+    previousIdentity.current = identityKey;
+    const timer = window.setTimeout(() => {
+      setLoading(true);
+      setError(undefined);
+      setNote("");
+      setTargetContainerAssetId("");
+      setRepairReference("");
+      setConfirmPermanent(false);
+      if (identityChanged) setSelectedId(undefined);
+      setFindings([]);
+      setAction(undefined);
+      setOperationId(undefined);
+      setOperationPayload(undefined);
+      void (async () => {
+        if (canReconcile) {
+          const reconciliation = await reconcilePackingUntilComplete(isCurrent);
+          if (!isCurrent() || reconciliation.kind === "cancelled") return;
+          if (reconciliation.kind === "error") {
+            setError(`Packing review refresh failed: ${reviewError(reconciliation.error)}.`);
+            setLoading(false);
+            return;
+          }
+        }
+        const result = await listFindings(true);
+        if (!isCurrent()) return;
+        setLoading(false);
+        if (result.kind === "ok") {
+          setFindings(result.data);
+          setLoadedIdentityKey(identityKey);
+          setSelectedId((current) =>
+            result.data.some((item) => item.id === current) ? current : result.data[0]?.id,
+          );
+        } else setError(reviewError(result.error));
+      })();
     });
     return () => {
+      window.clearTimeout(timer);
       active = false;
+      invalidateRequests();
     };
-  }, []);
+  }, [identityKey, canReconcile, reload, invalidateRequests]);
   useEffect(() => {
-    if (!selectedId) return;
+    if (!selectedId || loading || loadedIdentityKey !== identityKey) return;
+    let active = true;
+    const generation = epoch.current;
     void getFinding(selectedId).then((result) => {
+      if (!active || generation !== epoch.current || identity.current !== identityKey) return;
       if (result.kind === "ok") {
         setFindings((current) =>
           current.map((item) => (item.id === result.data.id ? result.data : item)),
         );
       }
     });
-  }, [selectedId]);
+    return () => {
+      active = false;
+    };
+  }, [selectedId, loading, loadedIdentityKey, identityKey]);
   function selectAction(next: ResolutionAction) {
     setAction(next);
     setOperationId(undefined);
@@ -113,6 +178,7 @@ export function ReviewPage() {
       payload === operationPayload && operationId ? operationId : crypto.randomUUID();
     setOperationId(stableOperationId);
     setOperationPayload(payload);
+    const generation = epoch.current;
     const result = await resolveFinding(selected.id, {
       operationId: stableOperationId,
       action,
@@ -120,22 +186,42 @@ export function ReviewPage() {
       targetContainerAssetId: targetContainerAssetId.trim() || undefined,
       repairReference: repairReference.trim() || undefined,
     });
+    if (generation !== epoch.current || identity.current !== identityKey) return;
     if (result.kind === "error") {
       setError(reviewError(result.error));
       return;
     }
+    setError(undefined);
     setFindings((current) => current.filter((finding) => finding.id !== selected.id));
     setSelectedId(undefined);
     setNote("");
     setAction(undefined);
     setOperationId(undefined);
+    setOperationPayload(undefined);
+    setConfirmPermanent(false);
     setTargetContainerAssetId("");
     setRepairReference("");
   }
+  const currentFindings = loadedIdentityKey === identityKey ? findings : [];
   return (
     <Stack spacing={2}>
       <PageHeading
-        title={`${findings.length} findings need review`}
+        title={
+          loading
+            ? "Refreshing findings"
+            : error || loadedIdentityKey !== identityKey
+              ? "Review findings"
+              : `${currentFindings.length} findings need review`
+        }
+        actions={
+          <Button
+            disabled={loading}
+            onClick={() => setReload((value) => value + 1)}
+            sx={{ minHeight: 44 }}
+          >
+            Refresh review
+          </Button>
+        }
         description="Resolve completed-audit observations without changing the audit record."
       />
       {error ? <Alert severity="error">{error}</Alert> : null}
@@ -147,7 +233,7 @@ export function ReviewPage() {
         }}
       >
         <Paper component="nav" aria-label="Review queue" sx={{ p: 0 }}>
-          {findings.map((finding) => (
+          {currentFindings.map((finding) => (
             <Box
               component="button"
               key={finding.id}
@@ -155,6 +241,11 @@ export function ReviewPage() {
                 setSelectedId(finding.id);
                 setAction(undefined);
                 setOperationId(undefined);
+                setOperationPayload(undefined);
+                setNote("");
+                setTargetContainerAssetId("");
+                setRepairReference("");
+                setConfirmPermanent(false);
               }}
               sx={{
                 width: "100%",
@@ -174,7 +265,9 @@ export function ReviewPage() {
               </Typography>
             </Box>
           ))}
-          {!findings.length ? <Typography sx={{ p: 2 }}>No unresolved findings.</Typography> : null}
+          {!loading && !error && !currentFindings.length ? (
+            <Typography sx={{ p: 2 }}>No unresolved findings.</Typography>
+          ) : null}
         </Paper>
         <Paper sx={{ p: 2 }}>
           {selected ? (

@@ -42,3 +42,28 @@ export function resolveFinding(
 export function reviewError(error: AppError) {
   return error.problem?.detail ?? error.message;
 }
+
+export type PackingReconciliation = Required<
+  components["schemas"]["PackingReconciliationResponse"]
+>;
+
+export function reconcilePackingPage(cursor?: string) {
+  return read<PackingReconciliation>(() =>
+    apiClient.POST("/api/v1/findings/reconcile-packing", { params: { query: { cursor } } }),
+  );
+}
+
+/** Stop between bounded pages when the requesting identity/page is no longer current. */
+export async function reconcilePackingUntilComplete(
+  isCurrent: () => boolean,
+): Promise<ApiResult<void> | { kind: "cancelled" }> {
+  let cursor: string | undefined;
+  do {
+    if (!isCurrent()) return { kind: "cancelled" };
+    const result = await reconcilePackingPage(cursor);
+    if (!isCurrent()) return { kind: "cancelled" };
+    if (result.kind === "error") return result;
+    cursor = result.data.nextCursor || undefined;
+  } while (cursor);
+  return { kind: "ok", data: undefined };
+}
