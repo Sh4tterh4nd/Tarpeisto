@@ -1,6 +1,6 @@
 # Tarpeisto Implementation Status
 
-Status: Living record of what exists, as of 2026-10-01
+Status: Living record of what exists, as of 2026-10-02
 
 Purpose: This document records **what is actually built and verified**, so that a contributor (human
 or agent) can continue the work without rediscovering it.
@@ -257,6 +257,25 @@ Verified at the asset-detail redesign checkpoint:
 - The live OpenAPI document and generated client include packing contents and physical seal apply;
   regeneration from the snapshot produces no drift. The authorization matrix covers **171 concrete
   routes from 169 declared patterns**. No database migration or configuration change is required.
+
+Verified at the packing-sheet presentation checkpoint:
+
+- Each landscape A5 half now uses separate white, black-bordered organization and identity boxes.
+  Organization branding comes from the current tenant record; identity shows the current container
+  display name and actual model name, with canonical QR/public code on the right.
+- A black-bordered contents table reaches the bottom printable A5 margin with Quantity, Item and
+  Code columns. Exact items show quantity 1, asset name and code; interchangeable rows show grouped
+  model quantity/name and blank code. Consumables retain decimal amounts and stock units.
+- Direct nested-container identities remain clearly labeled and exact-required children are not
+  duplicated. Grandchildren are not expanded. Measured cell wrapping, body fonts from 12 down to
+  8 pt and repeated headers on duplicated continuation pages retain all required content.
+- Verification: backend `spotlessCheck check` passed **563 tests in 77 suites**, with no failures,
+  errors or skips; `jibBuildTar` passed with the matching production frontend. PDF checks cover
+  both QR decodes, column positions, duplicate geometry, exact quantities/codes, tenant identity,
+  direct-only contents and continuation fragments. Empty, mixed, long, overflow and tall-row
+  PDFs were rendered and visually inspected; the reviewed mixed-sheet raster is pinned.
+- The PDF route and generated API contract are unchanged. No migration, dependency or configuration
+  change is required; deploy the matching application image for the new packing-sheet layout.
 
 ## 2. How to verify this yourself
 

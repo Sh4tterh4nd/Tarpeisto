@@ -18,16 +18,22 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType0Font;
 
-/** Deterministic portrait-A4 packing sheets with two matching landscape-A5 panels per page. */
+/** Portrait A4 pages contain identical, bordered landscape A5 tables on both halves. */
 public final class PackingSheetDocument {
     private static final String REGULAR_FONT = "/document-fonts/RobotoMono-Regular.ttf";
     private static final String BOLD_FONT = "/document-fonts/RobotoMono-Bold.ttf";
-    private static final float HALF_HEIGHT = PDRectangle.A4.getHeight() / 2.0f;
-    private static final float MARGIN = 20.0f;
-    private static final float QR_SIZE = 56.0f;
-    private static final float CONTENT_BOTTOM = 18.0f;
-    private static final float COLUMN_GUTTER = 12.0f;
-    private static final int MAX_COLUMNS = 3;
+    private static final float HALF_HEIGHT = PDRectangle.A4.getHeight() / 2;
+    private static final float MARGIN = 20;
+    private static final float WIDTH = PDRectangle.A4.getWidth() - 2 * MARGIN;
+    private static final float QUANTITY_WIDTH = 110;
+    private static final float CODE_WIDTH = 86;
+    private static final float ITEM_WIDTH = WIDTH - QUANTITY_WIDTH - CODE_WIDTH;
+    private static final float QR_SIZE = 60;
+    private static final float QR_BLOCK_WIDTH = 90;
+    private static final float GAP = 6;
+    private static final float PADDING = 8;
+    private static final float ROW_PADDING = 4;
+    private static final float TABLE_HEADER_HEIGHT = 25;
 
     private PackingSheetDocument() {}
 
@@ -37,14 +43,14 @@ public final class PackingSheetDocument {
             PDType0Font regular = loadFont(document, REGULAR_FONT);
             PDType0Font bold = loadFont(document, BOLD_FONT);
             Header header = header(snapshot, regular, bold);
-            Layout layout = chooseLayout(snapshot, regular, bold, header.contentTop());
-            List<List<Line>> pages = paginate(snapshot, layout, regular, bold);
-            for (List<Line> lines : pages) {
+            Layout layout = chooseLayout(snapshot, regular, bold, header);
+            List<List<Row>> pages = paginate(rows(snapshot, layout, regular, bold), layout);
+            for (List<Row> rows : pages) {
                 PDPage page = new PDPage(PDRectangle.A4);
                 document.addPage(page);
                 try (PDPageContentStream content = new PDPageContentStream(document, page)) {
-                    drawHalf(content, snapshot, header, lines, layout, regular, bold, HALF_HEIGHT);
-                    drawHalf(content, snapshot, header, lines, layout, regular, bold, 0.0f);
+                    drawHalf(content, snapshot, header, rows, layout, regular, bold, HALF_HEIGHT);
+                    drawHalf(content, snapshot, header, rows, layout, regular, bold, 0);
                 }
             }
             document.save(output);
@@ -55,226 +61,278 @@ public final class PackingSheetDocument {
     }
 
     private static Layout chooseLayout(
-            PackingSheetSnapshot snapshot, PDType0Font regular, PDType0Font bold, float contentTop) throws IOException {
-        // Fit order is intentionally stable: use every column count at 12pt before decreasing
-        // the font, then paginate only after the minimum readable size has been considered.
-        for (int fontSize = 12; fontSize >= 8; fontSize--) {
-            for (int columns = 1; columns <= MAX_COLUMNS; columns++) {
-                Layout layout = new Layout(fontSize, columns, contentTop);
-                if (fitsOnOneHalf(lines(snapshot, layout, regular, bold), layout)) {
-                    return layout;
-                }
-            }
+            PackingSheetSnapshot snapshot, PDType0Font regular, PDType0Font bold, Header header) throws IOException {
+        for (int size = 12; size >= 8; size--) {
+            Layout layout = new Layout(size, header.contentsTop());
+            float height = 0;
+            for (Row row : rows(snapshot, layout, regular, bold)) height += row.height(layout);
+            if (height <= layout.capacity()) return layout;
         }
-        return new Layout(8, MAX_COLUMNS, contentTop);
+        return new Layout(8, header.contentsTop());
     }
 
-    private static List<List<Line>> paginate(
-            PackingSheetSnapshot snapshot, Layout layout, PDType0Font regular, PDType0Font bold) throws IOException {
-        List<Line> lines = lines(snapshot, layout, regular, bold);
-        List<List<Line>> pages = new ArrayList<>();
-        List<Line> current = new ArrayList<>();
-        float used = 0.0f;
-        int column = 0;
-        for (Line line : lines) {
-            if (!current.isEmpty() && used + line.height() > layout.contentHeight()) {
-                column++;
-                used = 0.0f;
-                if (column == layout.columns()) {
-                    pages.add(List.copyOf(current));
-                    current.clear();
-                    column = 0;
-                }
-            }
-            current.add(line);
-            used += line.height();
-        }
-        if (current.isEmpty()) {
-            current.add(new Line("No direct packing requirements.", false, false, layout.lineHeight()));
-        }
-        pages.add(List.copyOf(current));
-        return pages;
-    }
-
-    private static boolean fitsOnOneHalf(List<Line> lines, Layout layout) {
-        int column = 1;
-        float used = 0;
-        for (Line line : lines) {
-            if (line.height() > layout.contentHeight()) return false;
-            if (used + line.height() > layout.contentHeight()) {
-                column++;
-                used = 0;
-            }
-            used += line.height();
-        }
-        return column <= layout.columns();
-    }
-
-    private static List<Line> lines(PackingSheetSnapshot snapshot, Layout layout, PDType0Font regular, PDType0Font bold)
+    private static List<Row> rows(PackingSheetSnapshot snapshot, Layout layout, PDType0Font regular, PDType0Font bold)
             throws IOException {
-        List<Line> result = new ArrayList<>();
-        List<PackingSheetSnapshot.Requirement> ordinary = snapshot.requirements().stream()
-                .filter(requirement -> requirement.kind() != PackingSheetSnapshot.Kind.EXACT)
-                .toList();
-        List<PackingSheetSnapshot.Requirement> exact = snapshot.requirements().stream()
-                .filter(requirement -> requirement.kind() == PackingSheetSnapshot.Kind.EXACT)
-                .toList();
-        if (!ordinary.isEmpty()) {
-            result.add(new Line("Packing requirements", true, true, layout.lineHeight()));
-            for (PackingSheetSnapshot.Requirement requirement : ordinary) {
-                result.addAll(wrap(
-                        requirementText(requirement),
-                        regular,
-                        layout.fontSize(),
-                        layout.columnWidth(),
-                        layout.lineHeight()));
-            }
-        }
-        if (!exact.isEmpty()) {
-            result.add(new Line("Specific:", true, true, layout.lineHeight()));
-            for (PackingSheetSnapshot.Requirement requirement : exact) {
-                result.addAll(wrap(
-                        requirement.exactAssetCode() + "  " + requirement.exactAssetName(),
-                        regular,
-                        layout.fontSize(),
-                        layout.columnWidth(),
-                        layout.lineHeight()));
-            }
+        List<Row> rows = new ArrayList<>();
+        for (var requirement : snapshot.requirements()) {
+            boolean exact = requirement.kind() == PackingSheetSnapshot.Kind.EXACT;
+            String quantity = exact ? "1" : number(requirement.quantity());
+            if (requirement.kind() == PackingSheetSnapshot.Kind.CONSUMABLE) quantity += " " + requirement.stockUnit();
+            rows.add(row(
+                    quantity,
+                    exact ? requirement.exactAssetName() : requirement.modelName(),
+                    exact ? requirement.exactAssetCode() : "",
+                    layout,
+                    regular));
         }
         if (!snapshot.childContainers().isEmpty()) {
-            result.add(new Line("Nested containers:", true, true, layout.lineHeight()));
-            for (PackingSheetSnapshot.ChildContainer child : snapshot.childContainers()) {
-                result.addAll(wrap(
-                        child.publicCode() + "  " + child.name(),
-                        regular,
-                        layout.fontSize(),
-                        layout.columnWidth(),
-                        layout.lineHeight()));
+            rows.add(new Row(
+                    List.of(),
+                    wrap("Nested containers (current)", bold, layout.fontSize(), WIDTH - 2 * PADDING),
+                    List.of(),
+                    true));
+            for (var child : snapshot.childContainers())
+                rows.add(row("1", child.name(), child.publicCode(), layout, regular));
+        }
+        if (rows.isEmpty()) rows.add(row("", "No direct packing requirements.", "", layout, regular));
+        return rows;
+    }
+
+    private static Row row(String quantity, String item, String code, Layout layout, PDType0Font font)
+            throws IOException {
+        return new Row(
+                wrap(quantity, font, layout.fontSize(), QUANTITY_WIDTH - 2 * PADDING),
+                wrap(item, font, layout.fontSize(), ITEM_WIDTH - 2 * PADDING),
+                wrap(code, font, layout.fontSize(), CODE_WIDTH - 2 * PADDING),
+                false);
+    }
+
+    private static List<List<Row>> paginate(List<Row> rows, Layout layout) {
+        List<List<Row>> pages = new ArrayList<>();
+        List<Row> current = new ArrayList<>();
+        float used = 0;
+        for (int index = 0; index < rows.size(); index++) {
+            Row row = rows.get(index);
+            float height = row.height(layout);
+            float keepTogether = height;
+            if (row.section() && index + 1 < rows.size())
+                keepTogether += Math.min(rows.get(index + 1).height(layout), layout.capacity() - height);
+            boolean followsSection = !current.isEmpty() && current.getLast().section();
+            if (!current.isEmpty() && used + keepTogether > layout.capacity() && !followsSection) {
+                pages.add(List.copyOf(current));
+                current.clear();
+                used = 0;
+            }
+            if (used + height <= layout.capacity()) {
+                current.add(row);
+                used += height;
+                continue;
+            }
+            // Exceptionally tall rows also reserve their preceding section heading. Cell lines use the
+            // same vertical offset, so short Quantity/Code values occur only in its first fragment.
+            int offset = 0;
+            while (offset < row.lineCount()) {
+                int linesAvailable =
+                        (int) Math.floor((layout.capacity() - used - 2 * ROW_PADDING) / layout.lineHeight());
+                if (linesAvailable < 1) {
+                    pages.add(List.copyOf(current));
+                    current.clear();
+                    used = 0;
+                    continue;
+                }
+                int end = Math.min(row.lineCount(), offset + linesAvailable);
+                Row part = row.slice(offset, end);
+                current.add(part);
+                used += part.height(layout);
+                offset = end;
+                if (offset < row.lineCount()) {
+                    pages.add(List.copyOf(current));
+                    current.clear();
+                    used = 0;
+                }
             }
         }
-        if (result.isEmpty()) {
-            result.add(new Line("No direct packing requirements.", false, false, layout.lineHeight()));
-        }
-        return result;
+        if (!current.isEmpty()) pages.add(List.copyOf(current));
+        return List.copyOf(pages);
     }
 
-    private static String requirementText(PackingSheetSnapshot.Requirement requirement) {
-        String quantity = number(requirement.quantity());
-        return requirement.kind() == PackingSheetSnapshot.Kind.CONSUMABLE
-                ? quantity + " " + requirement.stockUnit() + " " + requirement.modelName()
-                : quantity + " x " + requirement.modelName();
-    }
-
-    private static List<Line> wrap(String source, PDType0Font font, float size, float width, float lineHeight)
+    private static Header header(PackingSheetSnapshot snapshot, PDType0Font regular, PDType0Font bold)
             throws IOException {
-        String text = source == null || source.isBlank()
-                ? "-"
-                : source.replaceAll("\\s+", " ").trim();
-        List<Line> lines = new ArrayList<>();
-        StringBuilder current = new StringBuilder();
-        for (String word : text.split(" ")) {
-            if (current.isEmpty()) {
-                appendBrokenWord(lines, current, word, font, size, width, lineHeight);
-            } else if (measure(font, size, current + " " + word) <= width) {
-                current.append(' ').append(word);
-            } else {
-                lines.add(new Line(current.toString(), false, false, lineHeight));
-                current.setLength(0);
-                appendBrokenWord(lines, current, word, font, size, width, lineHeight);
-            }
+        List<String> organization = wrap(snapshot.organizationName(), bold, 12, WIDTH - 2 * PADDING);
+        float organizationHeight = Math.max(26, organization.size() * 14 + 2 * PADDING);
+        for (int titleSize = 18; titleSize >= 10; titleSize--) {
+            List<String> title = wrap(snapshot.containerName(), bold, titleSize, WIDTH - QR_BLOCK_WIDTH - 2 * PADDING);
+            List<String> model =
+                    wrap("Model Type: " + snapshot.containerModel(), regular, 10, WIDTH - QR_BLOCK_WIDTH - 2 * PADDING);
+            float identityHeight = Math.max(92, title.size() * (titleSize + 2) + GAP + model.size() * 12 + 2 * PADDING);
+            float contentsTop = HALF_HEIGHT - MARGIN - organizationHeight - GAP - identityHeight - GAP;
+            // Reserve at least a section heading and one minimum-size body line.
+            if (contentsTop - TABLE_HEADER_HEIGHT - MARGIN >= 2 * (8 + 3 + 2 * ROW_PADDING))
+                return new Header(
+                        organization, organizationHeight, title, titleSize, model, identityHeight, contentsTop);
         }
-        if (!current.isEmpty()) lines.add(new Line(current.toString(), false, false, lineHeight));
-        return lines;
-    }
-
-    private static void appendBrokenWord(
-            List<Line> lines,
-            StringBuilder current,
-            String word,
-            PDType0Font font,
-            float size,
-            float width,
-            float lineHeight)
-            throws IOException {
-        String remaining = word;
-        while (measure(font, size, remaining) > width) {
-            int split = largestFittingPrefix(remaining, font, size, width);
-            lines.add(new Line(remaining.substring(0, split), false, false, lineHeight));
-            remaining = remaining.substring(split);
-        }
-        current.append(remaining);
-    }
-
-    private static int largestFittingPrefix(String value, PDType0Font font, float size, float width)
-            throws IOException {
-        int low = 1;
-        int high = value.length();
-        while (low < high) {
-            int candidate = (low + high + 1) / 2;
-            if (measure(font, size, value.substring(0, candidate)) <= width) low = candidate;
-            else high = candidate - 1;
-        }
-        return Math.max(1, low);
+        throw new IllegalArgumentException("Container identity is too long for an A5 packing-sheet header.");
     }
 
     private static void drawHalf(
             PDPageContentStream content,
             PackingSheetSnapshot snapshot,
             Header header,
-            List<Line> lines,
+            List<Row> rows,
             Layout layout,
             PDType0Font regular,
             PDType0Font bold,
-            float baseY)
+            float base)
             throws IOException {
-        float width = PDRectangle.A4.getWidth();
-        float barY = baseY + HALF_HEIGHT - header.barHeight();
-        float[] color = color(snapshot.categoryColor());
-        content.setNonStrokingColor(color[0], color[1], color[2]);
-        content.addRect(0, barY, width, header.barHeight());
-        content.fill();
-        float[] contrast = readableText(color);
-        content.setNonStrokingColor(contrast[0], contrast[1], contrast[2]);
-        float titleY = baseY + HALF_HEIGHT - 24.0f;
-        for (Line line : header.title()) {
-            write(content, bold, 18.0f, MARGIN, titleY, line.text());
-            titleY -= 20.0f;
-        }
-        titleY -= 3.0f;
-        for (Line line : header.category()) {
-            write(content, bold, 8.0f, MARGIN, titleY, line.text());
-            titleY -= 10.0f;
-        }
-        titleY -= 2.0f;
-        for (Line line : header.model()) {
-            write(content, regular, 8.0f, MARGIN, titleY, line.text());
-            titleY -= 10.0f;
-        }
-        float qrX = width - MARGIN - QR_SIZE;
-        float qrY = baseY + HALF_HEIGHT - 70.0f;
-        content.setNonStrokingColor(1f, 1f, 1f);
-        content.addRect(qrX - 3.0f, qrY - 14.0f, QR_SIZE + 6.0f, QR_SIZE + 17.0f);
-        content.fill();
+        content.setStrokingColor(0f, 0f, 0f);
         content.setNonStrokingColor(0f, 0f, 0f);
+        content.setLineWidth(0.8f);
+        float top = base + HALF_HEIGHT - MARGIN;
+        box(content, MARGIN, top - header.organizationHeight(), WIDTH, header.organizationHeight());
+        drawLines(content, header.organization(), bold, 12, MARGIN + PADDING, top - PADDING - 12, 14);
+        float identityTop = top - header.organizationHeight() - GAP;
+        box(content, MARGIN, identityTop - header.identityHeight(), WIDTH, header.identityHeight());
+        drawLines(
+                content,
+                header.title(),
+                bold,
+                header.titleSize(),
+                MARGIN + PADDING,
+                identityTop - PADDING - header.titleSize(),
+                header.titleSize() + 2);
+        drawLines(
+                content,
+                header.model(),
+                regular,
+                10,
+                MARGIN + PADDING,
+                identityTop - PADDING - header.title().size() * (header.titleSize() + 2) - GAP - 10,
+                12);
+        float qrBlockX = MARGIN + WIDTH - QR_BLOCK_WIDTH;
+        line(content, qrBlockX, identityTop, qrBlockX, identityTop - header.identityHeight());
+        float qrX = qrBlockX + (QR_BLOCK_WIDTH - QR_SIZE) / 2;
+        float qrY = identityTop - PADDING - QR_SIZE;
         drawQr(content, snapshot.containerCode(), qrX, qrY, QR_SIZE);
-        write(content, bold, 8.0f, qrX, qrY - 10.0f, snapshot.containerCode());
+        write(
+                content,
+                bold,
+                11,
+                qrBlockX + (QR_BLOCK_WIDTH - measure(bold, 11, snapshot.containerCode())) / 2,
+                qrY - 16,
+                snapshot.containerCode());
 
-        float columnWidth = layout.columnWidth();
-        float y = baseY + layout.contentTop();
-        int column = 0;
-        for (Line line : lines) {
-            if (y - line.height() < baseY + CONTENT_BOTTOM) {
-                column++;
-                y = baseY + layout.contentTop();
+        float tableTop = base + layout.contentsTop();
+        box(content, MARGIN, base + MARGIN, WIDTH, tableTop - base - MARGIN);
+        float itemX = MARGIN + QUANTITY_WIDTH, codeX = itemX + ITEM_WIDTH;
+        line(content, itemX, tableTop, itemX, base + MARGIN);
+        line(content, codeX, tableTop, codeX, base + MARGIN);
+        write(content, bold, 11, MARGIN + PADDING, tableTop - 17, "Quantity");
+        write(content, bold, 11, itemX + PADDING, tableTop - 17, "Item");
+        write(content, bold, 11, codeX + PADDING, tableTop - 17, "Code");
+        float y = tableTop - TABLE_HEADER_HEIGHT;
+        line(content, MARGIN, y, MARGIN + WIDTH, y);
+        for (Row row : rows) {
+            if (row.section()) {
+                // A section label spans the table and remains clearly separate from quantities.
+                content.setNonStrokingColor(1f, 1f, 1f);
+                content.addRect(MARGIN + 0.4f, y - row.height(layout) + 0.4f, WIDTH - 0.8f, row.height(layout) - 0.8f);
+                content.fill();
+                content.setNonStrokingColor(0f, 0f, 0f);
+                drawLines(
+                        content,
+                        row.item(),
+                        bold,
+                        layout.fontSize(),
+                        MARGIN + PADDING,
+                        y - ROW_PADDING - layout.fontSize(),
+                        layout.lineHeight());
+            } else {
+                drawLines(
+                        content,
+                        row.quantity(),
+                        regular,
+                        layout.fontSize(),
+                        MARGIN + PADDING,
+                        y - ROW_PADDING - layout.fontSize(),
+                        layout.lineHeight());
+                drawLines(
+                        content,
+                        row.item(),
+                        regular,
+                        layout.fontSize(),
+                        itemX + PADDING,
+                        y - ROW_PADDING - layout.fontSize(),
+                        layout.lineHeight());
+                drawLines(
+                        content,
+                        row.code(),
+                        regular,
+                        layout.fontSize(),
+                        codeX + PADDING,
+                        y - ROW_PADDING - layout.fontSize(),
+                        layout.lineHeight());
             }
-            // Pagination guarantees this, even if a future layout changes capacity.
-            if (column >= layout.columns()) {
-                throw new IllegalStateException("Packing sheet page layout overflowed.");
-            }
-            float x = MARGIN + column * (columnWidth + COLUMN_GUTTER);
-            write(content, line.bold() ? bold : regular, layout.fontSize(), x, y, line.text());
-            y -= line.height();
+            y -= row.height(layout);
+            line(content, MARGIN, y, MARGIN + WIDTH, y);
         }
+    }
+
+    private static void box(PDPageContentStream content, float x, float y, float width, float height)
+            throws IOException {
+        content.addRect(x, y, width, height);
+        content.stroke();
+    }
+
+    private static void line(PDPageContentStream content, float x, float y, float endX, float endY) throws IOException {
+        content.moveTo(x, y);
+        content.lineTo(endX, endY);
+        content.stroke();
+    }
+
+    private static void drawLines(
+            PDPageContentStream content,
+            List<String> lines,
+            PDType0Font font,
+            float size,
+            float x,
+            float y,
+            float leading)
+            throws IOException {
+        for (String text : lines) {
+            write(content, font, size, x, y, text);
+            y -= leading;
+        }
+    }
+
+    private static List<String> wrap(String source, PDType0Font font, float size, float width) throws IOException {
+        if (source == null || source.isBlank()) return List.of();
+        String text = source.replaceAll("\\s+", " ").trim();
+        List<String> result = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        for (String word : text.split(" ")) {
+            if (!current.isEmpty() && measure(font, size, current + " " + word) <= width) {
+                current.append(' ').append(word);
+                continue;
+            }
+            if (!current.isEmpty()) {
+                result.add(current.toString());
+                current.setLength(0);
+            }
+            String remaining = word;
+            while (measure(font, size, remaining) > width) {
+                int low = 1, high = remaining.length();
+                while (low < high) {
+                    int candidate = (low + high + 1) / 2;
+                    if (measure(font, size, remaining.substring(0, candidate)) <= width) low = candidate;
+                    else high = candidate - 1;
+                }
+                result.add(remaining.substring(0, low));
+                remaining = remaining.substring(low);
+            }
+            current.append(remaining);
+        }
+        if (!current.isEmpty()) result.add(current.toString());
+        return List.copyOf(result);
     }
 
     private static void drawQr(PDPageContentStream content, String value, float x, float y, float size)
@@ -312,29 +370,6 @@ public final class PackingSheetDocument {
         return font.getStringWidth(text) / 1000.0f * size;
     }
 
-    private static Header header(PackingSheetSnapshot snapshot, PDType0Font regular, PDType0Font bold)
-            throws IOException {
-        float width = PDRectangle.A4.getWidth() - MARGIN * 2 - QR_SIZE - 10.0f;
-        List<Line> title = wrap(snapshot.containerName(), bold, 18.0f, width, 20.0f);
-        List<Line> category = wrap(snapshot.categoryName(), bold, 8.0f, width, 10.0f);
-        // Descriptions are free-form text: retain a measured three-line preview in the identity
-        // bar so even a multi-paragraph description leaves room for the direct requirements.
-        List<Line> model = wrap(snapshot.containerModel(), regular, 8.0f, width, 10.0f);
-        if (model.size() > 3) {
-            model = new ArrayList<>(model.subList(0, 3));
-            String last = model.getLast().text();
-            int prefix = largestFittingPrefix(last + "...", regular, 8.0f, width - measure(regular, 8.0f, "..."));
-            model.set(2, new Line(last.substring(0, Math.min(prefix, last.length())) + "...", false, false, 10.0f));
-        }
-        float barHeight =
-                Math.max(86.0f, 24.0f + title.size() * 20.0f + category.size() * 10.0f + model.size() * 10.0f + 12.0f);
-        float contentTop = HALF_HEIGHT - barHeight - 12.0f;
-        if (contentTop - CONTENT_BOTTOM < 11.0f) {
-            throw new IllegalArgumentException("Container name and model are too long for an A5 packing-sheet header.");
-        }
-        return new Header(title, category, model, barHeight, contentTop);
-    }
-
     private static PDType0Font loadFont(PDDocument document, String resource) throws IOException {
         try (InputStream stream = PackingSheetDocument.class.getResourceAsStream(resource)) {
             if (stream == null) throw new IllegalStateException("Bundled packing-sheet font is missing: " + resource);
@@ -342,46 +377,44 @@ public final class PackingSheetDocument {
         }
     }
 
-    private static float[] color(String hex) {
-        if (hex == null || !hex.matches("#[0-9A-Fa-f]{6}")) return new float[] {0.2f, 0.2f, 0.2f};
-        return new float[] {
-            Integer.parseInt(hex.substring(1, 3), 16) / 255.0f,
-            Integer.parseInt(hex.substring(3, 5), 16) / 255.0f,
-            Integer.parseInt(hex.substring(5, 7), 16) / 255.0f
-        };
-    }
-
-    private static float[] readableText(float[] rgb) {
-        double luminance = 0.2126 * linear(rgb[0]) + 0.7152 * linear(rgb[1]) + 0.0722 * linear(rgb[2]);
-        // Choose whichever of black/white has the greater WCAG contrast ratio.
-        return (luminance + 0.05) / 0.05 >= 1.05 / (luminance + 0.05)
-                ? new float[] {0f, 0f, 0f}
-                : new float[] {1f, 1f, 1f};
-    }
-
-    private static double linear(float channel) {
-        return channel <= 0.04045f ? channel / 12.92 : Math.pow((channel + 0.055) / 1.055, 2.4);
-    }
-
     private static String number(BigDecimal value) {
         return value.stripTrailingZeros().toPlainString();
     }
 
-    private record Line(String text, boolean bold, boolean heading, float height) {}
+    private record Header(
+            List<String> organization,
+            float organizationHeight,
+            List<String> title,
+            int titleSize,
+            List<String> model,
+            float identityHeight,
+            float contentsTop) {}
 
-    private record Header(List<Line> title, List<Line> category, List<Line> model, float barHeight, float contentTop) {}
-
-    private record Layout(int fontSize, int columns, float contentTop) {
+    private record Layout(int fontSize, float contentsTop) {
         float lineHeight() {
-            return fontSize + 3.0f;
+            return fontSize + 3;
         }
 
-        float columnWidth() {
-            return (PDRectangle.A4.getWidth() - 2 * MARGIN - (columns - 1) * COLUMN_GUTTER) / columns;
+        float capacity() {
+            return contentsTop - TABLE_HEADER_HEIGHT - MARGIN;
+        }
+    }
+
+    private record Row(List<String> quantity, List<String> item, List<String> code, boolean section) {
+        int lineCount() {
+            return Math.max(1, Math.max(quantity.size(), Math.max(item.size(), code.size())));
         }
 
-        float contentHeight() {
-            return contentTop - CONTENT_BOTTOM;
+        float height(Layout layout) {
+            return lineCount() * layout.lineHeight() + 2 * ROW_PADDING;
+        }
+
+        Row slice(int from, int to) {
+            return new Row(slice(quantity, from, to), slice(item, from, to), slice(code, from, to), section);
+        }
+
+        private static List<String> slice(List<String> lines, int from, int to) {
+            return lines.subList(Math.min(from, lines.size()), Math.min(to, lines.size()));
         }
     }
 }

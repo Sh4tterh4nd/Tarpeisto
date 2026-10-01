@@ -53,12 +53,11 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
      */
     @Query("""
             SELECT a.id AS assetId, a.publicCode AS publicCode, a.individualName AS individualName,
-                   a.unitNumber AS unitNumber, model.name AS modelName, model.description AS modelDescription,
-                   model.canContainAssets AS canContainAssets,
-                   category.name AS categoryName, category.color AS categoryColor
+                   a.unitNumber AS unitNumber, model.name AS modelName,
+                   model.canContainAssets AS canContainAssets, organization.name AS organizationName
             FROM Asset a
             JOIN AssetModel model ON model.id = a.assetModelId AND model.organizationId = a.organizationId
-            LEFT JOIN Category category ON category.id = model.categoryId AND category.organizationId = a.organizationId
+            JOIN Organization organization ON organization.id = a.organizationId
             WHERE a.organizationId = :organizationId AND a.id = :assetId
             """)
     java.util.Optional<PackingSheetContainerProjection> findPackingSheetContainerProjection(
@@ -189,13 +188,9 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
 
         String getModelName();
 
-        String getModelDescription();
-
         boolean getCanContainAssets();
 
-        String getCategoryName();
-
-        String getCategoryColor();
+        String getOrganizationName();
     }
 
     interface PackingSheetRequirementProjection {

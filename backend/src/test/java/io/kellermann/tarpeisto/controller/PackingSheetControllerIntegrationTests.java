@@ -1,6 +1,7 @@
 package io.kellermann.tarpeisto.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.kellermann.tarpeisto.AbstractIntegrationTest;
 import io.kellermann.tarpeisto.model.Asset;
@@ -17,11 +18,15 @@ import io.kellermann.tarpeisto.repository.AssetModelRepository;
 import io.kellermann.tarpeisto.repository.AssetRepository;
 import io.kellermann.tarpeisto.repository.CategoryRepository;
 import io.kellermann.tarpeisto.repository.OrganizationMembershipRepository;
+import io.kellermann.tarpeisto.repository.OrganizationRepository;
 import io.kellermann.tarpeisto.repository.PackingRequirementRepository;
 import io.kellermann.tarpeisto.repository.UserRepository;
 import io.kellermann.tarpeisto.security.PermissionTestSupport;
 import io.kellermann.tarpeisto.security.PermissionTestSupport.AuthenticatedSession;
+import io.kellermann.tarpeisto.security.TarpeistoPrincipal;
+import io.kellermann.tarpeisto.security.TemporaryAccessContext;
 import io.kellermann.tarpeisto.service.OrganizationService;
+import io.kellermann.tarpeisto.service.PackingSheetService;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.util.EnumMap;
@@ -38,6 +43,7 @@ import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 /** PostgreSQL/MVC coverage for the Phase 11 tenant-safe packing-sheet endpoint. */
@@ -50,6 +56,9 @@ class PackingSheetControllerIntegrationTests extends AbstractIntegrationTest {
 
     @Autowired
     private OrganizationService organizations;
+
+    @Autowired
+    private OrganizationRepository organizationRepository;
 
     @Autowired
     private UserRepository users;
@@ -74,6 +83,9 @@ class PackingSheetControllerIntegrationTests extends AbstractIntegrationTest {
 
     @Autowired
     private Clock clock;
+
+    @Autowired
+    private PackingSheetService sheets;
 
     @ParameterizedTest
     @EnumSource(OrganizationRole.class)
@@ -110,6 +122,23 @@ class PackingSheetControllerIntegrationTests extends AbstractIntegrationTest {
     }
 
     @org.junit.jupiter.api.Test
+    void temporaryVolunteerCannotUseDirectDocumentServiceEvenWithOwnerRole() {
+        var principal = new TarpeistoPrincipal(
+                UUID.randomUUID(),
+                "temporary",
+                "Volunteer",
+                UUID.randomUUID(),
+                OrganizationRole.OWNER,
+                new TemporaryAccessContext(
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        null,
+                        clock.instant().plusSeconds(3600)));
+        assertThatThrownBy(() -> sheets.pdf(principal, UUID.randomUUID())).isInstanceOf(AccessDeniedException.class);
+    }
+
+    @org.junit.jupiter.api.Test
     void anonymousDownloadRequiresAuthentication() {
         var response =
                 restTemplate.getForEntity("/api/v1/assets/" + UUID.randomUUID() + "/packing-sheet.pdf", byte[].class);
@@ -123,6 +152,14 @@ class PackingSheetControllerIntegrationTests extends AbstractIntegrationTest {
         UUID childId = createAsset(fixture.organization(), true, "91TRQJ");
         UUID grandchildId = createAsset(fixture.organization(), true, "A72KQ5");
         UUID exactId = createAsset(fixture.organization(), false, "M39TX1");
+        fixture.organization().rename("Current equipment organization", clock.instant());
+        organizationRepository.saveAndFlush(fixture.organization());
+        var parent = assets.findById(parentId).orElseThrow();
+        parent.rename("Current container name", clock.instant());
+        assets.saveAndFlush(parent);
+        var parentModel = models.findById(parent.getAssetModelId()).orElseThrow();
+        parentModel.rename("Actual container model", "Description must never replace model name", clock.instant());
+        models.saveAndFlush(parentModel);
         var child = assets.findById(childId).orElseThrow();
         child.rename("Direct child", clock.instant());
         child.moveTo(null, parentId, clock.instant());
@@ -135,6 +172,8 @@ class PackingSheetControllerIntegrationTests extends AbstractIntegrationTest {
         exact.rename("Configured Gateway", clock.instant());
         assets.saveAndFlush(exact);
         var exactModel = models.findById(exact.getAssetModelId()).orElseThrow();
+        exactModel.rename("Gateway equipment", null, clock.instant());
+        models.saveAndFlush(exactModel);
         AssetModel stockModel = new AssetModel(
                 UUID.randomUUID(),
                 fixture.organization().getId(),
@@ -207,13 +246,24 @@ class PackingSheetControllerIntegrationTests extends AbstractIntegrationTest {
             String text = new PDFTextStripper().getText(document);
             assertThat(text)
                     .contains(
-                            "10 x " + exactModel.getName(),
-                            "2.125 rolls Gaffer tape 50 mm",
+                            "10",
+                            exactModel.getName(),
+                            "Current equipment organization",
+                            "Current container name",
+                            "Model Type: Actual container model",
+                            "2.125 rolls",
+                            "Gaffer tape 50 mm",
                             "M39TX1",
                             "Configured Gateway",
                             "Direct child",
                             "91TRQJ");
-            assertThat(text).doesNotContain("Grandchild should not appear", "A72KQ5", "99 x", "123 x");
+            assertThat(text)
+                    .doesNotContain(
+                            "Grandchild should not appear",
+                            "A72KQ5",
+                            "99",
+                            "123",
+                            "Description must never replace model name");
         }
     }
 
@@ -258,7 +308,13 @@ class PackingSheetControllerIntegrationTests extends AbstractIntegrationTest {
             for (String region : List.of("top", "bottom")) {
                 String text = stripper.getTextForRegion(region);
                 assertThat(text)
-                        .contains("Specific:", "Nested containers:", "Exact required child", "Other current child");
+                        .contains(
+                                "Quantity",
+                                "Item",
+                                "Code",
+                                "Nested containers (current)",
+                                "Exact required child",
+                                "Other current child");
                 assertThat(text.split("91TRQJ", -1).length - 1).isEqualTo(1);
                 assertThat(text.split("A72KQ5", -1).length - 1).isEqualTo(1);
                 assertThat(text.split("Exact required child", -1).length - 1).isEqualTo(1);

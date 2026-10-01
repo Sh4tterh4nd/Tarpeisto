@@ -632,11 +632,12 @@ class InventoryQualityOfLifeIntegrationTests extends AbstractIntegrationTest {
         assertThat(placement.get(owner, equipment.getId()).parentContainerAssetId())
                 .isNull();
         var snapshot = sheets.snapshot(owner.organizationId(), box.getId());
-        assertThat(snapshot.categoryName()).isEqualTo("Default");
-        assertThat(snapshot.categoryColor()).isEqualTo("#5B6472");
+        assertThat(snapshot.organizationName()).startsWith("QoL ");
+        assertThat(snapshot.containerModel()).isEqualTo("Case");
         try (var document = Loader.loadPDF(PackingSheetDocument.render(snapshot))) {
             var text = new PDFTextStripper().getText(document);
-            assertThat(text).contains("Box", "Default", equipment.getPublicCode());
+            assertThat(text)
+                    .contains("Box", snapshot.organizationName(), "Model Type: Case", equipment.getPublicCode());
             assertThat(text.split(equipment.getPublicCode(), -1).length - 1).isEqualTo(2);
         }
     }

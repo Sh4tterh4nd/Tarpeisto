@@ -963,36 +963,26 @@ Container assets are excluded from the P-touch export.
 
 ### 23.4 Container packing sheets
 
-- A4 page split into two identical A5-sized halves.
-- Each half contains the same content.
-- Each A5 half is landscape.
-- A substantial category-colored identity bar has the bold container name on the left, the category and model description below it, and the QR plus public code on the right. The description preview is measured to at most three lines and ends with an ellipsis when additional text does not fit.
-- The identity bar uses the neutral `Default` color when the container model has no category.
-- The content list begins below the identity bar and contains the direct packing requirements only.
-- Include packing requirements grouped by model and quantity.
-- Consumable requirements show their amount and stock unit, for example `2 rolls Gaffer tape 50 mm`.
-- Exact requirements include the required asset code.
-- Nested containers include their names/codes where applicable.
+- A4 page split into two identical landscape A5-sized halves, including continuation pages.
+- Each half starts with a separate black-bordered organization-name bar using the current organization name.
+- A separate black-bordered identity box below shows the current container display name and actual model name on the left, with the canonical-code QR and public code on the right.
+- A black-bordered contents box below the identity box extends to the bottom margin of each A5 half. Its table has three columns: Quantity, Item, Code.
+- Required items list only direct active packing requirements, grouped by model and quantity. Specific requirements show quantity `1`, the required asset display name and its public code. Interchangeable requirements show the model name and leave Code blank.
+- Consumables preserve exact decimal amounts and stock units in the Quantity column, for example `2 rolls`, with the model name in Item and no individual code.
+- Supplemental immediate-child container identities remain under a clearly labeled `Nested containers (current)` section in the same table, with quantity `1` and their names/codes. Children already listed as exact requirements are not duplicated; grandchildren are never expanded.
+- Organization, identity and table headers repeat on every continuation page. Names and quantities use measured wrapping without overlapping the QR or neighboring cells; a requirement is never clipped or silently omitted.
 
 Example:
 
 ```text
-10 x LAN 20m
-10 x LAN 10m
- 5 x UniFi AP-HD
-
-Specific:
-7K3MXP  Configured Gateway
-91TRQW  Controller AP
+Quantity   Item                     Code
+10         LAN 20m
+2 rolls    Gaffer tape 50 mm
+1          Configured Gateway       7K3MXP
+1          Controller AP            91TRQW
 ```
 
-Packing-list layout starts at 12 pt:
-
-1. Use one column when it fits.
-2. Add columns while retaining 12 pt.
-3. Reduce font size incrementally only when necessary.
-4. Never reduce below 8 pt.
-5. Generate additional duplicated pages if the list still does not fit.
+The table starts at 12 pt, reduces incrementally to 8 pt only when necessary, and uses additional duplicated pages if the list still does not fit. The three semantic columns remain fixed rather than repeating lists in newspaper columns.
 
 ## 23.5 Inventory navigation and detail presentation
 

@@ -652,11 +652,9 @@ Implement in this order:
 ### 13.1 Generator
 
 - A4 with two identical A5-sized halves
-- A5 landscape halves with a substantial category-color identity bar
-- Bold container name on the left; category and a measured, at-most-three-line model-description preview beneath it, with an ellipsis when truncated
-- QR and public code on the right
-- Neutral `Default` identity bar when the container model has no category
-- Direct packing requirements only, listed below the identity bar
+- Landscape A5 halves with a black-bordered organization-name bar, then a separate bordered container-name/model-name box with QR and public code on the right
+- A bordered contents box extends to the bottom A5 margin, using Quantity, Item and Code columns
+- Direct packing requirements only; exact rows show quantity 1, asset name and code, while interchangeable rows show model quantity/name and blank code
 - Grouped model quantities
 - Exact asset names/codes
 - Nested-container entries
@@ -664,11 +662,10 @@ Implement in this order:
 
 ### 13.2 Fit algorithm
 
-1. Render list at 12 pt in one column.
-2. Add columns while preserving 12 pt.
-3. Reduce font stepwise to 8 pt minimum.
-4. Add additional duplicated pages if content still overflows.
-5. Never clip or silently omit a requirement.
+1. Render one full-width Quantity/Item/Code table at 12 pt, with measured cell wrapping.
+2. Reduce font stepwise to 8 pt minimum only when needed.
+3. Add duplicated continuation pages with repeated organization, identity and table headers if content still overflows.
+4. Never clip or silently omit a requirement.
 
 ### 13.3 Verification
 
@@ -677,7 +674,7 @@ Implement in this order:
 - Large quantities
 - Many exact assets
 - Multi-page overflow
-- Category colors with readable title contrast
+- Black borders, organization/model identity, quantity/name/code column positions and readable text
 - QR scan from printed output
 
 ### 13.4 Exit criteria
@@ -707,7 +704,7 @@ This focused milestone improves established inventory workflows without changing
 - Put Edit, Open repair and confirmed Archive/Restore in the card's three-dot menu, with Open seal for sealable containers. Edit mode contains metadata, placement, state, repair and seal controls; manual seal application remains unverified and retains history.
 - Present asset-model detail with reference photo on the right, category and unit-definition fields stacked at left, and physical units at the bottom.
 - Show direct contents in a separate card: linked exact names/codes, expandable interchangeable counts with linked codes, orange extra/misplaced items first, red missing requirements with alert icons, and consumable quantities. Keep packing/template administration in Edit and packing-sheet download visible in both modes; any supplementary document preview remains collapsed.
-- Exclude containers from ordinary asset-label PDF and P-touch export. Use only the container contents/packing sheet: duplicated A5 landscape halves on A4, a category-colored identity bar, and direct requirements below it.
+- Exclude containers from ordinary asset-label PDF and P-touch export. Use only the container contents/packing sheet: duplicated A5 landscape halves on A4, bordered organization and identity boxes, and a Quantity/Item/Code table below them.
 
 ### 14.3 Scanner startup and acceptance criteria
 
@@ -719,7 +716,7 @@ This focused milestone improves established inventory workflows without changing
 - Selecting an exact asset through search and enabling immediate assignment leaves both the requirement and current parent unchanged on any validation/authorization failure, and updates both on success.
 - Asset, asset-model, and container detail layouts meet the stated placement and empty-section behavior at desktop and phone widths.
 - Entering a scanner flow requests camera access without an extra start action and always leaves a usable fallback path.
-- Container assets never appear in ordinary asset-label PDFs or P-touch CSV. Container sheets preserve two identical A5 landscape halves per A4 page, show the required identity bar, list direct requirements exactly once per half, and retain the existing fit/overflow guarantees.
+- Container assets never appear in ordinary asset-label PDFs or P-touch CSV. Container sheets preserve two identical A5 landscape halves per A4 page, show the organization and identity boxes, list direct requirements exactly once per half, and retain the wrapping/overflow guarantees.
 
 ## 15. Phase 9.2: persistent audit scan outbox (after quality-of-life refinement)
 
