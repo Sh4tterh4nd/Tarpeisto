@@ -277,6 +277,25 @@ Verified at the packing-sheet presentation checkpoint:
 - The PDF route and generated API contract are unchanged. No migration, dependency or configuration
   change is required; deploy the matching application image for the new packing-sheet layout.
 
+Verified at the workboard availability-diagnostics checkpoint:
+
+- A completely packed container can still be blocked by an audit, repair or unreleased checkout
+  custody. The workboard explicitly separates complete packing from blocked availability and
+  reports the actual cause, including audits on containing containers, rather than calling every
+  restriction an inactive asset. Booking diagnostics retain the affected public asset codes.
+- Only the workboard's explanation filters derivative model-capacity warnings when distinct,
+  otherwise active, unarchived and unpinned selected or contained candidates explain the entire
+  deficit through audit, repair or custody restrictions. Real shortages and overlap-driven demand
+  remain visible.
+  The original availability decision and full event/checkout conflict set remain authoritative;
+  reading the workboard neither completes audits nor releases custody.
+- Verification passed: all 572 backend tests across 78 suites, Spotless and the production Jib
+  image build. Nine new integration tests cover own and ancestor audits, repair, checkout custody,
+  genuine shortages, overlapping demand, exact pins, inactive inventory, archived models and
+  organization/role isolation. Existing checkout replacement and peak-demand regressions also pass.
+- No API, frontend, migration, dependency or configuration change is required. Deploy the matching
+  application image to receive the corrected explanations; existing operational holds remain.
+
 ## 2. How to verify this yourself
 
 Docker Desktop does not work on the primary development workstation (no WSL2 backend), so backend

@@ -78,10 +78,11 @@ public class DashboardService {
                             && rows.size() < limit + 1) {
                         String reason = !preview.complete()
                                 ? "Packing requirements are incomplete"
-                                : availability.conflicts().stream()
-                                        .map(BookingConflictView::message)
-                                        .distinct()
-                                        .collect(java.util.stream.Collectors.joining("; "));
+                                : "Packing is complete; availability is blocked: "
+                                        + availability.conflicts().stream()
+                                                .map(BookingConflictView::message)
+                                                .distinct()
+                                                .collect(java.util.stream.Collectors.joining("; "));
                         rows.add(new Row(
                                 r.id(),
                                 r.label(),

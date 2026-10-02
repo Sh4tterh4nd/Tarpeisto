@@ -1081,6 +1081,14 @@ Operational views should include:
 - Assets with incomplete custom-field metadata
 - Consumables at or below their low-stock threshold
 
+Container packing completeness and operational availability are separate. A completely packed
+container can remain unavailable because of a pending audit, an open repair, unreleased event
+custody, inactive inventory or overlapping reservations. The workboard identifies the actual
+blocker rather than calling every restriction an inactive asset. Its container explanation avoids
+capacity-shortage messages caused entirely by otherwise eligible selected or contained units awaiting audit,
+repair or custody release; genuine capacity shortages remain visible. Presentation filtering never
+changes booking eligibility, completes audits or releases custody.
+
 CSV reporting exports include organization-scoped inventory, consumable balances and movements, and audit results. They include retained archive/history information, exact decimal quantities and actor attribution where applicable. Textual cells are protected against spreadsheet formulas. Reporting exports complement PostgreSQL and media backups; they do not replace them.
 
 ## 27. Deployment and storage

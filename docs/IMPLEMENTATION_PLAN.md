@@ -807,6 +807,7 @@ This focused milestone improves established inventory workflows without changing
 - In repair
 - Metadata incomplete
 - Containers incomplete/unavailable
+- Distinguish complete packing from blocked availability, explain audit/repair/custody restrictions accurately and retain genuine capacity shortages without derivative workboard warnings
 - Consumables at or below the model's low-stock threshold across active on-hand balances
 
 ### 18.4 Data exports

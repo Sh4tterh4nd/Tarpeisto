@@ -263,7 +263,7 @@ public class BookingReservationService {
                 null,
                 BigDecimal.ONE,
                 now);
-        return evaluate(p.organizationId(), hypothetical, load(p.organizationId()), List.of(line));
+        return evaluate(p.organizationId(), hypothetical, load(p.organizationId()), List.of(line), true);
     }
 
     private BookingReservationPreviewView evaluate(UUID org, Booking b, Inventory inventory) {
@@ -272,6 +272,13 @@ public class BookingReservationService {
 
     private BookingReservationPreviewView evaluate(
             UUID org, Booking b, Inventory inventory, List<BookingLine> requestedLines) {
+        return evaluate(org, b, inventory, requestedLines, false);
+    }
+
+    private BookingReservationPreviewView evaluate(
+            UUID org, Booking b, Inventory inventory, List<BookingLine> requestedLines, boolean workboard) {
+        Map<UUID, AssetAvailability> availability = new HashMap<>();
+        Map<UUID, Set<UUID>> operationallyExcludedCandidates = new HashMap<>();
         List<BookingClaimCandidate> candidates = calculator.expand(
                 requestedLines,
                 inventory.assets().values(),
@@ -308,17 +315,13 @@ public class BookingReservationService {
             if (c.type() == BookingClaimType.ASSET || c.type() == BookingClaimType.FLEXIBLE_ASSET) {
                 Asset a = inventory.assets().get(c.assetId());
                 AssetModel m = a == null ? null : inventory.models().get(a.getAssetModelId());
-                if (a == null
-                        || !a.isActive()
-                        || m == null
-                        || m.isArchived()
-                        || repairs.existsByOrganizationIdAndAssetIdAndClosedAtIsNull(org, c.assetId())
-                        || auditTasks.hasPendingAudit(org, c.assetId())
-                        || checkoutManifestAssets.existsByOrganizationIdAndAssetIdAndAuditReleasedAtIsNull(
-                                org, c.assetId()))
+                AssetAvailability diagnosis =
+                        availability.computeIfAbsent(c.assetId(), id -> diagnose(org, inventory, id));
+                if (!diagnosis.reasons().isEmpty()) {
                     conflicts.add(conflict(
                             "ASSET_UNAVAILABLE",
-                            "A selected or required asset is inactive.",
+                            (workboard || a == null ? "" : "Asset " + a.getPublicCode() + ": ")
+                                    + String.join("; ", diagnosis.reasons()),
                             null,
                             c.assetId(),
                             null,
@@ -327,6 +330,11 @@ public class BookingReservationService {
                             c.requirementId(),
                             BigDecimal.ONE,
                             BigDecimal.ZERO));
+                    if (diagnosis.onlyOperational() && !inventory.pins().containsKey(a.getId()))
+                        operationallyExcludedCandidates
+                                .computeIfAbsent(a.getAssetModelId(), id -> new HashSet<>())
+                                .add(a.getId());
+                }
                 if (c.type() == BookingClaimType.ASSET) hardIds.add(c.assetId());
                 if (m != null && m.isCanContainAssets()) containerIds.add(c.assetId());
             }
@@ -362,13 +370,10 @@ public class BookingReservationService {
         }
         Map<UUID, BigDecimal> pool = new HashMap<>();
         for (Asset a : inventory.assets().values()) {
-            AssetModel m = inventory.models().get(a.getAssetModelId());
-            if (a.isActive()
-                    && m != null
-                    && !m.isArchived()
-                    && !repairs.existsByOrganizationIdAndAssetIdAndClosedAtIsNull(org, a.getId())
-                    && !auditTasks.hasPendingAudit(org, a.getId())
-                    && !checkoutManifestAssets.existsByOrganizationIdAndAssetIdAndAuditReleasedAtIsNull(org, a.getId())
+            if (availability
+                            .computeIfAbsent(a.getId(), id -> diagnose(org, inventory, id))
+                            .reasons()
+                            .isEmpty()
                     && !inventory.pins().containsKey(a.getId()))
                 pool.merge(a.getAssetModelId(), BigDecimal.ONE, BigDecimal::add);
         }
@@ -547,9 +552,50 @@ public class BookingReservationService {
                         BigDecimal.ONE,
                         BigDecimal.ZERO));
             }
-        return new BookingReservationPreviewView(
-                conflicts.isEmpty(), List.copyOf(conflicts), List.copyOf(warnings), b.getVersion());
+        boolean reservable = conflicts.isEmpty();
+        // Presentation only: booking, reserve and checkout retain the entire authoritative conflict set.
+        List<BookingConflictView> presented = workboard
+                ? conflicts.stream()
+                        .filter(c -> {
+                            if (!"MODEL_CAPACITY".equals(c.type())) return true;
+                            BigDecimal demand = candidateDemand.get(c.modelId());
+                            int excluded = operationallyExcludedCandidates
+                                    .getOrDefault(c.modelId(), Set.of())
+                                    .size();
+                            return demand == null
+                                    || c.requiredQuantity().compareTo(demand) != 0
+                                    || c.requiredQuantity()
+                                                    .subtract(c.availableQuantity())
+                                                    .compareTo(BigDecimal.valueOf(excluded))
+                                            > 0;
+                        })
+                        .sorted(java.util.Comparator.comparing(BookingConflictView::type)
+                                .thenComparing(BookingConflictView::message))
+                        .toList()
+                : List.copyOf(conflicts);
+        return new BookingReservationPreviewView(reservable, presented, List.copyOf(warnings), b.getVersion());
     }
+
+    private AssetAvailability diagnose(UUID org, Inventory inventory, UUID assetId) {
+        Asset asset = inventory.assets().get(assetId);
+        if (asset == null) return new AssetAvailability(List.of("A selected or required asset is missing."), false);
+        AssetModel model = inventory.models().get(asset.getAssetModelId());
+        List<String> reasons = new ArrayList<>();
+        if (asset.isArchived()) reasons.add("An asset is archived.");
+        else if (!asset.isActive()) reasons.add("An asset has inactive lifecycle " + asset.getLifecycleState() + ".");
+        if (model == null) reasons.add("An asset model is missing.");
+        else if (model.isArchived()) reasons.add("An asset model is archived.");
+        boolean otherwiseEligible = reasons.isEmpty();
+        if (repairs.existsByOrganizationIdAndAssetIdAndClosedAtIsNull(org, assetId))
+            reasons.add("An asset has an open repair.");
+        if (auditTasks.hasPendingAudit(org, assetId))
+            reasons.add("An asset or a containing container has a pending audit.");
+        if (checkoutManifestAssets.existsByOrganizationIdAndAssetIdAndAuditReleasedAtIsNull(org, assetId))
+            reasons.add("An asset is still in unreleased checkout custody.");
+        return new AssetAvailability(List.copyOf(reasons), otherwiseEligible && !reasons.isEmpty());
+    }
+
+    private record AssetAvailability(List<String> reasons, boolean onlyOperational) {}
 
     private Map<UUID, BigDecimal> modelDemand(List<BookingClaimCandidate> list, Inventory inventory) {
         Map<UUID, BigDecimal> demand = new HashMap<>();
