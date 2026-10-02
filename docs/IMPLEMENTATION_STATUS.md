@@ -296,6 +296,31 @@ Verified at the workboard availability-diagnostics checkpoint:
 - No API, frontend, migration, dependency or configuration change is required. Deploy the matching
   application image to receive the corrected explanations; existing operational holds remain.
 
+Verified at the audit camera-workspace checkpoint:
+
+- Active auditing uses a viewport-sized camera workspace with visible last-object feedback and
+  Report, Details and Finish actions. Camera settings and manual fallback remain accessible;
+  reports, details and finishing pause camera scanning and use their own scrollable dialogs.
+- Missing-first details distinguish exact identities, interchangeable progress and individual
+  observations. Earlier items support damage evidence, undo, manual confirmation and missing-label
+  reporting without inventing unidentified units. Manual observations retain camera-scan eligibility,
+  custody, safe-placement, matching, duplicate and temporary-access protections.
+- Accepted matching scans flash green; pending, duplicate and discrepancy feedback stay distinct.
+  Finishing reviews named missing items, allows comments about QR-less extras, requires the target
+  container rescan and asks about seals only for sealable containers. Durable queued work and
+  photographs still block completion until synchronized.
+- Backend Spotless and the full `check` pass with **579 PostgreSQL-backed tests**, with no failures,
+  errors or skips. Frontend **240 tests** pass across the web and API-client packages, with
+  `format:check`, `lint`, workspace typechecks and the production PWA build passing.
+- All **52 desktop/mobile Playwright cases** are validated: 50 passed in the full run, and the two
+  volunteer outage cases passed after correcting their fixture's expected item code. Six layout
+  cases cover desktop, phone and short landscape, including settings access, missing-first details
+  and closing rescans; outage, cross-tab recovery and queued photographs remain covered.
+- `jibBuildTar` passes with the matching compiled frontend embedded. The live backend OpenAPI
+  contract was captured and the generated client updated.
+- No migration, dependency or configuration change is required; deploy the matching application
+  image for the new workflow.
+
 ## 2. How to verify this yourself
 
 Docker Desktop does not work on the primary development workstation (no WSL2 backend), so backend

@@ -85,11 +85,9 @@ describe("ScannerPage", () => {
   });
 
   it("suppresses the same continuous scan for 1.5 seconds", async () => {
-    const user = userEvent.setup();
     const scanner = scannerCapability();
     renderPage(scanner.capability);
-    await user.click(screen.getByRole("button", { name: "Start camera" }));
-    await waitFor(() => expect(scanner.capability.start).toHaveBeenCalled());
+    await screen.findByRole("button", { name: "Pause camera" });
 
     scanner.emit("7K3MXY");
     scanner.emit("7K3MXY");
@@ -121,7 +119,6 @@ describe("ScannerPage", () => {
   });
 
   it("invalidates an earlier camera lookup when a later camera payload is unreadable", async () => {
-    const user = userEvent.setup();
     let resolveLookup: (value: unknown) => void = () => undefined;
     api.lookupScannedAsset.mockReturnValue(
       new Promise((resolve) => {
@@ -130,8 +127,7 @@ describe("ScannerPage", () => {
     );
     const scanner = scannerCapability();
     renderPage(scanner.capability);
-    await user.click(screen.getByRole("button", { name: "Start camera" }));
-    await waitFor(() => expect(scanner.capability.start).toHaveBeenCalled());
+    await screen.findByRole("button", { name: "Pause camera" });
 
     scanner.emit("7K3MXY");
     scanner.emit("not a Tarpeisto code");

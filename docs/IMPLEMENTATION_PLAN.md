@@ -577,6 +577,12 @@ Implement in this order:
 14. Seal confirmation when Phase 10 introduces seal state
 15. On a genuine equipment-scanner result, offer an authorized user a standalone container audit;
     keep an explicit action after decline and never auto-prompt after refresh/direct navigation
+16. Keep active camera auditing within the viewport with accepted-scan green feedback, a last-object
+    bottom bar and Report/Details/Finish actions; move camera options into a settings cog
+17. Show missing-first exact rows and expandable interchangeable progress in Details, retaining
+    per-unit damage photographs, undo, guarded manual confirmation and missing-label reporting
+18. Guide additional-item comments, closure/rescan, conditional seal confirmation and explicit
+    missing-name/quantity confirmation when the container is rescanned early
 
 ### 11.4 Persistent recovery follow-up
 

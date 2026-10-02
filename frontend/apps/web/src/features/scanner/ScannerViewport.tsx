@@ -1,4 +1,10 @@
 import { useEffect, useEffectEvent, useRef, useState } from "react";
+import SettingsIcon from "@mui/icons-material/Settings";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
+import IconButton from "@mui/material/IconButton";
 import PauseIcon from "@mui/icons-material/Pause";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import RefreshIcon from "@mui/icons-material/Refresh";
@@ -61,6 +67,9 @@ const STATUS_COPY: Record<ViewportStatus, string> = {
 
 export interface ScannerViewportProps {
   readonly capability: QrScannerCapability;
+  readonly compact?: boolean;
+  readonly paused?: boolean;
+  readonly onManual?: () => void;
   readonly onCode: (rawCode: string) => void;
 }
 
@@ -68,7 +77,14 @@ export interface ScannerViewportProps {
  * The camera deck is intentionally self-contained: every session stops its
  * tracks when this component pauses, switches devices, or unmounts.
  */
-export function ScannerViewport({ capability, onCode }: ScannerViewportProps) {
+export function ScannerViewport({
+  capability,
+  onCode,
+  compact = false,
+  paused = false,
+  onManual,
+}: ScannerViewportProps) {
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [status, setStatus] = useState<ViewportStatus>(() => {
     const availability = capability.availability();
@@ -80,10 +96,12 @@ export function ScannerViewport({ capability, onCode }: ScannerViewportProps) {
   const [cameraId, setCameraId] = useState("");
   const [cameras, setCameras] = useState<QrCameraDevice[]>([]);
   const [engine, setEngine] = useState<QrScannerEngine>();
-  const deliverCode = useEffectEvent((code: string) => onCode(code));
+  const deliverCode = useEffectEvent((code: string) => {
+    if (!paused && !settingsOpen) onCode(code);
+  });
 
   useEffect(() => {
-    if (!shouldRun || !videoRef.current) return;
+    if (!shouldRun || paused || settingsOpen || !videoRef.current) return;
     let disposed = false;
     let session: QrScanSession | undefined;
 
@@ -100,7 +118,9 @@ export function ScannerViewport({ capability, onCode }: ScannerViewportProps) {
         session = await capability.start(
           videoRef.current as HTMLVideoElement,
           cameraId || undefined,
-          (code) => deliverCode(code),
+          (code) => {
+            if (!disposed) deliverCode(code);
+          },
           () => {
             if (!disposed) {
               setStatus("reconnecting");
@@ -129,11 +149,140 @@ export function ScannerViewport({ capability, onCode }: ScannerViewportProps) {
       disposed = true;
       session?.stop();
     };
-  }, [cameraId, capability, shouldRun]);
+  }, [cameraId, capability, shouldRun, paused, settingsOpen]);
 
   const canStart = status !== "unsupported" && status !== "insecure";
   const isRunning = status === "running" || status === "starting";
 
+  if (compact)
+    return (
+      <Box
+        component="section"
+        aria-label="Audit camera"
+        sx={{
+          position: "relative",
+          flex: 1,
+          minHeight: 0,
+          overflow: "hidden",
+          bgcolor: "grey.900",
+          display: "flex",
+        }}
+      >
+        <video
+          ref={videoRef}
+          muted
+          playsInline
+          aria-label="Live camera preview for QR scanning"
+          style={{
+            width: "100%",
+            height: "100%",
+            position: "absolute",
+            inset: 0,
+            objectFit: "cover",
+          }}
+        />
+        <Box
+          aria-hidden
+          sx={{
+            position: "absolute",
+            inset: "18% 22%",
+            border: 2,
+            borderColor: "warning.main",
+            pointerEvents: "none",
+          }}
+        />
+        <IconButton
+          aria-label="Scanner settings"
+          onClick={() => setSettingsOpen(true)}
+          sx={{
+            position: "absolute",
+            top: 8,
+            right: 8,
+            bgcolor: "background.paper",
+            zIndex: 2,
+            minWidth: 44,
+            minHeight: 44,
+          }}
+        >
+          <SettingsIcon />
+        </IconButton>
+        <Typography
+          role="status"
+          sx={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            p: 1,
+            bgcolor: "rgba(0,0,0,.75)",
+            color: "white",
+            fontSize: ".85rem",
+            pointerEvents: "none",
+            maxHeight: "50%",
+            overflow: "hidden",
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+          }}
+        >
+          {paused || settingsOpen ? "Camera paused." : STATUS_COPY[status]}
+        </Typography>
+        <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} fullWidth maxWidth="xs">
+          <DialogTitle>Scanner settings</DialogTitle>
+          <DialogContent>
+            <Stack spacing={2}>
+              <Typography>{STATUS_COPY[status]}</Typography>
+              {cameras.length > 1 ? (
+                <TextField
+                  select
+                  label="Camera"
+                  value={cameraId}
+                  onChange={(event) => setCameraId(event.target.value)}
+                >
+                  <MenuItem value="">Rear camera (automatic)</MenuItem>
+                  {cameras.map((camera) => (
+                    <MenuItem key={camera.deviceId} value={camera.deviceId}>
+                      {camera.label}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              ) : null}
+              <Button
+                onClick={() => {
+                  setShouldRun(!shouldRun);
+                  setStatus(shouldRun ? "paused" : "ready");
+                }}
+                disabled={!canStart}
+              >
+                {shouldRun ? "Pause camera" : "Start camera"}
+              </Button>
+              <Button
+                disabled={!canStart}
+                onClick={() => {
+                  setShouldRun(true);
+                  setSettingsOpen(false);
+                }}
+              >
+                Restart camera
+              </Button>
+              {onManual ? (
+                <Button
+                  onClick={() => {
+                    setSettingsOpen(false);
+                    onManual();
+                  }}
+                >
+                  Enter code manually
+                </Button>
+              ) : null}
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setSettingsOpen(false)}>Done</Button>
+          </DialogActions>
+        </Dialog>
+      </Box>
+    );
   return (
     <Paper
       component="section"

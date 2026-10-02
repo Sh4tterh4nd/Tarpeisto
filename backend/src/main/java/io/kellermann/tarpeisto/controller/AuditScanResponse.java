@@ -14,7 +14,8 @@ public record AuditScanResponse(
         boolean undone,
         String contextSnapshot,
         UUID recordedByUserId,
-        String recordedByDisplayName) {
+        String recordedByDisplayName,
+        UUID assetModelId) {
     static AuditScanResponse from(AuditScanView v) {
         return new AuditScanResponse(
                 v.id(),
@@ -26,6 +27,7 @@ public record AuditScanResponse(
                 v.undone(),
                 v.contextSnapshot(),
                 v.recordedByUserId(),
-                v.recordedByDisplayName());
+                v.recordedByDisplayName(),
+                v.assetModelId());
     }
 }

@@ -58,6 +58,30 @@ describe("ScannerViewport", () => {
     expect(screen.getByRole("button", { name: "Start camera" })).toBeInTheDocument();
   });
 
+  it("rejects callbacks from a paused default session and accepts its fresh resumed session", async () => {
+    const user = userEvent.setup();
+    const { capability, stop } = cameraCapability();
+    const onCode = vi.fn();
+    render(<ScannerViewport capability={capability} onCode={onCode} />);
+
+    await screen.findByRole("button", { name: "Pause camera" });
+    const previousCallback = vi.mocked(capability.start).mock.calls[0]![2];
+    previousCallback("123452");
+    expect(onCode).toHaveBeenCalledTimes(1);
+    await user.click(screen.getByRole("button", { name: "Pause camera" }));
+    expect(stop).toHaveBeenCalledTimes(1);
+    previousCallback("123452");
+    expect(onCode).toHaveBeenCalledTimes(1);
+
+    await user.click(screen.getByRole("button", { name: "Start camera" }));
+    await screen.findByRole("button", { name: "Pause camera" });
+    expect(capability.start).toHaveBeenCalledTimes(2);
+    previousCallback("123452");
+    expect(onCode).toHaveBeenCalledTimes(1);
+    vi.mocked(capability.start).mock.calls[1]![2]("123452");
+    expect(onCode).toHaveBeenCalledTimes(2);
+  });
+
   it("reports an explicit camera-permission state", async () => {
     const capability: QrScannerCapability = {
       availability: () => "ready",
@@ -85,6 +109,54 @@ describe("ScannerViewport", () => {
     expect(first).not.toHaveBeenCalled();
   });
 
+  it("compact mode pauses tracks for dialogs and rejects stale camera callbacks", async () => {
+    const user = userEvent.setup();
+    const { capability, stop } = cameraCapability();
+    const onCode = vi.fn(),
+      onManual = vi.fn();
+    const rendered = render(
+      <ScannerViewport compact capability={capability} onCode={onCode} onManual={onManual} />,
+    );
+    await waitFor(() => expect(capability.start).toHaveBeenCalledTimes(1));
+    const callback = vi.mocked(capability.start).mock.calls[0]![2];
+    rendered.rerender(
+      <ScannerViewport
+        compact
+        paused
+        capability={capability}
+        onCode={onCode}
+        onManual={onManual}
+      />,
+    );
+    callback("123452");
+    expect(onCode).not.toHaveBeenCalled();
+    await waitFor(() => expect(stop).toHaveBeenCalledTimes(1));
+    rendered.rerender(
+      <ScannerViewport compact capability={capability} onCode={onCode} onManual={onManual} />,
+    );
+    await waitFor(() => expect(capability.start).toHaveBeenCalledTimes(2));
+    await user.click(screen.getByRole("button", { name: "Scanner settings" }));
+    vi.mocked(capability.start).mock.calls[1]![2]("123452");
+    expect(onCode).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Enter code manually" }));
+    expect(onManual).toHaveBeenCalledTimes(1);
+  });
+  it("compact denied-camera fallback remains visible with a manual action", async () => {
+    const capability: QrScannerCapability = {
+      availability: () => "ready",
+      listCameras: vi.fn(),
+      start: vi.fn().mockRejectedValue(new DOMException("Denied", "NotAllowedError")),
+    };
+    const user = userEvent.setup(),
+      onManual = vi.fn();
+    render(
+      <ScannerViewport compact capability={capability} onCode={vi.fn()} onManual={onManual} />,
+    );
+    expect(await screen.findByRole("status")).toHaveTextContent(/Camera permission was denied/);
+    await user.click(screen.getByRole("button", { name: "Scanner settings" }));
+    await user.click(screen.getByRole("button", { name: "Enter code manually" }));
+    expect(onManual).toHaveBeenCalledTimes(1);
+  });
   it("surfaces unsupported and insecure contexts without offering camera start", () => {
     const unsupported: QrScannerCapability = {
       availability: () => "unsupported",

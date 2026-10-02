@@ -11,4 +11,17 @@ public record AuditExpectedRequirementView(
         BigDecimal requiredQuantity,
         int displayOrder,
         String snapshot,
-        boolean satisfied) {}
+        boolean satisfied,
+        BigDecimal matchedQuantity) {
+    public AuditExpectedRequirementView(
+            UUID id,
+            String type,
+            UUID assetModelId,
+            UUID specificAssetId,
+            BigDecimal requiredQuantity,
+            int displayOrder,
+            String snapshot,
+            boolean satisfied) {
+        this(id, type, assetModelId, specificAssetId, requiredQuantity, displayOrder, snapshot, satisfied, null);
+    }
+}

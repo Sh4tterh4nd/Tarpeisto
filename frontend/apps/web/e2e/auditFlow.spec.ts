@@ -1,3 +1,4 @@
+import { enterAuditCode, finishAudit } from "./auditActions";
 import { expect, test } from "@playwright/test";
 
 const baseAudit = {
@@ -66,8 +67,9 @@ test("an online return audit starts, scans and completes", async ({ page }) => {
         scans: [
           {
             id: "77777777-7777-7777-7777-777777777777",
+            operationId: route.request().postDataJSON()["operationId"],
             assetId: "88888888-8888-8888-8888-888888888888",
-            assetCode: "7K3MXY",
+            assetCode: "000000",
             outcome: "EXTRA",
             scannedAt: "2026-09-26T21:00:00Z",
             undone: false,
@@ -94,15 +96,12 @@ test("an online return audit starts, scans and completes", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Container audit: Audit case" })).toBeVisible();
   await expect(page.getByText(/saved on this device/)).toBeVisible();
 
-  await page.getByLabel("Scan assigned container to start").fill("7K3MXY");
-  await page.getByRole("button", { name: "Start audit" }).click();
-  await expect(page.getByRole("heading", { name: "Last scans" })).toBeVisible();
+  await enterAuditCode(page, "7K3MXY", true);
+  await expect(page.getByRole("button", { name: "Finish", exact: true })).toBeEnabled();
 
-  await page.getByLabel("Scan or enter item code").fill("7K3MXY");
-  await page.getByRole("button", { name: "Record scan" }).click();
-  await expect(page.getByText(/LAN cable 10m - 7K3MXY/)).toBeVisible();
+  await enterAuditCode(page, "000000");
+  await expect(page.getByText(/LAN cable 10m - 000000/)).toBeVisible();
 
-  await page.getByLabel("Scan or enter item code").fill("7K3MXY");
-  await page.getByRole("button", { name: "Complete with this code" }).click();
-  await expect(page.getByRole("button", { name: "Complete with this code" })).toBeHidden();
+  await finishAudit(page, "7K3MXY");
+  await expect(page.getByText("Audit completed", { exact: true })).toBeVisible();
 });

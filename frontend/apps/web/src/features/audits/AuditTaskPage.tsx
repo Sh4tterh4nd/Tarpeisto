@@ -1,654 +1,707 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Checkbox from "@mui/material/Checkbox";
-import Divider from "@mui/material/Divider";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
 import FormControlLabel from "@mui/material/FormControlLabel";
-import Paper from "@mui/material/Paper";
+import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import { Link as RouterLink } from "react-router-dom";
-import { PageHeading } from "@tarpeisto/shared-ui";
 import { useParams } from "react-router-dom";
 import { ScannerViewport } from "../scanner/ScannerViewport";
-import { ArchiveButton } from "../archive/ArchiveButton";
-import { useSession } from "../identity/useSession";
 import { webQrScannerCapability } from "../../platform/web/WebQrScannerCapability";
+import { useSession } from "../identity/useSession";
+import { normalizeAssetCode } from "../asset-code/normalizeAssetCode";
 import {
   completeAudit,
-  startAudit,
   getAuditTask,
-  type AuditResult,
+  startAudit,
   type ContainerAudit,
+  type AuditFindingType,
 } from "./auditApi";
 import { useAuditQueue } from "./useAuditQueue";
-import { AuditEvidencePanel } from "./AuditEvidencePanel";
-import type { AuditConsumableStatus, AuditFindingType } from "./auditApi";
+import { AuditDetails } from "./AuditDetails";
+import { missingLabel, scanLabel } from "./auditPresentation";
 import { TemporaryInvitationsPanel } from "../temporary-access/TemporaryInvitationsPanel";
-
-function expectedLabel(row: ContainerAudit["expectedRequirements"][number]) {
-  try {
-    const snapshot = JSON.parse(row.snapshot) as Record<string, unknown>;
-    const modelName = typeof snapshot["modelName"] === "string" ? snapshot["modelName"] : undefined;
-    const assetName = typeof snapshot["assetName"] === "string" ? snapshot["assetName"] : undefined;
-    const assetCode = typeof snapshot["assetCode"] === "string" ? snapshot["assetCode"] : undefined;
-    const unit =
-      typeof snapshot["stockUnitLabel"] === "string" ? snapshot["stockUnitLabel"] : undefined;
-    const identity = [assetName ?? modelName, assetCode].filter(Boolean).join(" - ");
-    if (identity) return identity;
-    if (unit && row.requiredQuantity) return `${row.requiredQuantity} ${unit}`;
-  } catch {
-    // Older frozen rows remain readable through the generic label below.
-  }
-  return row.type.replaceAll("_", " ");
-}
-
-function scanContext(scan: ContainerAudit["scans"][number]) {
-  try {
-    return JSON.parse(scan.contextSnapshot) as {
-      modelName?: string;
-      assetName?: string;
-      destinationContainerName?: string;
-      destinationContainerCode?: string;
-      suggestions?: { name?: string; code?: string }[];
-    };
-  } catch {
-    return {};
-  }
-}
+import { ArchiveButton } from "../archive/ArchiveButton";
 
 export function AuditTaskPage() {
-  const { role, principal } = useSession();
   const { taskId = "" } = useParams();
+  const { principal } = useSession();
   const queue = useAuditQueue(taskId);
-  const { audit, container, error, setError } = queue;
+  return (
+    <AuditCameraTask
+      key={`${taskId}/${principal?.organizationId}/${principal?.userId}/${queue.audit?.id ?? "not-started"}`}
+      taskId={taskId}
+      queue={queue}
+    />
+  );
+}
+function AuditCameraTask({
+  taskId,
+  queue,
+}: {
+  taskId: string;
+  queue: ReturnType<typeof useAuditQueue>;
+}) {
+  const { role, principal } = useSession();
+  const { audit, container, error, setError, onAcknowledged, settledOperation } = queue;
+  const [dialog, setDialog] = useState<
+    "details" | "report" | "manual" | "finish" | "satisfied" | null
+  >(null);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
-  const [retryAction, setRetryAction] = useState<
-    (() => Promise<AuditResult<ContainerAudit>>) | null
-  >(null);
+  const alive = useRef(true);
+  const [report, setReport] = useState<{ assetId?: string; label: string; type: AuditFindingType }>(
+    { label: "Unknown item", type: "UNKNOWN_CODE" },
+  );
+  const [note, setNote] = useState("");
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [reportOp, setReportOp] = useState(() => crypto.randomUUID());
   const [confirmMissing, setConfirmMissing] = useState(false);
   const [sealConfirmed, setSealConfirmed] = useState(false);
-  const [findingNote, setFindingNote] = useState("");
-  const [photos, setPhotos] = useState<File[]>([]);
-  const [observedQuantities, setObservedQuantities] = useState<Record<string, string>>({});
-  const [observationReasons, setObservationReasons] = useState<Record<string, string>>({});
-  const scanAudit = (_auditId: string, value: string, operationId: string) =>
-    queue.enqueue({ kind: "scan", body: { operationId, code: value } });
-  const moveAuditScanHere = (_auditId: string, value: string, operationId: string) =>
-    queue.enqueue({ kind: "move", body: { operationId, code: value } });
-  const undoAuditScan = (_auditId: string, scanId: string, operationId: string) =>
-    queue.enqueue({ kind: "undo", scanId, body: { operationId } });
-  const observeAuditConsumable = (
-    _auditId: string,
-    expectedId: string,
-    status: AuditConsumableStatus,
-    observedQuantity: number | undefined,
-    reason: string | undefined,
-    operationId: string,
-  ) =>
-    queue.enqueue({
-      kind: "consumable",
-      expectedId,
-      body: { operationId, status, observedQuantity, reason },
-    });
-  const recordAuditFinding = async (
-    _auditId: string,
-    type: AuditFindingType,
-    assetId: string | undefined,
-    note: string | undefined,
-    operationId: string,
-  ) => {
-    const saved = await queue.findingWithPhotos(
-      { kind: "finding", body: { operationId, type, assetId, note } },
-      photos,
-    );
-    if (saved) setPhotos([]);
-  };
-  const apply = async (
-    action: () => Promise<AuditResult<ContainerAudit> | string | undefined | void>,
-  ) => {
+  const [closing, setClosing] = useState(false);
+  const [closingCode, setClosingCode] = useState<string>();
+  const [completionOp, setCompletionOp] = useState(() => crypto.randomUUID());
+  const [feedback, setFeedback] = useState("");
+  const newestOperation = useRef<string | undefined>(undefined);
+  const [displayedUnit, setDisplayedUnit] = useState<{
+    assetId?: string;
+    label: string;
+    type: AuditFindingType;
+  }>();
+  const [flash, setFlash] = useState(false);
+  const owned = useRef(new Map<string, { code: string; pending: boolean }>());
+  const [finishingComment, setFinishingComment] = useState(false);
+  const [commentBarrier, setCommentBarrier] = useState<string>();
+  const flashTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const [satisfiedShown, setSatisfiedShown] = useState(false);
+  const progress = JSON.stringify([
+    audit?.scans.map((s) => [s.id, s.outcome, s.undone]),
+    audit?.expectedRequirements.map((r) => [r.id, r.satisfied, r.matchedQuantity]),
+    audit?.findings.map((f) => f.id),
+  ]);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+      if (flashTimer.current) clearTimeout(flashTimer.current);
+    };
+  }, []);
+  const acknowledge = useEffectEvent((operationId: string, ack?: ContainerAudit) => {
+    if (!alive.current || !ack || ack.id !== audit?.id) return;
+    const submitted = owned.current.get(operationId);
+    if (!submitted) return;
+    owned.current.delete(operationId);
+    if (newestOperation.current !== operationId) return;
+    const scan = ack.scans.find((scan) => scan.operationId === operationId && !scan.undone);
+    if (scan) {
+      setFeedback(`${scanLabel(scan)} - ${scan.outcome.replaceAll("_", " ")}`);
+      setDisplayedUnit({ assetId: scan.assetId, label: scanLabel(scan), type: "DAMAGED" });
+      if (scan.outcome === "EXPECTED_EXACT" || scan.outcome === "EXPECTED_MODEL") {
+        setFlash(true);
+        if (flashTimer.current) clearTimeout(flashTimer.current);
+        flashTimer.current = setTimeout(() => {
+          if (alive.current) setFlash(false);
+        }, 450);
+      }
+    } else {
+      const unknown = ack.findings.some(
+        (finding) => finding.sourceOperationId === operationId && finding.type === "UNKNOWN_CODE",
+      );
+      const previous = unknown
+        ? undefined
+        : ack.scans.findLast((scan) => scan.assetCode === submitted.code && !scan.undone);
+      setDisplayedUnit(
+        previous
+          ? { assetId: previous.assetId, label: scanLabel(previous), type: "DAMAGED" }
+          : { label: submitted.code, type: "UNKNOWN_CODE" },
+      );
+      setFeedback(
+        `${submitted.code} - ${ack.findings.some((finding) => finding.sourceOperationId === operationId) ? "Unknown code recorded for review" : "Duplicate / no new scan recorded"}`,
+      );
+    }
+  });
+  useEffect(
+    () => onAcknowledged(({ operationId, audit: ack }) => acknowledge(operationId, ack)),
+    [onAcknowledged],
+  );
+  const [submittedTick, setSubmittedTick] = useState(0);
+  useEffect(() => {
+    let active = true;
+    for (const [operationId, submission] of owned.current) {
+      if (!submission.pending) continue;
+      void settledOperation(operationId)
+        .then((ack) => {
+          if (active && alive.current && ack) acknowledge(operationId, ack);
+        })
+        .catch(() => {
+          /* Retry feedback on the next outbox snapshot. */
+        });
+    }
+    return () => {
+      active = false;
+    };
+  }, [settledOperation, queue.commands, audit, submittedTick]);
+  const lastProgress = useRef(progress);
+  useEffect(() => {
+    if (lastProgress.current === progress) return;
+    lastProgress.current = progress;
+    setConfirmMissing(false);
+    setSealConfirmed(false);
+    setClosing(false);
+    setClosingCode(undefined);
+    setCompletionOp(crypto.randomUUID());
+  }, [progress]);
+  const unmet = audit?.expectedRequirements.filter((row) => !row.satisfied) ?? [];
+  useEffect(() => {
+    if (
+      audit?.state === "IN_PROGRESS" &&
+      audit.expectedRequirements.length > 0 &&
+      !audit.expectedRequirements.some((row) => !row.satisfied) &&
+      !satisfiedShown &&
+      dialog === null &&
+      !queue.completionBlocked
+    ) {
+      queueMicrotask(() => {
+        if (alive.current) {
+          setSatisfiedShown(true);
+          setDialog("satisfied");
+        }
+      });
+    }
+  }, [audit, dialog, queue.completionBlocked, satisfiedShown]);
+  useEffect(() => {
+    if (audit?.expectedRequirements.some((row) => !row.satisfied) && satisfiedShown)
+      queueMicrotask(() => {
+        if (alive.current) setSatisfiedShown(false);
+      });
+  }, [audit?.expectedRequirements, satisfiedShown]);
+  async function run(action: () => Promise<void>) {
     if (busyRef.current) return;
     busyRef.current = true;
     setBusy(true);
-    let result;
     try {
-      result = await action();
+      await action();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "The operation failed.");
+      if (alive.current) setError(cause instanceof Error ? cause.message : "The operation failed.");
+    } finally {
+      busyRef.current = false;
+      if (alive.current) setBusy(false);
     }
-    busyRef.current = false;
-    setBusy(false);
-    if (!result || typeof result === "string") return;
-    if (result.kind === "ok") {
-      try {
-        await queue.accept(result.data);
-      } catch {
-        setError(
-          "Browser storage is unavailable. The server accepted the operation; reconnect to recover it.",
-        );
+  }
+  function openReport(
+    assetId?: string,
+    label = "Unknown item",
+    type: AuditFindingType = "DAMAGED",
+  ) {
+    setCommentBarrier(undefined);
+    setFinishingComment(false);
+    setReport({ assetId, label, type });
+    setNote("");
+    setPhotos([]);
+    setReportOp(crypto.randomUUID());
+    setDialog("report");
+  }
+  async function receive(raw: string) {
+    if (!audit || audit.state === "COMPLETED" || busyRef.current) return;
+    const value = normalizeAssetCode(raw);
+    setCommentBarrier(undefined);
+    setCode(value);
+    if (!audit.id) {
+      await run(async () => {
+        const result = await startAudit(taskId, value);
+        if (!alive.current) return;
+        if (result.kind === "ok") {
+          await queue.accept(result.data);
+          setError(undefined);
+        } else setError(result.error.problem?.detail ?? result.error.message);
+      });
+      return;
+    }
+    if (container && value === normalizeAssetCode(container.publicCode)) {
+      if (queue.completionBlocked) {
+        setError("Synchronize all saved work before the closing scan.");
         return;
       }
-      setError(undefined);
-      setRetryAction(null);
-    } else {
-      setError(result.error.problem?.detail ?? result.error.message);
-      setRetryAction(() => action as () => Promise<AuditResult<ContainerAudit>>);
+      setClosingCode(value);
+      setClosing(false);
+      setDialog("finish");
+
+      return;
     }
-  };
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    if (audit?.id) {
-      const operationId = crypto.randomUUID();
-      await apply(() => scanAudit(audit.id!, code, operationId));
-    } else await apply(() => startAudit(taskId, code));
+    if (closing) {
+      setError("Scan the assigned container to finish, or continue auditing.");
+      return;
+    }
+    setClosingCode(undefined);
+    setConfirmMissing(false);
+    setSealConfirmed(false);
+    setCompletionOp(crypto.randomUUID());
+    const op = crypto.randomUUID();
+    newestOperation.current = op;
+    setDisplayedUnit({ label: value, type: "UNKNOWN_CODE" });
+    owned.current.set(op, { code: value, pending: false });
+    const saved = await queue.enqueue({ kind: "scan", body: { operationId: op, code: value } });
+    if (!alive.current) return;
+    if (!saved) owned.current.delete(op);
+    else {
+      const submission = owned.current.get(op);
+      if (submission) {
+        submission.pending = true;
+        setSubmittedTick((value) => value + 1);
+        if (newestOperation.current === op) setFeedback(`${value} - Saved, pending confirmation`);
+      }
+    }
   }
-  if (!audit)
-    return error ? (
-      <Alert severity="error">{error}</Alert>
-    ) : (
-      <Typography role="status">Loading audit.</Typography>
-    );
-  const started = Boolean(audit.id);
-  const hasUnmet = audit.expectedRequirements.some((row) => !row.satisfied);
-  const lastActiveScan = audit.scans.findLast((scan) => !scan.undone);
+  async function saveReport() {
+    await run(async () => {
+      const saved = await queue.findingWithPhotos(
+        {
+          kind: "finding",
+          body: {
+            operationId: reportOp,
+            type: report.type,
+            assetId: report.assetId,
+            note: note || undefined,
+          },
+        },
+        photos,
+      );
+      if (!alive.current || !saved) return;
+      setPhotos([]);
+      setNote("");
+      setDialog(null);
+      setCommentBarrier(finishingComment ? saved : undefined);
+      setFeedback("Report saved, pending synchronization.");
+      setClosing(false);
+      setClosingCode(undefined);
+      setConfirmMissing(false);
+    });
+  }
+  useEffect(() => {
+    if (!commentBarrier) return;
+    const confirmed = audit?.findings.some((f) => f.sourceOperationId === commentBarrier);
+    if (confirmed && !queue.completionBlocked && dialog === null && !busy)
+      queueMicrotask(() => {
+        if (alive.current) {
+          setCommentBarrier(undefined);
+          setClosing(true);
+          setClosingCode(undefined);
+          setDialog(null);
+        }
+      });
+  }, [commentBarrier, audit?.findings, queue.completionBlocked, dialog, busy]);
+  async function finish() {
+    await run(async () => {
+      if (!audit?.id || !closingCode) return;
+      const result = await queue.complete((actor, signal) =>
+        completeAudit(
+          audit.id!,
+          closingCode,
+          confirmMissing,
+          container?.sealable ? sealConfirmed : false,
+          completionOp,
+          actor,
+          signal,
+        ),
+      );
+      if (!alive.current) return;
+      if (result.kind === "ok") {
+        setError(undefined);
+        setDialog(null);
+        setClosing(false);
+      } else setError(result.error.problem?.detail ?? result.error.message);
+    });
+  }
+  if (!audit) return <Alert severity={error ? "error" : "info"}>{error ?? "Loading audit."}</Alert>;
+  const last = audit.scans.findLast((scan) => !scan.undone);
+  const inProgress = audit.state === "IN_PROGRESS";
+  const canWrite = role !== "VIEWER";
   return (
-    <Stack spacing={2}>
-      {audit?.batchId ? <TemporaryInvitationsPanel auditBatchId={audit.batchId} /> : null}
-      <PageHeading
-        title={container ? `Container audit: ${container.displayName}` : "Container audit"}
-        description={`${container ? `${container.publicCode}. ` : ""}Active-audit work is saved on this device before synchronization. Start and complete while online.`}
-      />
-      {audit.archived ? <Typography>Archived audit history</Typography> : null}
-      {!principal?.temporaryAccess &&
-      audit.id &&
-      audit.state === "COMPLETED" &&
-      (role === "OWNER" || role === "DEPUTY") ? (
-        <ArchiveButton
-          kind="audit"
-          id={audit.id}
-          archived={audit.archived ?? false}
-          version={audit.archiveVersion ?? 0}
-          label="audit"
-          onChanged={async () => {
-            const result = await getAuditTask(taskId);
-            if (result.kind === "ok") await queue.accept(result.data);
-            else setError(result.error.problem?.detail ?? result.error.message);
+    <Stack spacing={1} sx={{ flex: 1, minHeight: 0, overflow: "hidden", position: "relative" }}>
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{ alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}
+      >
+        <Box sx={{ minWidth: 0 }}>
+          <Typography
+            component="h2"
+            variant="h6"
+            sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+          >
+            {container ? `Container audit: ${container.displayName}` : "Container audit"}
+          </Typography>
+          <Typography variant="caption">
+            {container?.publicCode} / {queue.syncStatus}
+            {queue.commands.length ? ` / ${queue.commands.length} pending` : ""}
+          </Typography>
+        </Box>
+      </Stack>
+      {audit.blockingReasons.length ? (
+        <Alert severity="warning" sx={{ flexShrink: 0, py: 0.5 }}>
+          <Typography
+            title={audit.blockingReasons.join(" ")}
+            sx={{
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+              fontSize: ".85rem",
+              lineHeight: 1.35,
+            }}
+          >
+            {audit.blockingReasons.join(" ")}
+          </Typography>
+        </Alert>
+      ) : null}
+      {audit.state !== "COMPLETED" && canWrite ? (
+        <ScannerViewport
+          compact
+          paused={dialog !== null || (!inProgress && audit.state !== "READY")}
+          capability={webQrScannerCapability}
+          onCode={(value) => void receive(value)}
+          onManual={() => {
+            setCommentBarrier(undefined);
+            setDialog("manual");
+          }}
+        />
+      ) : (
+        <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+          <Typography>
+            {audit.archived
+              ? "Archived audit history"
+              : audit.state === "COMPLETED"
+                ? "Audit completed"
+                : audit.id
+                  ? "Audit details"
+                  : "Audit not started"}
+          </Typography>
+          <AuditDetails
+            audit={audit}
+            queue={queue}
+            readOnly
+            onReport={() => {}}
+            onPresent={() => {}}
+            onQrMissing={() => {}}
+          />
+          {!principal?.temporaryAccess && (role === "OWNER" || role === "DEPUTY") && audit.id ? (
+            <ArchiveButton
+              kind="audit"
+              id={audit.id}
+              archived={audit.archived ?? false}
+              version={audit.archiveVersion ?? 0}
+              label="audit"
+              onChanged={async () => {
+                const result = await getAuditTask(taskId);
+                if (!alive.current) return;
+                if (result.kind === "ok") await queue.accept(result.data);
+                else setError(result.error.problem?.detail ?? result.error.message);
+              }}
+            />
+          ) : null}
+        </Box>
+      )}
+      <Box sx={{ flexShrink: 0 }}>
+        <Typography
+          role="status"
+          sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+        >
+          {error ||
+            (closing
+              ? `Close the container, then scan ${container?.publicCode} again.`
+              : feedback) ||
+            (last
+              ? `${scanLabel(last)} - ${last.outcome.replaceAll("_", " ")}`
+              : "Scan an item to begin. Work is saved on this device before synchronization.")}
+        </Typography>
+        {(!displayedUnit || displayedUnit.assetId === last?.assetId) &&
+        last?.recordedByDisplayName ? (
+          <Typography
+            variant="caption"
+            noWrap
+            sx={{ overflow: "hidden", textOverflow: "ellipsis" }}
+          >
+            Recorded by {last.recordedByDisplayName}
+          </Typography>
+        ) : null}
+        <Stack direction="row" spacing={1} sx={{ "& .MuiButton-root": { minHeight: 44, flex: 1 } }}>
+          <Button
+            disabled={!inProgress || !canWrite || closing}
+            onClick={() =>
+              openReport(
+                displayedUnit ? displayedUnit.assetId : last?.assetId,
+                displayedUnit?.label ?? (last ? scanLabel(last) : "Unknown item"),
+                displayedUnit?.type ?? (last ? "DAMAGED" : "UNKNOWN_CODE"),
+              )
+            }
+          >
+            Report
+          </Button>
+          <Button
+            onClick={() => {
+              setCommentBarrier(undefined);
+              setDialog("details");
+            }}
+          >
+            Details
+          </Button>
+          <Button
+            variant="contained"
+            disabled={!inProgress || busy || !canWrite}
+            onClick={() => {
+              setClosing(false);
+              setClosingCode(undefined);
+              setConfirmMissing(false);
+              setSealConfirmed(false);
+              setDialog("finish");
+            }}
+          >
+            Finish
+          </Button>
+        </Stack>
+      </Box>
+      {flash ? (
+        <Box
+          data-testid="expected-scan-flash"
+          aria-hidden
+          sx={{
+            position: "fixed",
+            inset: 0,
+            zIndex: (theme) => theme.zIndex.modal + 1,
+            bgcolor: "success.main",
+            opacity: 0.42,
+            pointerEvents: "none",
+            "@media (prefers-reduced-motion: reduce)": { opacity: 0.15 },
           }}
         />
       ) : null}
-      <Alert severity={queue.syncStatus === "Failed" ? "error" : "info"} role="status">
-        {queue.syncStatus}
-        {queue.commands.length
-          ? `: ${queue.commands.length} saved operations awaiting synchronization.`
-          : ": audit work is synchronized."}
-      </Alert>
-      {queue.commands.length ? (
-        <Paper sx={{ p: 2 }}>
-          <Typography variant="h6">Saved work awaiting synchronization</Typography>
-          <Typography>
-            Pending scans do not count as found until the server confirms them. Cancel a pending
-            scan to correct it; undo confirmed scans below.
-          </Typography>
-          {queue.commands.map((row) => (
-            <Stack key={row.operationId} spacing={1} sx={{ py: 1 }}>
-              <Typography>
-                {row.command.kind === "scan" || row.command.kind === "move"
-                  ? row.command.body.code
-                  : row.command.kind === "photo"
-                    ? row.command.fileName
-                    : row.command.kind}{" "}
-                -{" "}
-                {row.state === "sending"
-                  ? `Synchronizing ${row.command.kind === "photo" ? `${row.progress}%` : ""}`
-                  : row.state === "failed"
-                    ? "Failed"
-                    : "Saved, pending confirmation"}
-              </Typography>
-              {row.error ? <Typography color="error">{row.error}</Typography> : null}
-              <Stack direction="row" spacing={1}>
-                {row.state === "failed" || (row.state === "pending" && row.attempts === 0) ? (
-                  <Button onClick={() => void queue.cancel(row)}>Cancel saved operation</Button>
-                ) : null}
-                {row.state === "failed" ? (
-                  <Button onClick={() => void queue.retry(row)}>Retry saved operation</Button>
-                ) : null}
-                {row.state === "failed" &&
-                row.error?.includes("another audit") &&
-                (row.command.kind === "scan" || row.command.kind === "move") ? (
-                  <Button
-                    onClick={() => {
-                      const value =
-                        row.command.kind === "scan" || row.command.kind === "move"
-                          ? row.command.body.code
-                          : "";
-                      void (async () => {
-                        if (await queue.cancel(row))
-                          await moveAuditScanHere(audit.id!, value, crypto.randomUUID());
-                      })();
-                    }}
-                  >
-                    Move scan here
-                  </Button>
-                ) : null}
-              </Stack>
-            </Stack>
-          ))}
-        </Paper>
-      ) : null}
-      {error ? (
-        <Alert
-          severity="error"
-          action={
-            retryAction || (audit.id && error.includes("another audit")) ? (
-              <Stack direction="row" spacing={1}>
-                {retryAction ? (
-                  <Button color="inherit" disabled={busy} onClick={() => void apply(retryAction)}>
-                    Retry submission
-                  </Button>
-                ) : null}
-                {audit.id && error.includes("another audit") ? (
-                  <Button
-                    color="inherit"
-                    disabled={busy}
-                    onClick={() => {
-                      const operationId = crypto.randomUUID();
-                      void apply(() => moveAuditScanHere(audit.id!, code, operationId));
-                    }}
-                  >
-                    Move scan here
-                  </Button>
-                ) : null}
-              </Stack>
-            ) : undefined
-          }
-        >
-          {error}
-        </Alert>
-      ) : null}
-      {audit.blockingReasons.length ? (
-        <Alert severity="warning">{audit.blockingReasons.join(" ")}</Alert>
-      ) : null}
-      <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ alignItems: "start" }}>
-        <Stack spacing={2} sx={{ flex: 1, width: "100%" }}>
-          {started && audit.state === "IN_PROGRESS" ? (
-            <ScannerViewport
-              capability={webQrScannerCapability}
-              onCode={(value) => {
-                setCode(value);
-                const operationId = crypto.randomUUID();
-                void scanAudit(audit.id!, value, operationId);
-              }}
-            />
-          ) : null}
-          {!started || audit.state === "IN_PROGRESS" ? (
-            <Paper component="form" onSubmit={(event) => void submit(event)} sx={{ p: 2 }}>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                <TextField
-                  required
-                  fullWidth
-                  label={started ? "Scan or enter item code" : "Scan assigned container to start"}
-                  value={code}
-                  onChange={(event) => setCode(event.target.value)}
-                />
-                <Button
-                  type="submit"
-                  variant="contained"
-                  disabled={busy || (!started && audit.state !== "READY")}
-                >
-                  {started ? "Record scan" : "Start audit"}
-                </Button>
-              </Stack>
-            </Paper>
-          ) : null}
-          {started ? (
-            <Paper sx={{ p: 2 }}>
-              <Typography variant="h6">Last scans</Typography>
-              {audit.scans
-                .slice(-4)
-                .reverse()
-                .map((scan) => {
-                  const context = scanContext(scan);
-                  const destination = [
-                    context.destinationContainerName,
-                    context.destinationContainerCode,
-                  ]
-                    .filter(Boolean)
-                    .join(" - ");
-                  const suggestions = context.suggestions
-                    ?.map((suggestion) =>
-                      [suggestion.name, suggestion.code].filter(Boolean).join(" - "),
-                    )
-                    .filter(Boolean)
-                    .join(", ");
-                  return (
-                    <Stack
-                      key={scan.id}
-                      direction="row"
-                      spacing={1}
-                      sx={{ justifyContent: "space-between", py: 0.5 }}
-                    >
-                      <Box>
-                        <Typography>
-                          {[context.assetName ?? context.modelName, scan.assetCode]
-                            .filter(Boolean)
-                            .join(" - ")}{" "}
-                          - {scan.outcome.replaceAll("_", " ")}
-                        </Typography>
-                        {scan.recordedByDisplayName ? (
-                          <Typography variant="caption" sx={{ display: "block" }}>
-                            Recorded by {scan.recordedByDisplayName}
-                          </Typography>
-                        ) : null}
-                        {destination ? (
-                          <Typography variant="caption" sx={{ display: "block" }}>
-                            Required in {destination}
-                          </Typography>
-                        ) : null}
-                        {suggestions ? (
-                          <Typography variant="caption" sx={{ display: "block" }}>
-                            Could fill: {suggestions}
-                          </Typography>
-                        ) : null}
-                      </Box>
-                      {!scan.undone ? (
-                        <Button
-                          size="small"
-                          disabled={busy}
-                          onClick={() => {
-                            const operationId = crypto.randomUUID();
-                            void apply(() => undoAuditScan(audit.id!, scan.id, operationId));
-                          }}
-                        >
-                          Undo
-                        </Button>
-                      ) : (
-                        <Typography variant="caption">Undone</Typography>
-                      )}
-                    </Stack>
-                  );
-                })}
-            </Paper>
-          ) : null}
-        </Stack>
-        <Paper sx={{ p: 2, flex: 1, width: "100%" }}>
-          <Typography variant="h6">Expected direct contents</Typography>
-          <Typography color="text.secondary">
-            Exact items are matched before interchangeable model slots.
-          </Typography>
-          <Divider sx={{ my: 1 }} />
-          {audit.expectedRequirements.map((row) => (
-            <Box key={row.id} sx={{ py: 1, borderBottom: 1, borderColor: "divider" }}>
-              <Typography>
-                {expectedLabel(row)} {row.requiredQuantity ? `× ${row.requiredQuantity}` : ""}
-              </Typography>
-              <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
-                {row.type.replaceAll("_", " ")}
-              </Typography>
-              <Typography variant="caption">
-                {row.satisfied ? "Found / confirmed" : "Still expected"}
-              </Typography>
-              {started && audit.state === "IN_PROGRESS" && row.type === "CONSUMABLE_QUANTITY" ? (
-                <Stack spacing={1} sx={{ mt: 1 }}>
-                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                    <Button
-                      size="small"
-                      disabled={busy}
-                      onClick={() => {
-                        const operationId = crypto.randomUUID();
-                        void apply(() =>
-                          observeAuditConsumable(
-                            audit.id!,
-                            row.id,
-                            "CONFIRMED",
-                            undefined,
-                            undefined,
-                            operationId,
-                          ),
-                        );
-                      }}
-                    >
-                      Required amount present
-                    </Button>
-                    <Button
-                      size="small"
-                      disabled={busy}
-                      onClick={() => {
-                        const operationId = crypto.randomUUID();
-                        void apply(() =>
-                          observeAuditConsumable(
-                            audit.id!,
-                            row.id,
-                            "MISSING_LOW",
-                            undefined,
-                            observationReasons[row.id],
-                            operationId,
-                          ),
-                        );
-                      }}
-                    >
-                      Missing or low
-                    </Button>
-                  </Stack>
-                  <TextField
-                    size="small"
-                    type="number"
-                    label="Observed quantity"
-                    value={observedQuantities[row.id] ?? ""}
-                    slotProps={{ htmlInput: { min: 0, step: 0.001 } }}
-                    onChange={(event) =>
-                      setObservedQuantities((current) => ({
-                        ...current,
-                        [row.id]: event.target.value,
-                      }))
-                    }
-                    helperText="A balance change requires Owner or Deputy approval."
-                  />
-                  <TextField
-                    size="small"
-                    label="Adjustment reason"
-                    value={observationReasons[row.id] ?? ""}
-                    onChange={(event) =>
-                      setObservationReasons((current) => ({
-                        ...current,
-                        [row.id]: event.target.value,
-                      }))
-                    }
-                  />
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    disabled={busy || !observedQuantities[row.id]}
-                    onClick={() => {
-                      const operationId = crypto.randomUUID();
-                      void apply(() =>
-                        observeAuditConsumable(
-                          audit.id!,
-                          row.id,
-                          "OBSERVED",
-                          Number(observedQuantities[row.id]),
-                          observationReasons[row.id],
-                          operationId,
-                        ),
-                      );
-                    }}
-                  >
-                    Record observed quantity
-                  </Button>
-                </Stack>
-              ) : null}
-              {started &&
-              audit.state === "IN_PROGRESS" &&
-              row.type === "SPECIFIC_ASSET" &&
-              row.specificAssetId ? (
-                <Button
-                  size="small"
-                  disabled={busy}
-                  onClick={() => {
-                    const operationId = crypto.randomUUID();
-                    void apply(() =>
-                      recordAuditFinding(
-                        audit.id!,
-                        "UNREADABLE_LABEL",
-                        row.specificAssetId,
-                        "Present, but the label could not be read.",
-                        operationId,
-                      ),
-                    );
-                  }}
-                >
-                  Present - label unreadable
-                </Button>
-              ) : null}
-            </Box>
-          ))}
-        </Paper>
-      </Stack>
-      {started && audit.state === "IN_PROGRESS" ? (
-        <Paper sx={{ p: 2 }}>
-          <Typography variant="h6">Finish audit</Typography>
-          <Typography color="text.secondary">
-            Close the container, then scan the same container code again. Missing items are recorded
-            for review.
-          </Typography>
+      <Dialog open={dialog === "details"} fullWidth maxWidth="md" onClose={() => setDialog(null)}>
+        <DialogTitle>Audit details</DialogTitle>
+        <DialogContent dividers>
+          {error ? <Alert severity="error">{error}</Alert> : null}
+          <AuditDetails
+            key={audit.id ?? taskId}
+            audit={audit}
+            queue={queue}
+            readOnly={!canWrite || !inProgress}
+            onPresent={(value) => void receive(value)}
+            onReport={(id, label) => openReport(id, label)}
+            onQrMissing={(id, label) => openReport(id, label, "UNREADABLE_LABEL")}
+          />
+          {audit.batchId ? <TemporaryInvitationsPanel auditBatchId={audit.batchId} /> : null}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDialog(null)}>Back to camera</Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={dialog === "manual"} fullWidth maxWidth="xs" onClose={() => setDialog(null)}>
+        <DialogTitle>
+          {audit.id ? "Enter item code" : "Scan assigned container to start"}
+        </DialogTitle>
+        <DialogContent>
           <TextField
+            autoFocus
             fullWidth
-            sx={{ mt: 1 }}
-            label="Damage note"
-            value={findingNote}
-            onChange={(event) => setFindingNote(event.target.value)}
-            helperText="Optional. Add the important physical detail before marking damage."
+            label={audit.id ? "Scan or enter item code" : "Scan assigned container to start"}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && code && !busy && (audit.id || audit.state === "READY")) {
+                event.preventDefault();
+                setDialog(null);
+                void receive(code);
+              }
+            }}
+            value={code}
+            onChange={(event) => setCode(event.target.value)}
           />
-          <Button component="label" sx={{ mt: 1 }}>
-            Choose optional evidence photographs
-            <input
-              type="file"
-              hidden
-              multiple
-              accept="image/png,image/jpeg"
-              onChange={(event) => setPhotos(Array.from(event.target.files ?? []))}
-            />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDialog(null)}>Cancel</Button>
+          <Button
+            disabled={busy || !code || (!audit.id && audit.state !== "READY")}
+            onClick={() => {
+              setDialog(null);
+              void receive(code);
+            }}
+          >
+            {audit.id ? "Record scan" : "Start audit"}
           </Button>
-          {photos.length ? (
-            <Typography>
-              {photos.length} photographs selected; saved when a finding is recorded.
-            </Typography>
-          ) : null}
-          <Stack direction="row" spacing={1}>
-            <Button
+        </DialogActions>
+      </Dialog>
+      <Dialog
+        open={dialog === "report"}
+        fullWidth
+        maxWidth="sm"
+        onClose={() => {
+          if (!busy) setDialog(null);
+        }}
+      >
+        <DialogTitle>Report: {report.label}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            <TextField
+              select
+              label="Finding"
               disabled={busy}
-              onClick={() =>
-                void apply(() =>
-                  recordAuditFinding(
-                    audit.id!,
-                    "UNKNOWN_CODE",
-                    undefined,
-                    findingNote || undefined,
-                    crypto.randomUUID(),
-                  ),
-                )
+              value={report.type}
+              onChange={(event) =>
+                setReport({ ...report, type: event.target.value as AuditFindingType })
               }
             >
-              Report unknown item
-            </Button>
-          </Stack>
-          {hasUnmet ? (
-            <FormControlLabel
-              sx={{ mt: 1 }}
-              control={
-                <Checkbox
-                  checked={confirmMissing}
-                  onChange={(event) => setConfirmMissing(event.target.checked)}
-                />
-              }
-              label="I confirm that the remaining expected contents are missing."
+              <MenuItem value="DAMAGED">Damaged</MenuItem>
+              <MenuItem value="UNREADABLE_LABEL" disabled={!report.assetId}>
+                QR missing / unreadable
+              </MenuItem>
+              <MenuItem value="UNKNOWN_CODE">Unknown item / additional contents</MenuItem>
+            </TextField>
+            <TextField
+              multiline
+              label="Report note"
+              disabled={busy}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              helperText="Optional. Describe damage or additional contents without a QR code."
             />
-          ) : null}
-          <FormControlLabel
-            sx={{ mt: 1 }}
-            control={
-              <Checkbox
-                checked={sealConfirmed}
-                onChange={(event) => setSealConfirmed(event.target.checked)}
+            <Button component="label">
+              Choose optional evidence photographs
+              <input
+                type="file"
+                hidden
+                multiple
+                accept="image/png,image/jpeg"
+                onChange={(e) => setPhotos(Array.from(e.target.files ?? []))}
               />
-            }
-            label="I applied a seal if this container requires one."
-          />
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 1 }}>
-            <Button
-              variant="outlined"
-              disabled={busy || !lastActiveScan}
-              onClick={() => {
-                if (!lastActiveScan) return;
-                const operationId = crypto.randomUUID();
-                void apply(() =>
-                  recordAuditFinding(
-                    audit.id!,
-                    "DAMAGED",
-                    lastActiveScan.assetId,
-                    findingNote || undefined,
-                    operationId,
-                  ),
-                );
-              }}
-            >
-              Mark last scanned damaged
             </Button>
+            <Typography>{photos.length} photographs selected</Typography>
+            {error ? <Alert severity="error">{error}</Alert> : null}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button disabled={busy} onClick={() => setDialog(null)}>
+            Cancel
+          </Button>
+          <Button disabled={busy} onClick={() => void saveReport()}>
+            Save report
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={dialog === "satisfied"} fullWidth maxWidth="sm" onClose={() => setDialog(null)}>
+        <DialogTitle>All required contents found</DialogTitle>
+        <DialogContent>
+          You can continue scanning additional units or note additional contents without a QR code.
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              openReport(undefined, "Additional contents", "UNKNOWN_CODE");
+              setFinishingComment(true);
+            }}
+          >
+            Note additional contents
+          </Button>
+          <Button onClick={() => setDialog(null)}>Continue scanning</Button>
+          <Button
+            onClick={() => {
+              setClosingCode(undefined);
+              setDialog("finish");
+            }}
+          >
+            Finish audit
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog
+        open={dialog === "finish"}
+        fullWidth
+        maxWidth="sm"
+        onClose={() => {
+          if (!busy) setDialog(null);
+        }}
+      >
+        <DialogTitle>Finish audit</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1}>
+            {unmet.length ? (
+              <>
+                <Typography>Remaining expected contents:</Typography>
+                {unmet.map((row) => (
+                  <Typography key={row.id} color="error">
+                    {missingLabel(row)}
+                  </Typography>
+                ))}
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={confirmMissing}
+                      onChange={(e) => setConfirmMissing(e.target.checked)}
+                    />
+                  }
+                  label="I confirm that the remaining expected contents are missing."
+                />
+              </>
+            ) : (
+              <Typography>Required contents are found / confirmed.</Typography>
+            )}
+            <Typography>
+              {closingCode
+                ? "The assigned container was rescanned. Confirm it is closed."
+                : "Review the contents, then close and rescan the assigned container."}
+            </Typography>
+            {closingCode && container?.sealable ? (
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={sealConfirmed}
+                    onChange={(e) => setSealConfirmed(e.target.checked)}
+                  />
+                }
+                label="I applied the required seal."
+              />
+            ) : null}
+            {queue.completionBlocked ? (
+              <Alert severity="warning">
+                Synchronize all saved operations and photographs before finishing.
+              </Alert>
+            ) : null}
+            {error ? <Alert severity="error">{error}</Alert> : null}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button disabled={busy} onClick={() => setDialog(null)}>
+            Continue auditing
+          </Button>
+          {closingCode ? (
             <Button
-              variant="contained"
               disabled={
                 busy ||
-                photos.length > 0 ||
                 queue.completionBlocked ||
-                (hasUnmet && !confirmMissing)
+                (unmet.length > 0 && !confirmMissing) ||
+                (Boolean(container?.sealable) && !sealConfirmed)
               }
+              onClick={() => void finish()}
+            >
+              Complete audit
+            </Button>
+          ) : (
+            <Button
+              disabled={busy || queue.completionBlocked || (unmet.length > 0 && !confirmMissing)}
               onClick={() => {
-                const operationId = crypto.randomUUID();
-                void apply(() =>
-                  queue.complete((actor, signal) =>
-                    completeAudit(
-                      audit.id!,
-                      code,
-                      confirmMissing,
-                      sealConfirmed,
-                      operationId,
-                      actor,
-                      signal,
-                    ),
-                  ),
-                );
+                setClosing(true);
+                setDialog(null);
               }}
             >
-              Complete with this code
+              Scan closed container
             </Button>
-          </Stack>
-        </Paper>
-      ) : null}
-      {audit.id ? (
-        <AuditEvidencePanel key={audit.id} auditId={audit.id} refreshKey={queue.commands.length} />
-      ) : null}
-      {audit.findings.length ? (
-        <Paper sx={{ p: 2 }}>
-          <Typography variant="h6">Findings for review</Typography>
-          {audit.findings.map((finding) => (
-            <Typography key={finding.id}>
-              {finding.type.replaceAll("_", " ")}
-              {finding.note ? ` - ${finding.note}` : ""}
-              {finding.recordedByDisplayName
-                ? ` · Recorded by ${finding.recordedByDisplayName}`
-                : ""}
-              {role === "OWNER" || role === "DEPUTY" ? (
-                <Button component={RouterLink} to={`/review?finding=${finding.id}`} size="small">
-                  Review finding
-                </Button>
-              ) : null}
-            </Typography>
-          ))}
-        </Paper>
-      ) : null}
+          )}
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 }

@@ -39,7 +39,38 @@ describe("durable audit outbox", () => {
   });
   afterEach(async () => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
     await db.delete();
+  });
+  it("keeps committed acknowledgements safe when presentation listeners and broadcasts fail", async () => {
+    class BrokenChannel {
+      onmessage: unknown;
+      constructor(_name: string) {}
+      postMessage() {
+        throw new Error("closed");
+      }
+      close() {
+        throw new Error("closed");
+      }
+    }
+    vi.stubGlobal("BroadcastChannel", BrokenChannel);
+    const failure = outbox.subscribeAcknowledged(() => {
+      throw new Error("view unmounted");
+    });
+    const listener = vi.fn();
+    const stop = outbox.subscribeAcknowledged(listener);
+    const op = await outbox.enqueue(partition, audit, scan("own-op"));
+    const row = (await outbox.list(partition))[0]!;
+    const lease = (await outbox.acquire(partition, "drain"))!;
+    await expect(outbox.acknowledge(lease, row, audit)).resolves.toBeUndefined();
+    expect(await outbox.list(partition)).toEqual([]);
+    expect(listener).toHaveBeenCalledWith(
+      expect.objectContaining({ operationId: op, audit, local: true }),
+    );
+    expect((await outbox.snapshot(partition, "task"))?.audit).toEqual(audit);
+    failure();
+    stop();
+    await outbox.release(lease);
   });
   it("stops expired volunteer recovery and preserves queued rows without replaying them for a new volunteer", async () => {
     const now = Date.now();

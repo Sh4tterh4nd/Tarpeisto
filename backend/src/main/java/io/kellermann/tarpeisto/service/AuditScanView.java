@@ -13,7 +13,33 @@ public record AuditScanView(
         boolean undone,
         String contextSnapshot,
         UUID recordedByUserId,
-        String recordedByDisplayName) {
+        String recordedByDisplayName,
+        UUID assetModelId) {
+    public AuditScanView(
+            UUID id,
+            UUID operationId,
+            UUID assetId,
+            String assetCode,
+            String outcome,
+            Instant scannedAt,
+            boolean undone,
+            String contextSnapshot,
+            UUID recordedByUserId,
+            String recordedByDisplayName) {
+        this(
+                id,
+                operationId,
+                assetId,
+                assetCode,
+                outcome,
+                scannedAt,
+                undone,
+                contextSnapshot,
+                recordedByUserId,
+                recordedByDisplayName,
+                null);
+    }
+
     public AuditScanView(
             UUID id,
             UUID operationId,
@@ -23,6 +49,6 @@ public record AuditScanView(
             Instant scannedAt,
             boolean undone,
             String contextSnapshot) {
-        this(id, operationId, assetId, assetCode, outcome, scannedAt, undone, contextSnapshot, null, null);
+        this(id, operationId, assetId, assetCode, outcome, scannedAt, undone, contextSnapshot, null, null, null);
     }
 }

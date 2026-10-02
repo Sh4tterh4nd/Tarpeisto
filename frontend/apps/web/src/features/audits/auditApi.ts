@@ -9,12 +9,15 @@ type GeneratedAsset = Required<components["schemas"]["AuditContainerResponse"]>;
 
 export type AuditExpectedRequirement = Omit<
   Required<GeneratedExpected>,
-  "assetModelId" | "specificAssetId" | "requiredQuantity"
+  "assetModelId" | "specificAssetId" | "requiredQuantity" | "matchedQuantity"
 > &
-  Pick<GeneratedExpected, "assetModelId" | "specificAssetId" | "requiredQuantity">;
+  Pick<
+    GeneratedExpected,
+    "assetModelId" | "specificAssetId" | "requiredQuantity" | "matchedQuantity"
+  >;
 export type AuditScan = Omit<
   Required<GeneratedScan>,
-  "recordedByUserId" | "recordedByDisplayName"
+  "recordedByUserId" | "recordedByDisplayName" | "assetModelId"
 > &
   Partial<GeneratedScan>;
 export type AuditFinding = Omit<
@@ -40,7 +43,13 @@ export type ContainerAudit = Omit<
 export type AuditFindingType = components["schemas"]["RecordAuditFindingRequest"]["type"];
 export type AuditConsumableStatus =
   components["schemas"]["ObserveAuditConsumableRequest"]["status"];
-export type AuditContainer = Pick<GeneratedAsset, "id" | "displayName" | "publicCode">;
+export type AuditContainer = Pick<GeneratedAsset, "id" | "displayName" | "publicCode"> &
+  Partial<Pick<GeneratedAsset, "sealable">>;
+export type AuditManualCandidate = Required<components["schemas"]["AuditManualCandidateResponse"]>;
+export type AuditManualCandidatePage = Omit<
+  Required<components["schemas"]["AuditManualCandidatePageResponse"]>,
+  "items" | "nextCursor"
+> & { items: AuditManualCandidate[]; nextCursor?: string };
 export type AuditResult<T> = { kind: "ok"; data: T } | { kind: "error"; error: AppError };
 
 interface Outcome {
@@ -142,5 +151,12 @@ export const completeAudit = (
       headers: actor ? { "X-Tarpeisto-Audit-Actor": actor } : undefined,
       params: { path: { auditId } },
       body: { operationId, containerCode, confirmMissing, sealConfirmed },
+    }),
+  );
+
+export const getAuditManualCandidates = (auditId: string, query?: string, cursor?: string) =>
+  read<AuditManualCandidatePage>(() =>
+    apiClient.GET("/api/v1/audits/{auditId}/manual-candidates", {
+      params: { path: { auditId }, query: { query, cursor, limit: 100 } },
     }),
   );

@@ -1,3 +1,4 @@
+import { enterAuditCode, completionReady, finishAudit } from "./auditActions";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
 const taskId = "11111111-1111-1111-1111-111111111111";
@@ -80,6 +81,10 @@ async function mockServer(context: BrowserContext, state: ReturnType<typeof serv
     }
     if (url.pathname === `/api/v1/audits/${auditId}/evidence` && request.method() === "GET") {
       await route.fulfill({ json: state.evidence });
+      return;
+    }
+    if (url.pathname.endsWith("/manual-candidates")) {
+      await route.fulfill({ json: { items: [] } });
       return;
     }
     if (url.pathname.startsWith("/api/v1/media/")) {
@@ -211,16 +216,14 @@ test("lost scan response and offline reload recover stable FIFO work across two 
   await expect(
     page.getByRole("heading", { name: "Container audit: Resilient case" }),
   ).toBeVisible();
-  await page.getByLabel("Scan or enter item code").fill("5J3H0F");
-  await page.getByRole("button", { name: "Record scan" }).click();
+  await enterAuditCode(page, "5J3H0F");
   await expect.poll(() => state.calls.length).toBe(1);
   state.available = false;
   await connectivity(page, false);
-  await page.getByLabel("Scan or enter item code").fill("7K3MXY");
-  await page.getByRole("button", { name: "Record scan" }).click();
+  await enterAuditCode(page, "000000");
   await expect.poll(async () => (await savedRows(page)).length).toBe(2);
   const originalIds = (await savedRows(page)).map((row) => row["operationId"]);
-  await expect(page.getByRole("button", { name: "Complete with this code" })).toBeDisabled();
+  await completionReady(page, false);
   await page.addInitScript(() =>
     Object.defineProperty(navigator, "onLine", { configurable: true, get: () => false }),
   );
@@ -228,9 +231,11 @@ test("lost scan response and offline reload recover stable FIFO work across two 
   await expect(
     page.getByRole("heading", { name: "Container audit: Resilient case" }),
   ).toBeVisible();
+  await page.getByRole("button", { name: "Details" }).click();
   await expect(
-    page.getByRole("heading", { name: "Saved work awaiting synchronization" }),
+    page.getByText("Saved work awaiting synchronization", { exact: true }),
   ).toBeVisible();
+  await page.getByRole("button", { name: "Back to camera" }).click();
   const second = await context.newPage();
   await second.addInitScript(() =>
     Object.defineProperty(navigator, "onLine", { configurable: true, get: () => false }),
@@ -248,7 +253,7 @@ test("lost scan response and offline reload recover stable FIFO work across two 
     state.calls.filter((call) => call.kind === "scans").map((call) => call.operationId),
   ).toEqual([originalIds[0], ...originalIds]);
   expect(state.maxConcurrent).toBe(1);
-  await expect(page.getByRole("button", { name: "Complete with this code" })).toBeEnabled();
+  await completionReady(page, true);
 });
 
 test("finding photographs persist with bytes across reload and uncertain upload retries", async ({
@@ -264,21 +269,23 @@ test("finding photographs persist with bytes across reload and uncertain upload 
   ).toBeVisible();
   state.available = false;
   await connectivity(page, false);
-  await page.getByLabel("Damage note").fill("Unknown item with a broken connector");
+  await page.getByRole("button", { name: "Report", exact: true }).click();
+  await page.getByLabel("Report note").fill("Unknown item with a broken connector");
   await page
     .locator('input[type="file"]')
     .setInputFiles({ name: "connector.png", mimeType: "image/png", buffer: png });
-  await page.getByRole("button", { name: "Report unknown item" }).click();
+  await page.getByRole("button", { name: "Save report" }).click();
   await expect.poll(async () => (await savedRows(page)).length).toBe(2);
   await expect.poll(async () => (await savedRows(page, "blobs")).length).toBe(1);
   const pending = await savedRows(page);
   const findingOperation = pending[0]!["operationId"];
   const uploadOperation = pending[1]!["operationId"];
-  await expect(page.getByRole("button", { name: "Complete with this code" })).toBeDisabled();
+  await completionReady(page, false);
   await page.addInitScript(() =>
     Object.defineProperty(navigator, "onLine", { configurable: true, get: () => false }),
   );
   await page.reload();
+  await page.getByRole("button", { name: "Details" }).click();
   await expect(page.getByText(/connector.png/)).toBeVisible();
   state.available = true;
   await connectivity(page, true);
@@ -292,9 +299,9 @@ test("finding photographs persist with bytes across reload and uncertain upload 
     state.calls.filter((call) => call.kind === "photo").map((call) => call.operationId),
   ).toEqual([uploadOperation, uploadOperation]);
   await expect(page.getByAltText("Audit finding evidence")).toBeVisible();
-  await page.getByLabel("Scan or enter item code").fill("7K3MXY");
-  await page.getByRole("button", { name: "Complete with this code" }).click();
-  await expect(page.getByRole("button", { name: "Complete with this code" })).toBeHidden();
+  await page.getByRole("button", { name: "Back to camera" }).click();
+  await finishAudit(page, "7K3MXY");
+  await expect(page.getByText("Audit completed", { exact: true })).toBeVisible();
 });
 
 test("switching accounts stops other tabs and never replays the previous account's saved scans", async ({
@@ -308,8 +315,7 @@ test("switching accounts stops other tabs and never replays the previous account
     page.getByRole("heading", { name: "Container audit: Resilient case" }),
   ).toBeVisible();
   await connectivity(page, false);
-  await page.getByLabel("Scan or enter item code").fill("5J3H0F");
-  await page.getByRole("button", { name: "Record scan" }).click();
+  await enterAuditCode(page, "5J3H0F");
   await expect.poll(async () => (await savedRows(page)).length).toBe(1);
   state.currentUser = "99999999-9999-9999-9999-999999999999";
   const second = await context.newPage();

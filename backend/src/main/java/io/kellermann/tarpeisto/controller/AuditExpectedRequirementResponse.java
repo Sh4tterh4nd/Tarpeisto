@@ -12,7 +12,8 @@ public record AuditExpectedRequirementResponse(
         BigDecimal requiredQuantity,
         int displayOrder,
         String snapshot,
-        boolean satisfied) {
+        boolean satisfied,
+        BigDecimal matchedQuantity) {
     static AuditExpectedRequirementResponse from(AuditExpectedRequirementView v) {
         return new AuditExpectedRequirementResponse(
                 v.id(),
@@ -22,6 +23,7 @@ public record AuditExpectedRequirementResponse(
                 v.requiredQuantity(),
                 v.displayOrder(),
                 v.snapshot(),
-                v.satisfied());
+                v.satisfied(),
+                v.matchedQuantity());
     }
 }

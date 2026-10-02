@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -31,7 +32,18 @@ public class AuditController {
     public AuditContainerResponse container(
             @AuthenticationPrincipal TarpeistoPrincipal principal, @PathVariable UUID taskId) {
         var container = audits.container(principal, taskId);
-        return new AuditContainerResponse(container.id(), container.displayName(), container.publicCode());
+        return new AuditContainerResponse(
+                container.id(), container.displayName(), container.publicCode(), container.sealable());
+    }
+
+    @GetMapping("/{auditId}/manual-candidates")
+    public AuditManualCandidatePageResponse manualCandidates(
+            @AuthenticationPrincipal TarpeistoPrincipal principal,
+            @PathVariable UUID auditId,
+            @RequestParam(required = false) String query,
+            @RequestParam(defaultValue = "100") int limit,
+            @RequestParam(required = false) String cursor) {
+        return AuditManualCandidatePageResponse.from(audits.manualCandidates(principal, auditId, query, limit, cursor));
     }
 
     @PostMapping("/tasks/{taskId}/start")

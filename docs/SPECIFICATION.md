@@ -723,16 +723,27 @@ Volunteers may confirm or report a discrepancy, but only an Owner or Deputy may 
 
 ### 17.3 Last-scanned card and corrections
 
-Below the camera, show the last scanned item's:
+The active audit scanner fits the viewport without page scrolling. The camera remains visible
+above a fixed bottom bar showing the last scanned object's name, code and outcome, with `Report`,
+`Details` and `Finish` actions. Camera selection, pause, restart and manual-code fallback are
+available through a settings cog at the top right of the camera view.
 
-- Reference photo
-- Model and individual name
-- Asset code
-- Matching outcome
-- `Mark damaged`
-- `Undo scan`
+A newly accepted matching scan produces a brief green flash across the screen and visible success
+text. Pending local work has distinct saved/pending feedback and does not claim an authoritative
+match. Duplicate, extra, misplaced, unknown and failed scans remain distinguishable; feedback
+respects reduced-motion preferences and never relies on color alone.
 
-Auditors can also open any earlier scanned row and mark it damaged or undo it.
+Details opens a separately scrollable view of direct expected contents and earlier observations.
+Missing exact items appear first in red, found items in green, and partially fulfilled interchangeable
+model rows in orange with counts such as `13/20`. Expanding a model row lists individual observed
+and identifiable current units. Each identifiable unit supports damage reporting with optional
+photographs, manual present confirmation, label-missing/unreadable reporting and scan correction.
+Manual confirmation uses the same eligibility, matching and duplicate protections as camera scans;
+it never invents identities for unidentified interchangeable units.
+
+Opening a report pauses scanning so it targets the chosen unit even if other items were previously
+scanned. Auditors can return to any earlier row to report damage or undo the observation. Camera
+scanning pauses while dialogs require attention.
 
 Duplicate scans are idempotent.
 
@@ -749,6 +760,8 @@ Duplicate scans are idempotent.
 - Manual public-code entry is always available.
 - An expected row can be selected and marked `Present - label unreadable`.
 - This creates a label-replacement finding, optionally with a photograph.
+- Identifiable interchangeable units can also be manually confirmed and marked label missing or
+  unreadable; their actual identities remain part of the audit observation.
 
 ### 17.6 Missing and extra items
 
@@ -760,13 +773,17 @@ Duplicate scans are idempotent.
 
 ### 17.7 Finishing
 
-1. All scans and photos must be synchronized.
-2. Auditor reviews missing, damaged, unexpected, misplaced, and unreadable-label findings.
-3. Auditor is instructed to close the case.
-4. Auditor scans the same container code again.
-5. The second code must match the starting container.
-6. For a sealable container, auditor confirms that a seal was applied.
-7. Audit completes as clean or with findings.
+1. When all requirements are satisfied, ask whether the auditor wants to scan additional items or
+   record a comment about additional objects without QR codes. Continuing returns to the camera;
+   submitted comments are retained as audit findings without changing packing requirements.
+2. Auditor reviews missing, damaged, unexpected, misplaced, and unreadable-label findings. If the
+   container is rescanned while requirements remain unmet, show the missing names and remaining
+   quantities and require explicit confirmation before finishing.
+3. All scans, corrections, comments and photos must be synchronized.
+4. Auditor is instructed to close the case, then rescan the same container code. The code must
+   match the starting container; scanning another item never completes the audit.
+5. For a sealable container only, auditor confirms that a seal was applied.
+6. Audit completes as clean or with findings.
 
 Manual code entry is available if the container QR is damaged. Completion is not allowed while local scan operations remain unsynchronized.
 

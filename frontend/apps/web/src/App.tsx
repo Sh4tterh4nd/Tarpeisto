@@ -97,6 +97,7 @@ function AppContent() {
 
   return (
     <AppShellLayout
+      viewport={location.pathname.startsWith("/audits/tasks/")}
       title="Tarpeisto"
       bannerSlot={
         <>

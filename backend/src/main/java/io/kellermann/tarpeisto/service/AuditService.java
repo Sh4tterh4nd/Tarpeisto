@@ -52,6 +52,7 @@ import io.kellermann.tarpeisto.repository.CheckoutManifestAssetRepository;
 import io.kellermann.tarpeisto.repository.CheckoutManifestConsumableRepository;
 import io.kellermann.tarpeisto.repository.ConsumableStockRepository;
 import io.kellermann.tarpeisto.repository.ContainerAuditRepository;
+import io.kellermann.tarpeisto.repository.JdbcAuditManualCandidateRepository;
 import io.kellermann.tarpeisto.repository.OrganizationRepository;
 import io.kellermann.tarpeisto.repository.PackingRequirementRepository;
 import io.kellermann.tarpeisto.security.TarpeistoPrincipal;
@@ -102,6 +103,7 @@ public class AuditService {
     private final BookingReturnStateService returnStates;
     private final TemporaryAccessService temporaryAccess;
     private final AuditActorRepository auditActors;
+    private final JdbcAuditManualCandidateRepository manualCandidates;
 
     public AuditService(
             AuditTaskRepository tasks,
@@ -131,7 +133,8 @@ public class AuditService {
             AssetModelRepository models,
             BookingReturnStateService returnStates,
             TemporaryAccessService temporaryAccess,
-            AuditActorRepository auditActors) {
+            AuditActorRepository auditActors,
+            JdbcAuditManualCandidateRepository manualCandidates) {
         this.tasks = tasks;
         this.dependencies = dependencies;
         this.batches = batches;
@@ -160,6 +163,7 @@ public class AuditService {
         this.returnStates = returnStates;
         this.temporaryAccess = temporaryAccess;
         this.auditActors = auditActors;
+        this.manualCandidates = manualCandidates;
     }
 
     @Transactional(readOnly = true)
@@ -179,7 +183,35 @@ public class AuditService {
                 .orElseThrow();
         AssetModel model = models.findByIdAndOrganizationId(asset.getAssetModelId(), principal.organizationId())
                 .orElseThrow();
-        return new AuditContainerView(asset.getId(), assetName(asset, model), asset.getPublicCode());
+        return new AuditContainerView(
+                asset.getId(), assetName(asset, model), asset.getPublicCode(), asset.isSealable());
+    }
+
+    @Transactional(readOnly = true)
+    public AuditManualCandidatePageView manualCandidates(
+            TarpeistoPrincipal principal, UUID auditId, String query, int limit, String cursor) {
+        if (principal == null) throw new AccessDeniedException("Authentication required.");
+        temporaryAccess.requireAudit(principal, auditId);
+        audits.findByOrganizationIdAndId(principal.organizationId(), auditId)
+                .orElseThrow(() -> new NotFoundException("Audit not found."));
+        if (limit < 1 || limit > 100) throw new ValidationFailedException("limit must be between 1 and 100.");
+        String search = query == null ? "" : query.trim();
+        if (search.length() > 200) throw new ValidationFailedException("query must not exceed 200 characters.");
+        String filters =
+                InventorySearchCursor.filters(principal.organizationId(), principal.userId(), auditId, search, limit);
+        var anchor = InventorySearchCursor.parse(cursor, filters);
+        var candidates = manualCandidates.page(
+                principal.organizationId(), auditId, search, anchor == null ? null : anchor.id(), limit + 1);
+        var inspected = candidates.subList(0, Math.min(limit, candidates.size()));
+        var items = inspected.stream()
+                .filter(c -> temporaryAccess.assetAllowed(principal, c.id()))
+                .map(c -> new AuditManualCandidateView(
+                        c.id(), c.displayName(), c.publicCode(), c.assetModelId(), c.modelName(), c.active()))
+                .toList();
+        String next = candidates.size() > limit
+                ? InventorySearchCursor.encode(inspected.getLast().id(), "", filters)
+                : null;
+        return new AuditManualCandidatePageView(items, next);
     }
 
     @Transactional(readOnly = true)
@@ -394,6 +426,13 @@ public class AuditService {
                     .withSourceOperation(operationId));
             return view(principal, audit);
         }
+        acceptScan(principal, audit, operationId, asset);
+        return view(principal, audit);
+    }
+
+    private void acceptScan(TarpeistoPrincipal principal, ContainerAudit audit, UUID operationId, Asset asset) {
+        UUID auditId = audit.getId();
+        temporaryAccess.requireAsset(principal, asset.getId());
         if (!asset.isActive())
             throw new ValidationFailedException(
                     "This asset is inactive or lost. Deputy restoration is required before it can count.");
@@ -411,7 +450,7 @@ public class AuditService {
                     "CONTAINER_AUDIT",
                     auditId,
                     Map.of("assetId", asset.getId()));
-            return view(principal, audit);
+            return;
         }
         List<UUID> otherAudits = audits
                 .findAllByOrganizationIdAndAuditBatchIdOrderById(principal.organizationId(), audit.getAuditBatchId())
@@ -445,7 +484,6 @@ public class AuditService {
                 "CONTAINER_AUDIT",
                 auditId,
                 Map.of("assetId", asset.getId(), "outcome", outcome.name()));
-        return view(principal, audit);
     }
 
     @Transactional
@@ -586,38 +624,9 @@ public class AuditService {
                 throw new ValidationFailedException("Select the expected asset with the unreadable label.");
             Asset asset = assets.findByIdAndOrganizationId(assetId, principal.organizationId())
                     .orElseThrow();
-            if (!asset.isActive()) throw new ValidationFailedException("Inactive assets require Deputy restoration.");
-            boolean exactExpected = expected
-                    .findAllByOrganizationIdAndAuditIdOrderByDisplayOrderAsc(principal.organizationId(), auditId)
-                    .stream()
-                    .anyMatch(r -> assetId.equals(r.getSpecificAssetId()));
-            if (!exactExpected)
-                throw new ValidationFailedException("Select an exact expected asset or scan its readable code.");
-            List<UUID> otherIds = audits
-                    .findAllByOrganizationIdAndAuditBatchIdOrderById(
-                            principal.organizationId(), audit.getAuditBatchId())
-                    .stream()
-                    .filter(ContainerAudit::isCurrentAttempt)
-                    .map(ContainerAudit::getId)
-                    .filter(id -> !id.equals(auditId))
-                    .toList();
-            if (!otherIds.isEmpty()
-                    && !scans.findAllByOrganizationIdAndAuditIdInAndAssetIdAndUndoneAtIsNull(
-                                    principal.organizationId(), otherIds, assetId)
-                            .isEmpty())
-                throw new ValidationFailedException("This asset was already observed in another audit.");
-            if (!hasActive(activeScans(principal.organizationId(), auditId), assetId))
-                scans.save(new AuditScan(
-                        UUID.randomUUID(),
-                        principal.organizationId(),
-                        auditId,
-                        audit.getAuditBatchId(),
-                        assetId,
-                        operationId,
-                        AuditScanOutcome.EXPECTED_EXACT,
-                        principal.userId(),
-                        clock.instant(),
-                        scanContext(principal.organizationId(), audit, asset)));
+            if (!manualCandidates.contains(principal.organizationId(), auditId, assetId))
+                throw new ValidationFailedException("Select an identifiable unit belonging to this audit.");
+            acceptScan(principal, audit, operationId, asset);
         }
         findings.save(new AuditFinding(
                         UUID.randomUUID(),
@@ -1129,6 +1138,26 @@ public class AuditService {
         List<AuditExpectedRequirement> rows =
                 expected.findAllByOrganizationIdAndAuditIdOrderByDisplayOrderAsc(org, audit.getId());
         List<AuditExpectedRequirement> unmet = unmet(org, audit);
+        Map<UUID, Asset> scanAssets = all.isEmpty()
+                ? Map.of()
+                : assets
+                        .findAllByOrganizationIdAndIdIn(
+                                org,
+                                all.stream()
+                                        .map(AuditScan::getAssetId)
+                                        .distinct()
+                                        .toList())
+                        .stream()
+                        .collect(java.util.stream.Collectors.toMap(Asset::getId, a -> a));
+        List<AuditScan> active =
+                all.stream().filter(s -> s.getUndoneAt() == null).toList();
+        Map<UUID, Long> modelCounts = new HashMap<>();
+        for (AuditScan scan : active)
+            if (scan.getOutcome() == AuditScanOutcome.EXPECTED_MODEL && scanAssets.containsKey(scan.getAssetId()))
+                modelCounts.merge(scanAssets.get(scan.getAssetId()).getAssetModelId(), 1L, Long::sum);
+        Map<UUID, AuditConsumableObservation> observed =
+                consumables.findAllByOrganizationIdAndAuditId(org, audit.getId()).stream()
+                        .collect(java.util.stream.Collectors.toMap(AuditConsumableObservation::getExpectedId, o -> o));
         return new ContainerAuditView(
                 audit.getId(),
                 audit.getAuditTaskId(),
@@ -1147,7 +1176,8 @@ public class AuditService {
                                 r.getRequiredQuantity(),
                                 r.getDisplayOrder(),
                                 r.getSnapshot(),
-                                !unmet.contains(r)))
+                                !unmet.contains(r),
+                                matchedQuantity(r, active, modelCounts, observed.get(r.getId()))))
                         .toList(),
                 all.stream()
                         .map(s -> new AuditScanView(
@@ -1162,7 +1192,10 @@ public class AuditService {
                                 s.getUndoneAt() != null,
                                 redact(principal, s.getContextSnapshot()),
                                 s.getScannedBy(),
-                                actors.get(s.getScannedBy())))
+                                actors.get(s.getScannedBy()),
+                                scanAssets.containsKey(s.getAssetId())
+                                        ? scanAssets.get(s.getAssetId()).getAssetModelId()
+                                        : null))
                         .toList(),
                 observations.stream()
                         .filter(f -> f.getAssetId() == null || temporaryAccess.assetAllowed(principal, f.getAssetId()))
@@ -1179,6 +1212,21 @@ public class AuditService {
                 List.of(),
                 archiveState.archived(),
                 archiveState.version());
+    }
+
+    private BigDecimal matchedQuantity(
+            AuditExpectedRequirement row,
+            List<AuditScan> active,
+            Map<UUID, Long> modelCounts,
+            AuditConsumableObservation observed) {
+        if (row.getType() == PackingRequirementType.SPECIFIC_ASSET)
+            return hasActive(active, row.getSpecificAssetId()) ? BigDecimal.ONE : BigDecimal.ZERO;
+        if (row.getType() == PackingRequirementType.MODEL_QUANTITY)
+            return BigDecimal.valueOf(modelCounts.getOrDefault(row.getAssetModelId(), 0L))
+                    .min(row.getRequiredQuantity());
+        if (observed == null) return BigDecimal.ZERO;
+        if (observed.getStatus() == AuditConsumableStatus.CONFIRMED) return row.getRequiredQuantity();
+        return observed.getObservedQuantity() == null ? BigDecimal.ZERO : observed.getObservedQuantity();
     }
 
     private String requirementSnapshot(PackingRequirement r) {

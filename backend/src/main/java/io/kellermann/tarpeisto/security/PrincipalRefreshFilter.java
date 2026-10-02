@@ -110,7 +110,7 @@ public class PrincipalRefreshFilter extends OncePerRequestFilter {
             return path.equals("/api/v1/session")
                     || path.equals("/api/v1/temporary-access/tasks")
                     || path.matches("/api/v1/audits/tasks/[^/]+(?:/container)?")
-                    || path.matches("/api/v1/audits/[^/]+/evidence")
+                    || path.matches("/api/v1/audits/[^/]+/(?:evidence|manual-candidates)")
                     || path.matches("/api/v1/findings/[^/]+/evidence")
                     || path.matches("/api/v1/media/[^/]+(?:/thumbnail)?")
                     || path.matches("/api/v1/asset-models/[^/]+/media/reference")

@@ -5349,6 +5349,61 @@
         }
       }
     },
+    "/api/v1/audits/{auditId}/manual-candidates": {
+      "get": {
+        "tags": ["audit-controller"],
+        "operationId": "manualCandidates",
+        "parameters": [
+          {
+            "name": "auditId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 100
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditManualCandidatePageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/audits/{auditId}/evidence": {
       "get": {
         "tags": ["media-controller"],
@@ -7957,6 +8012,9 @@
           },
           "satisfied": {
             "type": "boolean"
+          },
+          "matchedQuantity": {
+            "type": "number"
           }
         }
       },
@@ -8030,6 +8088,10 @@
           },
           "recordedByDisplayName": {
             "type": "string"
+          },
+          "assetModelId": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },
@@ -9001,6 +9063,45 @@
           }
         }
       },
+      "AuditManualCandidatePageResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditManualCandidateResponse"
+            }
+          },
+          "nextCursor": {
+            "type": "string"
+          }
+        }
+      },
+      "AuditManualCandidateResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "publicCode": {
+            "type": "string"
+          },
+          "assetModelId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "modelName": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        }
+      },
       "AuditContainerResponse": {
         "type": "object",
         "properties": {
@@ -9013,6 +9114,9 @@
           },
           "publicCode": {
             "type": "string"
+          },
+          "sealable": {
+            "type": "boolean"
           }
         }
       },

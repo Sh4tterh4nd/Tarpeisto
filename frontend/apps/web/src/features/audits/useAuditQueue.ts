@@ -4,6 +4,7 @@ import { auditPartition } from "../../data/indexeddb/auditDatabase";
 import {
   auditOutbox,
   type AuditCommand,
+  type AuditAcknowledgement,
   type QueuedAuditCommand,
 } from "../../data/outbox/auditOutbox";
 import { AuditSync, verifyLiveAuditActor } from "../../data/sync/auditSync";
@@ -126,6 +127,32 @@ export function useAuditQueue(taskId: string) {
     },
     [principal, container, identityEpoch, identityGeneration],
   );
+  const onAcknowledged = useCallback(
+    (listener: (value: AuditAcknowledgement) => void) => {
+      const epoch = auditIdentityEpoch();
+      return auditOutbox.subscribeAcknowledged((value) => {
+        if (
+          value.partition === partition &&
+          value.taskId === taskId &&
+          epoch === auditIdentityEpoch()
+        )
+          listener(value);
+      });
+    },
+    [partition, taskId],
+  );
+  const settledOperation = useCallback(
+    async (operationId: string) => {
+      if (!partition) return;
+      const epoch = auditIdentityEpoch();
+      if ((await auditOutbox.list(partition)).some((row) => row.operationId === operationId))
+        return;
+      const snapshot = await auditOutbox.snapshot(partition, taskId);
+      if (epoch !== auditIdentityEpoch()) return;
+      return snapshot?.audit;
+    },
+    [partition, taskId],
+  );
   const enqueue = async (command: AuditCommand, bytes?: ArrayBuffer) => {
     if (!partition || !audit) return;
     try {
@@ -233,6 +260,8 @@ export function useAuditQueue(taskId: string) {
     error,
     setError,
     enqueue,
+    onAcknowledged,
+    settledOperation,
     findingWithPhotos,
     retry,
     cancel,

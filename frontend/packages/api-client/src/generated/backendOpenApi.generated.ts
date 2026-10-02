@@ -2020,6 +2020,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/audits/{auditId}/manual-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["manualCandidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/audits/{auditId}/evidence": {
         parameters: {
             query?: never;
@@ -3020,6 +3036,7 @@ export interface components {
             displayOrder?: number;
             snapshot?: string;
             satisfied?: boolean;
+            matchedQuantity?: number;
         };
         AuditFindingResponse: {
             /** Format: uuid */
@@ -3051,6 +3068,8 @@ export interface components {
             /** Format: uuid */
             recordedByUserId?: string;
             recordedByDisplayName?: string;
+            /** Format: uuid */
+            assetModelId?: string;
         };
         ContainerAuditResponse: {
             /** Format: uuid */
@@ -3405,11 +3424,26 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        AuditManualCandidatePageResponse: {
+            items?: components["schemas"]["AuditManualCandidateResponse"][];
+            nextCursor?: string;
+        };
+        AuditManualCandidateResponse: {
+            /** Format: uuid */
+            id?: string;
+            displayName?: string;
+            publicCode?: string;
+            /** Format: uuid */
+            assetModelId?: string;
+            modelName?: string;
+            active?: boolean;
+        };
         AuditContainerResponse: {
             /** Format: uuid */
             id?: string;
             displayName?: string;
             publicCode?: string;
+            sealable?: boolean;
         };
         AssetSearchPageResponse: {
             items?: components["schemas"]["AssetSearchResponse"][];
@@ -7208,6 +7242,32 @@ export interface operations {
                 };
                 content: {
                     "application/pdf": string;
+                };
+            };
+        };
+    };
+    manualCandidates: {
+        parameters: {
+            query?: {
+                query?: string;
+                limit?: number;
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                auditId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AuditManualCandidatePageResponse"];
                 };
             };
         };

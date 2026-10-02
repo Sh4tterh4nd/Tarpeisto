@@ -16,7 +16,73 @@ import { temporaryAccessExpired } from "../sync/temporaryDeadline";
 export const LEASE_MS = 15_000;
 export const retryDelay = (attempts: number) =>
   Math.min(60_000, 1000 * 2 ** Math.min(attempts - 1, 6));
+export type AuditAcknowledgement = {
+  operationId: string;
+  partition: string;
+  taskId: string;
+  audit?: ContainerAudit;
+  local: boolean;
+};
 export class AuditOutbox {
+  private readonly acknowledgements = new Set<(value: AuditAcknowledgement) => void>();
+  private acknowledgementChannel?: BroadcastChannel;
+  private notifyAcknowledged(value: AuditAcknowledgement) {
+    for (const listener of this.acknowledgements) {
+      try {
+        listener(value);
+      } catch {
+        /* Feedback failure cannot undo a committed acknowledgement. */
+      }
+    }
+  }
+  subscribeAcknowledged(listener: (value: AuditAcknowledgement) => void) {
+    this.acknowledgements.add(listener);
+    if (!this.acknowledgementChannel && typeof BroadcastChannel !== "undefined")
+      try {
+        this.acknowledgementChannel = new BroadcastChannel(`tarpeisto-audit-ack/${this.db.name}`);
+        this.acknowledgementChannel.onmessage = (event) => {
+          if (!event.data || typeof event.data !== "object") return;
+          const message = event.data as {
+            operationId?: unknown;
+            partition?: unknown;
+            taskId?: unknown;
+          };
+          if (
+            typeof message.operationId !== "string" ||
+            typeof message.partition !== "string" ||
+            typeof message.taskId !== "string"
+          )
+            return;
+          const { operationId, partition, taskId } = message;
+          void this.snapshot(partition, taskId)
+            .then((snapshot) =>
+              this.notifyAcknowledged({
+                operationId,
+                partition,
+                taskId,
+                audit: snapshot?.audit,
+                local: false,
+              }),
+            )
+            .catch(() => {
+              /* Cached feedback can recover on the next snapshot. */
+            });
+        };
+      } catch {
+        /* Browser notifications are optional; durable snapshots remain authoritative. */
+      }
+    return () => {
+      this.acknowledgements.delete(listener);
+      if (!this.acknowledgements.size) {
+        try {
+          this.acknowledgementChannel?.close();
+        } catch {
+          /* Already closed. */
+        }
+        this.acknowledgementChannel = undefined;
+      }
+    };
+  }
   constructor(readonly db: AuditDatabase = auditDatabase) {}
   key(partition: string, taskId: string) {
     return `${partition}/${taskId}`;
@@ -240,6 +306,33 @@ export class AuditOutbox {
         await this.db.blobs.delete(row.operationId);
       },
     );
+    // Presentation only: failures here must never affect the committed command/lease.
+    this.notifyAcknowledged({
+      operationId: row.operationId,
+      partition: row.partition,
+      taskId: row.taskId,
+      audit,
+      local: true,
+    });
+    if (typeof BroadcastChannel !== "undefined") {
+      let channel: BroadcastChannel | undefined;
+      try {
+        channel = new BroadcastChannel(`tarpeisto-audit-ack/${this.db.name}`);
+        channel.postMessage({
+          operationId: row.operationId,
+          partition: row.partition,
+          taskId: row.taskId,
+        });
+      } catch {
+        /* Feedback will recover from the authoritative local snapshot. */
+      } finally {
+        try {
+          channel?.close();
+        } catch {
+          /* Already closed. */
+        }
+      }
+    }
   }
   async failure(lease: AuditLease, row: QueuedAuditCommand, message: string, temporary: boolean) {
     await this.db.transaction("rw", this.db.commands, this.db.leases, async () => {

@@ -1,3 +1,4 @@
+import { enterAuditCode } from "./auditActions";
 import { expect, test, type Page } from "@playwright/test";
 
 const taskId = "11111111-1111-1111-1111-111111111111";
@@ -117,7 +118,7 @@ async function volunteerBackend(page: Page, initiallySignedIn = false) {
             {
               id: "77777777-7777-7777-7777-777777777777",
               operationId: body.operationId,
-              assetId: containerId,
+              assetId: "88888888-8888-8888-8888-888888888888",
               assetCode: body.code,
               outcome: "EXTRA",
               scannedAt: new Date().toISOString(),
@@ -200,16 +201,19 @@ test("a volunteer manual scan survives a brief outage and drains on reconnect", 
   ).toBeVisible();
   await expect(page.getByText(/saved on this device/)).toBeVisible();
   state.offline = true;
-  await page.getByLabel("Scan or enter item code").fill("7K3MXY");
-  await page.getByRole("button", { name: "Record scan" }).click();
+  await enterAuditCode(page, "000000");
   await expect(
-    page.getByText(/pending work|pending command|queued|awaiting sync/i).first(),
+    page
+      .getByText(
+        /Saved, pending confirmation|pending work|pending command|queued|awaiting sync|1 pending/i,
+      )
+      .first(),
   ).toBeVisible();
   expect(state.scanRequests).toBe(0);
   state.offline = false;
   await page.evaluate(() => window.dispatchEvent(new Event("online")));
   await expect.poll(() => state.scanRequests).toBe(1);
-  await expect(page.getByText(/Assigned case - 7K3MXY/)).toBeVisible();
+  await expect(page.getByText(/Assigned case - 000000/)).toBeVisible();
 });
 
 test("foreground verification ends revoked volunteer access", async ({ page }) => {
@@ -281,6 +285,7 @@ test("an Owner issues a batch QR invitation once and can revoke it", async ({ pa
     }
   });
   await page.goto(`/audits/tasks/${taskId}`);
+  await page.getByRole("button", { name: "Details", exact: true }).click();
   await page.getByRole("button", { name: "Create volunteer invitation" }).click();
   await expect(page.getByRole("dialog", { name: "Share volunteer invitation" })).toBeVisible();
   await expect(page.getByRole("img", { name: "Volunteer invitation QR code" })).toBeVisible();

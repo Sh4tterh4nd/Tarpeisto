@@ -19,6 +19,8 @@ export interface AppShellLayoutProps {
   navSlot?: ReactNode;
   /** Account controls, kept in the quiet top status strip. */
   accountSlot?: ReactNode;
+  /** Fit camera workflows below retained navigation and session banners. */
+  viewport?: boolean;
   children: ReactNode;
 }
 
@@ -33,10 +35,18 @@ export function AppShellLayout({
   navSlot,
   accountSlot,
   children,
+  viewport = false,
 }: AppShellLayoutProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   return (
-    <Box sx={{ display: "flex", minHeight: "100%" }}>
+    <Box
+      sx={{
+        display: "flex",
+        minHeight: viewport ? 0 : "100%",
+        height: viewport ? "100dvh" : undefined,
+        overflow: viewport ? "hidden" : undefined,
+      }}
+    >
       <Box
         component="aside"
         sx={{
@@ -49,13 +59,17 @@ export function AppShellLayout({
           borderColor: "divider",
           position: "sticky",
           top: 0,
-          height: "100vh",
+          height: viewport ? "100dvh" : "100vh",
         }}
       >
         <Typography variant="h3" component="div" sx={{ px: 3, py: 2.5 }}>
           {title}
         </Typography>
-        <Box component="nav" aria-label="Primary navigation" sx={{ px: 1, flexGrow: 1 }}>
+        <Box
+          component="nav"
+          aria-label="Primary navigation"
+          sx={{ px: 1, flexGrow: 1, minHeight: 0, overflowY: viewport ? "auto" : undefined }}
+        >
           {navSlot}
         </Box>
       </Box>
@@ -78,13 +92,15 @@ export function AppShellLayout({
           {navSlot}
         </Box>
       </Drawer>
-      <Box sx={{ display: "flex", flexDirection: "column", minWidth: 0, flexGrow: 1 }}>
+      <Box
+        sx={{ display: "flex", flexDirection: "column", minWidth: 0, flexGrow: 1, minHeight: 0 }}
+      >
         <AppBar position="sticky" color="primary" enableColorOnDark elevation={0}>
           <Toolbar
             sx={{
               gap: { xs: 1, sm: 2 },
-              flexWrap: { xs: "wrap", sm: "nowrap" },
-              py: { xs: 1, sm: 0 },
+              flexWrap: viewport ? "nowrap" : { xs: "wrap", sm: "nowrap" },
+              py: viewport ? 0 : { xs: 1, sm: 0 },
               minHeight: { xs: 56, sm: 52 },
             }}
           >
@@ -101,13 +117,20 @@ export function AppShellLayout({
                 aria-hidden="true"
                 sx={{ fontSize: "1.4rem", lineHeight: 1 }}
               >
-                ☰
+                {"\u2630"}
               </Typography>
             </IconButton>
             <Typography
               variant="h3"
               component="h1"
-              sx={{ flexGrow: 1, fontSize: { xs: "1.2rem", sm: "1.25rem" } }}
+              sx={{
+                flexGrow: 1,
+                minWidth: 0,
+                overflow: viewport ? "hidden" : undefined,
+                textOverflow: "ellipsis",
+                whiteSpace: viewport ? "nowrap" : undefined,
+                fontSize: { xs: viewport ? "1rem" : "1.2rem", sm: "1.25rem" },
+              }}
             >
               {title}
             </Typography>
@@ -119,7 +142,7 @@ export function AppShellLayout({
                   alignItems: "center",
                   justifyContent: "flex-end",
                   gap: 1,
-                  width: { xs: "100%", sm: "auto" },
+                  width: viewport ? "auto" : { xs: "100%", sm: "auto" },
                   "& .MuiButton-root": { minHeight: 44 },
                 }}
               >
@@ -129,7 +152,18 @@ export function AppShellLayout({
           </Toolbar>
         </AppBar>
         {bannerSlot}
-        <Container component="main" maxWidth="xl" sx={{ flexGrow: 1, py: { xs: 2, sm: 3 } }}>
+        <Container
+          component="main"
+          maxWidth="xl"
+          sx={{
+            flexGrow: 1,
+            minHeight: 0,
+            display: viewport ? "flex" : undefined,
+            flexDirection: "column",
+            overflow: viewport ? "hidden" : undefined,
+            py: viewport ? 1 : { xs: 2, sm: 3 },
+          }}
+        >
           {children}
         </Container>
       </Box>
