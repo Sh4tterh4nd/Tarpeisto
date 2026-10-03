@@ -1,6 +1,6 @@
 # Tarpeisto Implementation Status
 
-Status: Living record of what exists, as of 2026-10-02
+Status: Living record of what exists, as of 2026-10-03
 
 Purpose: This document records **what is actually built and verified**, so that a contributor (human
 or agent) can continue the work without rediscovering it.
@@ -321,6 +321,35 @@ Verified at the audit camera-workspace checkpoint:
 - No migration, dependency or configuration change is required; deploy the matching application
   image for the new workflow.
 
+Verified at the container packing-sheet personalization checkpoint:
+
+- Each individual container stores its own normalized header color, defaulting to white, and
+  optional multiline description of up to 500 characters. The container Edit view provides a
+  color picker, hex input, readable preview, description and explicit Save/Reload actions;
+  ordinary assets and model editors have no such fields.
+- Owner/Deputy edits enforce organization ownership, expected versions and append-only before/after
+  history. Remote edits retain the local draft and require explicit reload; unrelated name/date
+  saves can use a fresh asset version. Presentation changes preserve packing, placement, seals,
+  physical verification and completed audit facts.
+- Packing sheets use the container color in both black-bordered header boxes and print the
+  description below the name/model. Text becomes white only above 65% grayscale blackness; QR
+  modules retain a white quiet-zone plate. Each A4 page keeps two identical landscape-A5 halves:
+  up to 15 entries use one table, 16-30 use left/right tables, and larger or long-text layouts
+  shrink proportionally without dropping entries or adding continuation pages.
+- Backend Spotless and the full `check` pass with **587 tests in 79 suites**, with no failures,
+  errors or skips. Coverage includes tenant/role/CSRF boundaries, defaults, no-op history,
+  stale-version and concurrent-edit conflicts, preserved verification, density boundaries through
+  120 entries, long text, exact decimal quantities, nested rows and both-half QR decoding at 300 dpi.
+- Frontend **252 tests** pass (234 web, 11 API-client, 7 shared UI), with full formatting, lint
+  and workspace typechecks passing. All **56 desktop/mobile Playwright cases** pass, including
+  packing-detail saves after name changes and remote-edit draft recovery. Rendered PDF samples
+  and desktop/mobile editor screenshots were visually reviewed.
+- The live backend OpenAPI document and generated client include the versioned packing-details
+  endpoint. `jibBuildTar` passes with the matching production PWA embedded. Deploy the matching
+  application image through the normal backed-up upgrade; additive
+  Flyway V21 supplies white headers and empty descriptions for existing records. No new dependency
+  or configuration setting is required. Physical printer/camera acceptance remains manual.
+
 ## 2. How to verify this yourself
 
 Docker Desktop does not work on the primary development workstation (no WSL2 backend), so backend
@@ -390,6 +419,7 @@ Migrations (Flyway owns all schema; applied migrations are immutable):
 | `V18`     | Immutable finding-linked audit evidence, tenant-safe associations and source-operation linkage                             |
 | `V19`     | Tenant-owned fixed-expiry invitations, attributable volunteer sessions and credential/membership-free temporary users      |
 | `V20`     | Stock/user/event archive state, immutable-audit archive sidecar and archived stock/account database guards                  |
+| `V21`     | Per-container packing-sheet header color and optional individual description                                                |
 
 API surface is under `/api/v1`. The OpenAPI document at `/v3/api-docs` (enabled only under the `dev`
 profile) is the machine-readable contract; treat it as authoritative over any list here. Broadly:

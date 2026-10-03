@@ -659,6 +659,8 @@ Implement in this order:
 
 - A4 with two identical A5-sized halves
 - Landscape A5 halves with a black-bordered organization-name bar, then a separate bordered container-name/model-name box with QR and public code on the right
+- Individual container header color defaults to white and fills both header boxes; grayscale blackness above 65% selects white text. Preserve the black-on-white QR quiet zone and black borders.
+- Individual container multiline description is stored independently of the model and appears below the name/model in the identity box; Owner/Deputy edits are authorized, version-checked and logged.
 - A bordered contents box extends to the bottom A5 margin, using Quantity, Item and Code columns
 - Direct packing requirements only; exact rows show quantity 1, asset name and code, while interchangeable rows show model quantity/name and blank code
 - Grouped model quantities
@@ -668,10 +670,10 @@ Implement in this order:
 
 ### 13.2 Fit algorithm
 
-1. Render one full-width Quantity/Item/Code table at 12 pt, with measured cell wrapping.
-2. Reduce font stepwise to 8 pt minimum only when needed.
-3. Add duplicated continuation pages with repeated organization, identity and table headers if content still overflows.
-4. Never clip or silently omit a requirement.
+1. Fit up to 15 ordinary entries in one full-width Quantity/Item/Code table, using compact headers and measured text wrapping.
+2. For 16-30 entries, repeat the three semantic columns in left/right tables within each A5 half, reading down the left then the right, with up to 15 entries per table.
+3. Above 30 entries, scale the complete two-table layout down to fit all entries; long text also participates in measured fitting. Preserve two identical A5 halves on one A4 page.
+4. Never clip or silently omit an entry, overlap cells or add continuation pages solely for density.
 
 ### 13.3 Verification
 
@@ -679,7 +681,8 @@ Implement in this order:
 - Very long names
 - Large quantities
 - Many exact assets
-- Multi-page overflow
+- Boundary counts 15/16/30/31, larger two-table lists and proportional shrinking
+- Default, light and dark per-container colors, strict grayscale threshold and independent description persistence
 - Black borders, organization/model identity, quantity/name/code column positions and readable text
 - QR scan from printed output
 
@@ -687,7 +690,7 @@ Implement in this order:
 
 - Representative small and large container sheets render without overlap.
 - Every requirement appears exactly once per duplicated half.
-- Multi-page sheets preserve the duplicate-half rule.
+- Dense sheets preserve the duplicate-half rule without losing entries or clipping wrapped text.
 
 ## 14. Quality-of-life inventory refinement (after Phase 11, before Phase 9.2)
 

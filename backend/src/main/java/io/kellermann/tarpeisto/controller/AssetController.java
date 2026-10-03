@@ -169,6 +169,15 @@ public class AssetController {
         return AssetResponse.from(assetService.rename(principal, assetId, request.individualName()));
     }
 
+    @PutMapping("/assets/{assetId}/packing-details")
+    public AssetResponse setPackingDetails(
+            @AuthenticationPrincipal TarpeistoPrincipal principal,
+            @PathVariable UUID assetId,
+            @Valid @RequestBody SetAssetPackingDetailsRequest request) {
+        return AssetResponse.from(assetService.setPackingDetails(
+                principal, assetId, request.containerColor(), request.unitDescription(), request.expectedVersion()));
+    }
+
     @PutMapping("/assets/{assetId}/purchase-date")
     public AssetResponse changePurchaseDate(
             @AuthenticationPrincipal TarpeistoPrincipal principal,

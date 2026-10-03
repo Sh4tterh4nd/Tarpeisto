@@ -21,6 +21,7 @@ const api = vi.hoisted(() => ({
   listLocations: vi.fn(),
   searchAssets: vi.fn(),
   renameAsset: vi.fn(),
+  setAssetPackingDetails: vi.fn(),
   setAssetPurchaseDate: vi.fn(),
   setAssetValues: vi.fn(),
   changeAssetCondition: vi.fn(),

@@ -87,6 +87,18 @@ class PackingSheetControllerIntegrationTests extends AbstractIntegrationTest {
     @Autowired
     private PackingSheetService sheets;
 
+    @Autowired
+    private io.kellermann.tarpeisto.service.AssetService assetService;
+
+    @Autowired
+    private io.kellermann.tarpeisto.service.AuditService audits;
+
+    @Autowired
+    private io.kellermann.tarpeisto.repository.ActivityLogRepository activity;
+
+    @Autowired
+    private org.springframework.transaction.PlatformTransactionManager transactions;
+
     @ParameterizedTest
     @EnumSource(OrganizationRole.class)
     void everyPermanentRoleCanDownloadOwnContainerSheet(OrganizationRole role) {
@@ -156,6 +168,7 @@ class PackingSheetControllerIntegrationTests extends AbstractIntegrationTest {
         organizationRepository.saveAndFlush(fixture.organization());
         var parent = assets.findById(parentId).orElseThrow();
         parent.rename("Current container name", clock.instant());
+        parent.setPackingDetails("#112233", "Individual container instructions\nKeep labels readable", clock.instant());
         assets.saveAndFlush(parent);
         var parentModel = models.findById(parent.getAssetModelId()).orElseThrow();
         parentModel.rename("Actual container model", "Description must never replace model name", clock.instant());
@@ -250,6 +263,8 @@ class PackingSheetControllerIntegrationTests extends AbstractIntegrationTest {
                             exactModel.getName(),
                             "Current equipment organization",
                             "Current container name",
+                            "Individual container instructions",
+                            "Keep labels readable",
                             "Model Type: Actual container model",
                             "2.125 rolls",
                             "Gaffer tape 50 mm",
@@ -320,6 +335,190 @@ class PackingSheetControllerIntegrationTests extends AbstractIntegrationTest {
                 assertThat(text.split("Exact required child", -1).length - 1).isEqualTo(1);
             }
         }
+    }
+
+    @org.junit.jupiter.api.Test
+    void packingDetailsArePerUnitVersionedAndDoNotAlterPhysicalVerification() {
+        Fixture f = fixture();
+        UUID first = createAsset(f.organization(), true, "7K3MXY");
+        UUID second = createAsset(f.organization(), true, "91TRQJ");
+        Asset initial = assets.findById(first).orElseThrow();
+        initial.setSealable(true, clock.instant());
+        initial.applySeal(clock.instant());
+        initial.verifySeal(clock.instant());
+        assets.saveAndFlush(initial);
+        var membership = memberships.findAll().stream()
+                .filter(m ->
+                        m.getOrganizationId().equals(f.organization().getId()) && m.getRole() == OrganizationRole.OWNER)
+                .findFirst()
+                .orElseThrow();
+        var user = users.findById(membership.getUserId()).orElseThrow();
+        var owner = new TarpeistoPrincipal(
+                user.getId(),
+                user.getUsername(),
+                user.getDisplayName(),
+                f.organization().getId(),
+                OrganizationRole.OWNER);
+        var completed = audits.launchContainerAudit(owner, first, initial.getPublicCode(), UUID.randomUUID());
+        audits.complete(owner, completed.id(), UUID.randomUUID(), initial.getPublicCode(), true, true);
+        initial = assets.findById(first).orElseThrow();
+        initial.verifySeal(clock.instant());
+        assets.saveAndFlush(initial);
+        initial = assets.findById(first).orElseThrow();
+        long version = initial.getVersion();
+        var response =
+                packingDetails(f.sessionFor(OrganizationRole.OWNER), first, "1122aa", "Line one\r\nLine two", version);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).contains("#1122AA");
+        assertThat(assets.findById(first).orElseThrow().getUnitDescription()).isEqualTo("Line one\nLine two");
+        assertThat(assets.findById(first).orElseThrow().getVersion()).isEqualTo(version + 1);
+        Asset persisted = assets.findById(first).orElseThrow();
+        assertThat(persisted.getSealState()).isEqualTo(initial.getSealState());
+        assertThat(persisted.getLastVerifiedAuditId()).isEqualTo(initial.getLastVerifiedAuditId());
+        assertThat(persisted.getLastVerifiedAt()).isEqualTo(initial.getLastVerifiedAt());
+        assertThat(persisted.getParentContainerAssetId()).isEqualTo(initial.getParentContainerAssetId());
+        assertThat(assets.findById(second).orElseThrow().getContainerColor()).isEqualTo("#FFFFFF");
+        assertThat(assets.findById(second).orElseThrow().getUnitDescription()).isNull();
+        long events = activity.findAllByOrganizationIdOrderByOccurredAtDesc(
+                        f.organization().getId())
+                .size();
+        assertThat(packingDetails(
+                                f.sessionFor(OrganizationRole.DEPUTY),
+                                first,
+                                "#1122AA",
+                                "Line one\nLine two",
+                                version + 1)
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+        assertThat(activity.findAllByOrganizationIdOrderByOccurredAtDesc(
+                        f.organization().getId()))
+                .hasSize((int) events);
+        assertThat(packingDetails(f.sessionFor(OrganizationRole.OWNER), first, "#FFFFFF", null, version)
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+        var ownLog = activity
+                .findAllByOrganizationIdOrderByOccurredAtDesc(f.organization().getId())
+                .stream()
+                .filter(e -> e.getAction().equals("ASSET_PACKING_DETAILS_UPDATED"))
+                .toList();
+        assertThat(ownLog).hasSize(1);
+    }
+
+    @org.junit.jupiter.api.Test
+    void packingDetailsRejectInvalidTransportRolesForeignAssetsAndNonContainers() {
+        Fixture f = fixture();
+        Fixture foreign = fixture();
+        UUID first = createAsset(f.organization(), true, "7K3MXY");
+        UUID unit = createAsset(f.organization(), false, "91TRQJ");
+        UUID other = createAsset(foreign.organization(), true, "7K3MXY");
+        for (OrganizationRole role : List.of(OrganizationRole.VIEWER, OrganizationRole.OPERATOR_AUDITOR))
+            assertThat(packingDetails(f.sessionFor(role), first, "#FFFFFF", null, 0)
+                            .getStatusCode())
+                    .isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(packingDetails(f.sessionFor(OrganizationRole.OWNER), other, "#FFFFFF", null, 0)
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(packingDetails(f.sessionFor(OrganizationRole.OWNER), unit, "#FFFFFF", null, 0)
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+        for (String color : List.of("", "#GGGGGG", "#123", "#FFFFFFF"))
+            assertThat(packingDetails(f.sessionFor(OrganizationRole.OWNER), first, color, null, 0)
+                            .getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST);
+        for (String description : List.of("x".repeat(501), "Control\u0001character"))
+            assertThat(packingDetails(f.sessionFor(OrganizationRole.OWNER), first, "#FFFFFF", description, 0)
+                            .getStatusCode())
+                    .isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(packingDetails(f.sessionFor(OrganizationRole.OWNER), first, "#FFFFFF", null, -1)
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+        var headers = f.sessionFor(OrganizationRole.OWNER).headers();
+        headers.remove("X-XSRF-TOKEN");
+        assertThat(restTemplate
+                        .exchange(
+                                "/api/v1/assets/" + first + "/packing-details",
+                                HttpMethod.PUT,
+                                new HttpEntity<>(new SetAssetPackingDetailsRequest("#112233", null, 0L), headers),
+                                String.class)
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(restTemplate
+                        .exchange(
+                                "/api/v1/assets/" + first + "/packing-details",
+                                HttpMethod.PUT,
+                                new HttpEntity<>(
+                                        Map.of("containerColor", "#FFFFFF"),
+                                        f.sessionFor(OrganizationRole.OWNER).headers()),
+                                String.class)
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(assets.findById(first).orElseThrow().getContainerColor()).isEqualTo("#FFFFFF");
+        assertThat(activity.findAllByOrganizationIdOrderByOccurredAtDesc(
+                        f.organization().getId()))
+                .noneMatch(e -> e.getAction().equals("ASSET_PACKING_DETAILS_UPDATED"));
+        var temporary = new TarpeistoPrincipal(
+                UUID.randomUUID(),
+                "volunteer",
+                "Volunteer",
+                f.organization().getId(),
+                OrganizationRole.OWNER,
+                new TemporaryAccessContext(
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        null,
+                        UUID.randomUUID(),
+                        clock.instant().plusSeconds(3600)));
+        assertThatThrownBy(() -> assetService.setPackingDetails(temporary, first, "#112233", null, 0))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @org.junit.jupiter.api.Test
+    void concurrentNameCommitProducesPackingConflictWithoutLosingEitherDraftOrHistory() {
+        Fixture f = fixture();
+        UUID id = createAsset(f.organization(), true, "7K3MXY");
+        var membership = memberships.findAll().stream()
+                .filter(m ->
+                        m.getOrganizationId().equals(f.organization().getId()) && m.getRole() == OrganizationRole.OWNER)
+                .findFirst()
+                .orElseThrow();
+        var user = users.findById(membership.getUserId()).orElseThrow();
+        var owner = new TarpeistoPrincipal(
+                user.getId(),
+                user.getUsername(),
+                user.getDisplayName(),
+                f.organization().getId(),
+                OrganizationRole.OWNER);
+        var template = new org.springframework.transaction.support.TransactionTemplate(transactions);
+        assertThatThrownBy(() -> template.execute(status -> {
+                    Asset stale = assets.findById(id).orElseThrow();
+                    // The same stale managed entity can result when an unlocked name/date edit wins
+                    // after packing-details reads/checks its version but before its final flush.
+                    var future = java.util.concurrent.CompletableFuture.runAsync(
+                            () -> assetService.rename(owner, id, "Concurrent name"));
+                    try {
+                        future.get(10, java.util.concurrent.TimeUnit.SECONDS);
+                    } catch (Exception exception) {
+                        throw new IllegalStateException(exception);
+                    }
+                    return assetService.setPackingDetails(owner, id, "#112233", "Local draft", stale.getVersion());
+                }))
+                .isInstanceOf(io.kellermann.tarpeisto.exception.StalePackingDetailsVersionException.class);
+        Asset persisted = assets.findById(id).orElseThrow();
+        assertThat(persisted.getIndividualName()).isEqualTo("Concurrent name");
+        assertThat(persisted.getContainerColor()).isEqualTo("#FFFFFF");
+        assertThat(persisted.getUnitDescription()).isNull();
+        assertThat(activity.findAllByOrganizationIdOrderByOccurredAtDesc(
+                        f.organization().getId()))
+                .noneMatch(e -> e.getAction().equals("ASSET_PACKING_DETAILS_UPDATED"));
+    }
+
+    private org.springframework.http.ResponseEntity<String> packingDetails(
+            AuthenticatedSession session, UUID id, String color, String description, long version) {
+        return restTemplate.exchange(
+                "/api/v1/assets/" + id + "/packing-details",
+                HttpMethod.PUT,
+                new HttpEntity<>(new SetAssetPackingDetailsRequest(color, description, version), session.headers()),
+                String.class);
     }
 
     private UUID createAsset(Organization organization, boolean canContainAssets, String publicCode) {

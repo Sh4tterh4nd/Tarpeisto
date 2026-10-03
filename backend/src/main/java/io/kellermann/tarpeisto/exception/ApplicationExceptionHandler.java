@@ -78,6 +78,11 @@ public class ApplicationExceptionHandler {
         return problemDetail(HttpStatus.CONFLICT, "Stale Media Version", exception);
     }
 
+    @ExceptionHandler(StalePackingDetailsVersionException.class)
+    public ProblemDetail handleStalePackingDetailsVersion(StalePackingDetailsVersionException exception) {
+        return problemDetail(HttpStatus.CONFLICT, "Stale Packing Details Version", exception);
+    }
+
     @ExceptionHandler(StalePlacementVersionException.class)
     public ProblemDetail handleStalePlacementVersion(StalePlacementVersionException exception) {
         return problemDetail(HttpStatus.CONFLICT, "Stale Placement Version", exception);

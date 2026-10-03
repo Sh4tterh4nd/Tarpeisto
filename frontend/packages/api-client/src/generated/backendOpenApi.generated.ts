@@ -276,6 +276,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/assets/{assetId}/packing-details": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["setPackingDetails"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/assets/{assetId}/name": {
         parameters: {
             query?: never;
@@ -2583,6 +2599,10 @@ export interface components {
             lastVerifiedAuditId?: string;
             /** Format: uuid */
             replacesAssetId?: string;
+            containerColor?: string;
+            unitDescription?: string;
+            /** Format: int64 */
+            version?: number;
         };
         SetAssetSealableRequest: {
             sealable?: boolean;
@@ -2610,6 +2630,12 @@ export interface components {
             version?: number;
             effectivePath?: string[];
             effectivePathText?: string;
+        };
+        SetAssetPackingDetailsRequest: {
+            containerColor: string;
+            unitDescription?: string;
+            /** Format: int64 */
+            expectedVersion: number;
         };
         RenameAssetRequest: {
             individualName?: string;
@@ -4113,6 +4139,32 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["AssetPlacementResponse"];
+                };
+            };
+        };
+    };
+    setPackingDetails: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetAssetPackingDetailsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AssetResponse"];
                 };
             };
         };

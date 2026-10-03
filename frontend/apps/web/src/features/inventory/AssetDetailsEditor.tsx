@@ -33,6 +33,8 @@ import {
   type AssetSearchRecord,
 } from "./inventoryApi";
 
+import { AssetPackingDetailsEditor } from "./AssetPackingDetailsEditor";
+
 /** Each section saves independently; failed sections keep their local draft. */
 export function AssetDetailsEditor({
   asset,
@@ -202,6 +204,20 @@ export function AssetDetailsEditor({
         readFailure(await renameAsset(asset.id, name.trim() || undefined)),
       )}
       <Divider />
+      {containerCapable ? (
+        <>
+          <AssetPackingDetailsEditor
+            asset={asset}
+            onSaved={onSaved}
+            disabled={Boolean(busy)}
+            onBusyChange={(packingBusy) => {
+              setBusy(packingBusy ? "Packing details" : undefined);
+              onBusyChange?.(packingBusy);
+            }}
+          />
+          <Divider />
+        </>
+      ) : null}
       <TextField
         label="Purchase date (optional)"
         type="date"

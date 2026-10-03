@@ -10,14 +10,27 @@ public record PackingSheetSnapshot(
         String containerModel,
         String containerCode,
         String organizationName,
+        String containerColor,
+        String unitDescription,
         List<Requirement> requirements,
         List<ChildContainer> childContainers) {
+
+    public PackingSheetSnapshot(
+            String name,
+            String model,
+            String code,
+            String organization,
+            List<Requirement> requirements,
+            List<ChildContainer> children) {
+        this(name, model, code, organization, "#FFFFFF", null, requirements, children);
+    }
 
     public PackingSheetSnapshot {
         containerName = Objects.requireNonNull(containerName, "containerName must not be null");
         containerModel = Objects.requireNonNull(containerModel, "containerModel must not be null");
         containerCode = Objects.requireNonNull(containerCode, "containerCode must not be null");
         organizationName = Objects.requireNonNull(organizationName, "organizationName must not be null");
+        containerColor = io.kellermann.tarpeisto.model.Category.normalizeColor(containerColor);
         requirements = List.copyOf(requirements == null ? List.of() : requirements);
         childContainers = List.copyOf(childContainers == null ? List.of() : childContainers);
     }

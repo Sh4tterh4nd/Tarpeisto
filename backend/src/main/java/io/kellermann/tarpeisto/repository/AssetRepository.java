@@ -54,7 +54,8 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
     @Query("""
             SELECT a.id AS assetId, a.publicCode AS publicCode, a.individualName AS individualName,
                    a.unitNumber AS unitNumber, model.name AS modelName,
-                   model.canContainAssets AS canContainAssets, organization.name AS organizationName
+                   model.canContainAssets AS canContainAssets, organization.name AS organizationName,
+                   a.containerColor AS containerColor, a.unitDescription AS unitDescription
             FROM Asset a
             JOIN AssetModel model ON model.id = a.assetModelId AND model.organizationId = a.organizationId
             JOIN Organization organization ON organization.id = a.organizationId
@@ -193,6 +194,10 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
         boolean getCanContainAssets();
 
         String getOrganizationName();
+
+        String getContainerColor();
+
+        String getUnitDescription();
     }
 
     interface PackingSheetRequirementProjection {

@@ -4,7 +4,11 @@ const id = "33333333-3333-3333-3333-333333333333",
 async function setup(page: Page, role = "OWNER") {
   let name = "Mobile network case",
     saves = 0,
-    archived = false;
+    archived = false,
+    color = "#FFFFFF",
+    description: string | null = null,
+    version = 7,
+    packingSaves = 0;
   const asset = () => ({
     id,
     assetModelId: modelId,
@@ -21,6 +25,9 @@ async function setup(page: Page, role = "OWNER") {
     sealState: "INVALIDATED",
     values: [],
     purchaseDate: "2026-01-02",
+    containerColor: color,
+    unitDescription: description,
+    version,
   });
   const named = (key: string) => ({
     assetId: key,
@@ -100,6 +107,17 @@ async function setup(page: Page, role = "OWNER") {
         return;
       }
       name = request.postDataJSON().individualName;
+      version++;
+      await route.fulfill({ json: asset() });
+      return;
+    }
+    if (path === `/api/v1/assets/${id}/packing-details`) {
+      const body = request.postDataJSON();
+      expect(body.expectedVersion).toBe(version);
+      packingSaves++;
+      color = body.containerColor;
+      description = body.unitDescription || null;
+      version++;
       await route.fulfill({ json: asset() });
       return;
     }
@@ -195,6 +213,14 @@ async function setup(page: Page, role = "OWNER") {
     }
     await route.fulfill({ status: 404, json: { type: "test", title: "Not found", status: 404 } });
   });
+  return {
+    remotePackingChange() {
+      color = "#0078A5";
+      description = "Remote instructions";
+      version++;
+    },
+    packingSaves: () => packingSaves,
+  };
 }
 
 test("asset detail stays read only until Edit, groups contents and preserves section failure drafts", async ({
@@ -246,4 +272,62 @@ test("Viewer can inspect condition and seal history without mutation forms", asy
   await expect(page.getByRole("button", { name: "Asset actions" })).toHaveCount(0);
   await history.getByRole("button", { name: "Done" }).click();
   await expect(page.getByRole("button", { name: "Download packing sheet" })).toBeVisible();
+});
+
+test("container packing color and description save after name edits and stay readonly outside Edit", async ({
+  page,
+}, testInfo) => {
+  const backend = await setup(page);
+  await page.goto(`/inventory/assets/${id}`);
+  await page.getByRole("button", { name: "Asset actions" }).click();
+  await page.getByRole("menuitem", { name: "Edit", exact: true }).click();
+  await page
+    .getByRole("textbox", { name: "Individual name (optional)" })
+    .fill("Cable service case");
+  await page.getByRole("button", { name: "Save name", exact: true }).click();
+  await expect(page.getByText("Please retry name save")).toBeVisible();
+  await page.getByRole("button", { name: "Save name", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Cable service case" })).toBeVisible();
+  await page.getByRole("textbox", { name: "Packing header color", exact: true }).fill("112233");
+  await page
+    .getByRole("textbox", { name: "Container description" })
+    .fill("Dedicated cable set\nKeep the labels visible");
+  const preview = page.getByLabel("Packing header preview");
+  await expect(preview).toHaveCSS("background-color", "rgb(17, 34, 51)");
+  await expect(preview).toHaveCSS("color", "rgb(255, 255, 255)");
+  await preview.scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: testInfo.outputPath("packing-editor.png"),
+    animations: "disabled",
+  });
+  await page.getByRole("button", { name: "Save packing details" }).click();
+  await expect(page.getByText("Packing details saved.")).toBeVisible();
+  expect(backend.packingSaves()).toBe(1);
+  await page.getByRole("button", { name: "Done", exact: true }).click();
+  await expect(page.getByText("Dedicated cable set", { exact: false })).toBeVisible();
+  await expect(page.getByRole("textbox")).toHaveCount(0);
+  await expect(page.getByText("Packing header: #112233")).toBeVisible();
+});
+
+test("container remote packing edits retain the local draft until explicit reload", async ({
+  page,
+}) => {
+  const backend = await setup(page);
+  await page.goto(`/inventory/assets/${id}`);
+  await page.getByRole("button", { name: "Asset actions" }).click();
+  await page.getByRole("menuitem", { name: "Edit", exact: true }).click();
+  const description = page.getByRole("textbox", { name: "Container description" });
+  await description.fill("My local instructions");
+  backend.remotePackingChange();
+  await page.getByRole("button", { name: "Save packing details" }).click();
+  await expect(page.getByText(/Packing details changed elsewhere/)).toBeVisible();
+  await expect(description).toHaveValue("My local instructions");
+  expect(backend.packingSaves()).toBe(0);
+  await page.getByRole("button", { name: "Reload packing details" }).click();
+  await expect(description).toHaveValue("Remote instructions");
+  await expect(page.getByLabel("Packing header preview")).toHaveCSS("color", "rgb(0, 0, 0)");
+  await description.fill("Remote instructions reviewed");
+  await page.getByRole("button", { name: "Save packing details" }).click();
+  await expect(page.getByText("Packing details saved.")).toBeVisible();
+  expect(backend.packingSaves()).toBe(1);
 });

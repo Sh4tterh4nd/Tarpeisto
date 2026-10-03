@@ -24,200 +24,189 @@ import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.pdfbox.text.TextPosition;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class PackingSheetDocumentTests {
     private static final float HALF = PDRectangle.A4.getHeight() / 2;
-    private static final float ITEM_X = 138;
-    private static final float CODE_X = PDRectangle.A4.getWidth() - 98;
 
     @Test
-    void borderedSemanticColumnsDuplicateAndBothCanonicalQrCodesDecode() throws Exception {
-        var snapshot = mixed();
-        byte[] pdf = PackingSheetDocument.render(snapshot);
+    void semanticCellsDuplicateAndBothCanonicalQrCodesDecode() throws Exception {
+        byte[] pdf = PackingSheetDocument.render(mixed());
         try (var document = Loader.loadPDF(pdf)) {
             assertThat(document.getNumberOfPages()).isOne();
             var positioned = positions(document);
             String text = new PDFTextStripper().getText(document);
-            assertThat(occurrences(text, "Community Equipment Team")).isEqualTo(2);
-            assertThat(occurrences(text, "Model Type: RAKO 400 x 300")).isEqualTo(2);
-            assertThat(occurrences(text, "Nested containers (current)")).isEqualTo(2);
-            assertThat(occurrences(text, "2.125 rolls")).isEqualTo(2);
-            assertThat(positioned.runs.stream().filter(run -> run.text().equals("10")))
-                    .allSatisfy(run -> assertThat(run.x()).isEqualTo(28));
-            assertThat(positioned.runs.stream().filter(run -> run.text().equals("Configured Gateway")))
-                    .allSatisfy(run -> assertThat(run.x()).isEqualTo(ITEM_X));
-            assertThat(positioned.runs.stream().filter(run -> run.text().equals("91TRQJ")))
-                    .hasSize(2)
-                    .allSatisfy(code -> {
-                        assertThat(code.x()).isCloseTo(CODE_X, offset(0.01f));
-                        assertThat(positioned.runs).anySatisfy(quantity -> {
-                            assertThat(quantity.text()).isEqualTo("1");
-                            assertThat(quantity.x()).isEqualTo(28);
-                            assertThat(quantity.y()).isEqualTo(code.y());
-                        });
-                    });
+            for (String value : List.of(
+                    "Community Equipment Team",
+                    "Model Type: RAKO 400 x 300",
+                    "Nested containers (current)",
+                    "2.125 rolls",
+                    "91TRQJ")) assertThat(occurrences(text, value)).isEqualTo(2);
+            var quantity =
+                    positioned.runs.stream().filter(r -> r.text().equals("10")).toList();
+            var item = positioned.runs.stream()
+                    .filter(r -> r.text().equals("Configured Gateway"))
+                    .toList();
+            var code = positioned.runs.stream()
+                    .filter(r -> r.text().equals("91TRQJ"))
+                    .toList();
+            assertThat(quantity).hasSize(2);
+            assertThat(item).hasSize(2);
+            assertThat(code).hasSize(2);
+            assertThat(quantity.getFirst().x()).isLessThan(item.getFirst().x());
+            assertThat(item.getFirst().x()).isLessThan(code.getFirst().x());
+            for (var c : code)
+                assertThat(positioned.runs).anySatisfy(q -> {
+                    assertThat(q.text()).isEqualTo("1");
+                    assertThat(q.y()).isEqualTo(c.y());
+                    assertThat(q.x()).isEqualTo(quantity.getFirst().x());
+                });
             assertDuplicatedGeometry(positioned);
-            var image = new PDFRenderer(document).renderImageWithDPI(0, 300);
-            assertThat(decode(image.getSubimage(image.getWidth() - 400, 0, 390, 900)))
-                    .isEqualTo("7K3MXY");
-            assertThat(decode(image.getSubimage(image.getWidth() - 400, image.getHeight() / 2, 390, 900)))
-                    .isEqualTo("7K3MXY");
-            var preview = new PDFRenderer(document).renderImageWithDPI(0, 72);
-            for (int base : List.of(0, Math.round(HALF))) {
-                assertBorder(preview, 20, base + 20);
-                assertBorder(preview, 20, base + Math.round(HALF) - 20);
-                assertThat(preview.getRGB(450, base + 28) & 0xffffff).isEqualTo(0xffffff);
-            }
-            // Approved after inspecting the mixed and continuation-page samples.
-            assertThat(rasterDigest(preview))
-                    .isEqualTo("25fea4ce0cf4254f74f76ab9a7ca28cb1388116962186033a627affbd88dc208");
+            assertQr(document);
             sample("mixed", pdf, document);
-        }
-    }
-
-    @Test
-    void emptySheetKeepsFullHeightContentsBorderAndTableHeader() throws Exception {
-        byte[] pdf = PackingSheetDocument.render(snapshot(List.of(), List.of()));
-        try (var document = Loader.loadPDF(pdf)) {
-            String text = new PDFTextStripper().getText(document);
-            assertThat(occurrences(text, "No direct packing requirements.")).isEqualTo(2);
-            for (String header : List.of("Quantity", "Item", "Code"))
-                assertThat(occurrences(text, header)).isEqualTo(2);
-            assertDuplicatedGeometry(positions(document));
-            sample("empty", pdf, document);
+            assertThat(rasterDigest(new PDFRenderer(document).renderImageWithDPI(0, 72)))
+                    .isEqualTo("927bbca814049899e1cb30efccef5b64903e29180c401ce253f6c7878993c6d8");
+            // Approved after the root visually reviewed the boundary, color and long-text samples.
+            Files.writeString(
+                    Path.of("build/packing-sheet-mixed.sha256"),
+                    rasterDigest(new PDFRenderer(document).renderImageWithDPI(0, 72)));
         }
     }
 
     @ParameterizedTest
-    @CsvSource({"2,12", "11,9", "12,8", "150,8"})
-    void keepsOneSemanticTableShrinksOnlyWhenNeededAndPaginatesAtomicRows(int count, int expectedSize)
-            throws Exception {
-        List<PackingSheetSnapshot.Requirement> rows = new ArrayList<>();
-        for (int i = 0; i < count; i++) rows.add(exact(String.format("A%05d", i), "Exact unit " + i));
-        byte[] pdf = PackingSheetDocument.render(snapshot(rows, List.of()));
+    @ValueSource(ints = {0, 1, 15, 16, 30, 31, 60, 120})
+    void boundaryCountsUseOneOrTwoCompleteTablesOnOneDuplicatedPage(int count) throws Exception {
+        List<PackingSheetSnapshot.Requirement> entries = new ArrayList<>();
+        for (int i = 0; i < count; i++) entries.add(exact(String.format("A%05d", i), "Unit " + i));
+        byte[] pdf = PackingSheetDocument.render(snapshot(entries, List.of()));
         try (var document = Loader.loadPDF(pdf)) {
+            assertThat(document.getNumberOfPages()).isOne();
+            String text = new PDFTextStripper().getText(document);
+            for (String heading : List.of("Quantity", "Item", "Code"))
+                assertThat(occurrences(text, heading)).isEqualTo(count > 15 ? 4 : 2);
+            for (int i = 0; i < count; i++)
+                assertThat(occurrences(text, String.format("A%05d", i))).isEqualTo(2);
             var positioned = positions(document);
-            for (int i = 0; i < count; i++) {
-                String code = String.format("A%05d", i), name = "Exact unit " + i;
-                var codes = positioned.runs.stream()
-                        .filter(run -> run.text().equals(code))
-                        .toList();
-                assertThat(codes).hasSize(2);
-                for (var run : codes) {
-                    assertThat(run.fontSize()).isEqualTo(expectedSize);
-                    assertThat(run.x()).isCloseTo(CODE_X, offset(0.01f));
-                    assertThat(positioned.runs).anySatisfy(item -> {
-                        assertThat(item.text()).isEqualTo(name);
-                        assertThat(item.page()).isEqualTo(run.page());
-                        assertThat(item.y()).isEqualTo(run.y());
-                        assertThat(item.x()).isEqualTo(ITEM_X);
-                    });
-                }
-            }
             assertDuplicatedGeometry(positioned);
-            if (count == 150) {
-                assertThat(document.getNumberOfPages()).isGreaterThan(1);
-                sample("overflow", pdf, document);
-            }
+            sample("count-" + count, pdf, document);
+            assertQr(document);
+            if (count > 30)
+                assertThat(positioned.runs.stream()
+                                .filter(r -> r.text().startsWith("A0"))
+                                .map(Run::fontSize))
+                        .allMatch(size -> size < 11);
+            sample("count-" + count, pdf, document);
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"#FFFFFF", "#112233", "#0078A5", "#0078A4"})
+    void coloredHeadersKeepBlackQrOnWhiteQuietZoneAndStrictThreshold(String color) throws Exception {
+        var base = mixed();
+        var colored = new PackingSheetSnapshot(
+                base.containerName(),
+                base.containerModel(),
+                base.containerCode(),
+                base.organizationName(),
+                color,
+                "Cable service\nKeep the labels visible",
+                base.requirements(),
+                base.childContainers());
+        byte[] pdf = PackingSheetDocument.render(colored);
+        try (var document = Loader.loadPDF(pdf)) {
+            assertThat(new PDFTextStripper().getText(document)).contains("Cable service", "Keep the labels visible");
+            assertDuplicatedGeometry(positions(document));
+            assertQr(document);
+            BufferedImage image = new PDFRenderer(document).renderImageWithDPI(0, 72);
+            assertThat(image.getRGB(22, 22) & 0xffffff).isEqualTo(Integer.parseInt(color.substring(1), 16));
+            // Header text operators encode exactly white below the threshold, black at equality.
+            String operators = new String(
+                    document.getPage(0).getContents().readAllBytes(), java.nio.charset.StandardCharsets.US_ASCII);
+            boolean white = Integer.parseInt(color.substring(1, 3), 16) * 299
+                            + Integer.parseInt(color.substring(3, 5), 16) * 587
+                            + Integer.parseInt(color.substring(5, 7), 16) * 114
+                    < 89250;
+            assertThat(operators).contains((white ? "1 1 1" : "0 0 0") + " rg\nBT");
+            sample("color-" + color.substring(1), pdf, document);
         }
     }
 
     @Test
-    void independentlyWrapsLongNamesWordsQuantitiesAndCompleteHeaderWithoutCellOverlap() throws Exception {
-        String name = "Container " + "ABCDEFGHIJKLMNOPQRSTUVWXYZ".repeat(9);
-        String model = "LongModelIdentifier".repeat(12);
-        var snapshot = new PackingSheetSnapshot(
-                name,
-                model,
+    void longDescriptionNamesWordsAndNestedRowsAllFitWithoutContinuationOrTruncation() throws Exception {
+        String giant = "NestedChild".repeat(600) + "FINISH";
+        var base = mixed();
+        var longSheet = new PackingSheetSnapshot(
+                "Container " + "ABCDEFGHIJKLMNOPQRSTUVWXYZ".repeat(9),
+                "Model".repeat(55),
                 "7K3MXY",
-                "Long Organization " + "Community ".repeat(8),
-                List.of(
-                        new PackingSheetSnapshot.Requirement(
-                                PackingSheetSnapshot.Kind.CONSUMABLE,
-                                "Gaffer tape with an exceptionally long unbroken model identifier " + "Z".repeat(140),
-                                new BigDecimal("1234567890123.125"),
-                                "special-purpose rolls",
-                                null,
-                                null),
-                        exact("91TRQJ", "Configured " + "GatewayIdentifier".repeat(22))),
-                List.of());
-        byte[] pdf = PackingSheetDocument.render(snapshot);
+                "Organization " + "Community ".repeat(8),
+                "#112233",
+                "Description " + "Meaningful text ".repeat(30),
+                base.requirements(),
+                List.of(new PackingSheetSnapshot.ChildContainer(giant, "Case", "A72KQ5")));
+        byte[] pdf = PackingSheetDocument.render(longSheet);
         try (var document = Loader.loadPDF(pdf)) {
+            assertThat(document.getNumberOfPages()).isOne();
             var positioned = positions(document);
             assertDuplicatedGeometry(positioned);
-            String topTitle = positioned.runs.stream()
-                    .filter(run -> run.page() == 1
-                            && run.y() < HALF
-                            && run.fontSize() >= 10
-                            && run.x() == 28
-                            && !run.text().startsWith("Long Organization")
-                            && !run.text().startsWith("Community")
-                            && !run.text().startsWith("Model Type:")
-                            && !run.text().startsWith("LongModelIdentifier")
-                            && !run.text().equals("Quantity"))
+            String compact = positioned.runs.stream()
+                    .filter(r -> r.y() < HALF)
                     .map(Run::text)
-                    .reduce("", String::concat);
-            assertThat(topTitle.replace(" ", "")).contains(name.replace(" ", ""));
-            String text = new PDFTextStripper().getText(document);
-            assertThat(text).doesNotContain("...");
-            assertThat(occurrences(text, "91TRQJ")).isEqualTo(2);
-            assertThat(positioned.runs.stream()
-                            .filter(run -> run.x() == ITEM_X)
-                            .map(Run::text)
-                            .reduce("", String::concat))
-                    .contains("Gaffer", "Configured");
+                    .reduce("", String::concat)
+                    .replace(" ", "");
+            assertThat(compact)
+                    .contains(
+                            giant,
+                            longSheet.containerName().replace(" ", ""),
+                            longSheet.unitDescription().replace(" ", ""));
+            assertThat(new PDFTextStripper().getText(document)).doesNotContain("...");
             sample("long", pdf, document);
         }
     }
 
     @Test
-    void exceptionalSingleRowContinuesWithoutRepeatingQuantityOrCodeOrDroppingText() throws Exception {
-        String giant = "G".repeat(5000) + "FINISH";
-        byte[] pdf = PackingSheetDocument.render(snapshot(List.of(exact("91TRQJ", giant)), List.of()));
-        try (var document = Loader.loadPDF(pdf)) {
-            assertThat(document.getNumberOfPages()).isGreaterThan(1);
+    void readsFirstFifteenDownLeftThenRemainderRightAndRepeatsNestedGuidance() throws Exception {
+        List<PackingSheetSnapshot.Requirement> required = new ArrayList<>();
+        for (int i = 0; i < 14; i++) required.add(exact(String.format("A%05d", i), "Unit " + i));
+        List<PackingSheetSnapshot.ChildContainer> children = List.of(
+                new PackingSheetSnapshot.ChildContainer("First nested", "Case", "91TRQJ"),
+                new PackingSheetSnapshot.ChildContainer("Second nested", "Case", "A72KQ5"),
+                new PackingSheetSnapshot.ChildContainer("Third nested", "Case", "M39TX1"));
+        try (var document = Loader.loadPDF(PackingSheetDocument.render(snapshot(required, children)))) {
             var positioned = positions(document);
+            var top = positioned.runs.stream().filter(r -> r.y() < HALF).toList();
+            var left = top.stream()
+                    .filter(r -> r.text().equals("91TRQJ"))
+                    .findFirst()
+                    .orElseThrow();
+            var right = top.stream()
+                    .filter(r -> r.text().equals("A72KQ5"))
+                    .findFirst()
+                    .orElseThrow();
+            assertThat(left.x()).isLessThan(PDRectangle.A4.getWidth() / 2);
+            assertThat(right.x()).isGreaterThan(PDRectangle.A4.getWidth() / 2);
+            assertThat(top.stream().filter(r -> r.text().startsWith("Nested containers")))
+                    .hasSize(2);
+            assertThat(left.y()).isGreaterThan(right.y());
             assertDuplicatedGeometry(positioned);
-            assertThat(positioned.runs.stream().filter(run -> run.text().equals("91TRQJ")))
-                    .hasSize(2);
-            assertThat(positioned.runs.stream().filter(run -> run.text().equals("1")))
-                    .hasSize(2);
-            String top = positioned.runs.stream()
-                    .filter(run ->
-                            run.x() == ITEM_X && run.y() < HALF && !run.text().equals("Item"))
-                    .map(Run::text)
-                    .reduce("", String::concat);
-            assertThat(top).isEqualTo(giant);
-            sample("giant", pdf, document);
         }
     }
 
-    @ParameterizedTest
-    @CsvSource({"130", "600"})
-    void nestedHeadingStaysWithFirstFragmentOfExceptionallyTallChild(int repeats) throws Exception {
-        String giant = "NestedChild".repeat(repeats);
-        byte[] pdf = PackingSheetDocument.render(
-                snapshot(List.of(), List.of(new PackingSheetSnapshot.ChildContainer(giant, "Model", "91TRQJ"))));
-        try (var document = Loader.loadPDF(pdf)) {
-            var positioned = positions(document);
-            assertDuplicatedGeometry(positioned);
-            var first = positioned.runs.stream()
-                    .filter(run -> run.page() == 1 && run.y() < HALF)
-                    .toList();
-            assertThat(first).anyMatch(run -> run.text().equals("Nested containers (current)"));
-            assertThat(first).anyMatch(run -> run.text().equals("91TRQJ"));
-            assertThat(first).anyMatch(run -> run.x() == ITEM_X && run.text().startsWith("NestedChild"));
-            String rendered = positioned.runs.stream()
-                    .filter(run ->
-                            run.x() == ITEM_X && run.y() < HALF && !run.text().equals("Item"))
-                    .map(Run::text)
-                    .reduce("", String::concat);
-            assertThat(rendered).isEqualTo(giant);
-            assertThat(positioned.runs.stream().filter(run -> run.text().equals("91TRQJ")))
-                    .hasSize(2);
-            sample(repeats == 600 ? "giant-child" : "tall-child", pdf, document);
-        }
+    private static void assertQr(PDDocument document) throws Exception {
+        BufferedImage image = new PDFRenderer(document).renderImageWithDPI(0, 300);
+        float scale = positions(document).runs.stream()
+                        .filter(r -> r.text().equals("7K3MXY") && r.y() < HALF)
+                        .findFirst()
+                        .orElseThrow()
+                        .fontSize()
+                / 11;
+        float factor = 300f / 72;
+        int x = Math.round((PDRectangle.A4.getWidth() - 20 - 79 * scale) * factor);
+        int y = Math.round((20 + 28 * scale) * factor);
+        int size = Math.round(74 * scale * factor);
+        assertThat(decode(image.getSubimage(x, y, size, size))).isEqualTo("7K3MXY");
+        assertThat(decode(image.getSubimage(x, y + image.getHeight() / 2, size, size)))
+                .isEqualTo("7K3MXY");
     }
 
     private static PackingSheetSnapshot mixed() {
@@ -293,7 +282,7 @@ class PackingSheetDocumentTests {
                                 previous.y(),
                                 previous.fontSize(),
                                 previous.page()));
-            else runs.add(new Run(text.getUnicode(), x, y, text.getFontSizeInPt(), getCurrentPageNo()));
+            else runs.add(new Run(text.getUnicode(), x, y, text.getFontSize(), getCurrentPageNo()));
             endX = x + text.getWidthDirAdj();
             super.processTextPosition(text);
         }
@@ -316,16 +305,11 @@ class PackingSheetDocumentTests {
         }
     }
 
-    private static void assertBorder(BufferedImage image, int x, int y) {
-        boolean dark = false;
-        for (int dx = -1; dx <= 1; dx++)
-            for (int dy = -1; dy <= 1; dy++) dark |= (image.getRGB(x + dx, y + dy) & 0xffffff) < 0xeeeeee;
-        assertThat(dark).isTrue();
-    }
-
     private static String decode(BufferedImage image) throws Exception {
         return new MultiFormatReader()
-                .decode(new BinaryBitmap(new HybridBinarizer(new BufferedImageLuminanceSource(image))))
+                .decode(
+                        new BinaryBitmap(new HybridBinarizer(new BufferedImageLuminanceSource(image))),
+                        java.util.Map.of(com.google.zxing.DecodeHintType.TRY_HARDER, true))
                 .getText();
     }
 

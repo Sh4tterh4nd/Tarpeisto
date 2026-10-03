@@ -61,6 +61,12 @@ public class Asset {
     @Column(name = "lifecycle_state", nullable = false, length = 20)
     private LifecycleState lifecycleState;
 
+    @Column(name = "container_color", nullable = false, length = 7)
+    private String containerColor = "#FFFFFF";
+
+    @Column(name = "unit_description", length = 500)
+    private String unitDescription;
+
     @Column(name = "purchase_date")
     private LocalDate purchaseDate;
 
@@ -135,6 +141,33 @@ public class Asset {
         this.purchaseDate = purchaseDate;
         this.createdAt = Objects.requireNonNull(now, "now must not be null");
         this.updatedAt = now;
+    }
+
+    public void setPackingDetails(String color, String description, Instant now) {
+        String normalized = Category.normalizeColor(color);
+        String normalizedDescription = normalizeUnitDescription(description);
+        this.containerColor = normalized;
+        this.unitDescription = normalizedDescription;
+        touch(now);
+    }
+
+    public static String normalizeUnitDescription(String description) {
+        String text =
+                description == null ? null : description.replace("\r\n", "\n").replace("\r", "\n");
+        if (text != null
+                && (text.length() > 500
+                        || text.codePoints().anyMatch(c -> Character.isISOControl(c) && c != '\n' && c != '\t')))
+            throw new IllegalArgumentException(
+                    "Description must contain at most 500 characters and no control characters.");
+        return text == null || text.isBlank() ? null : text;
+    }
+
+    public String getContainerColor() {
+        return containerColor;
+    }
+
+    public String getUnitDescription() {
+        return unitDescription;
     }
 
     public void rename(String newIndividualName, Instant now) {

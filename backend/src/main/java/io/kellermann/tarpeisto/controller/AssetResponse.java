@@ -31,7 +31,10 @@ public record AssetResponse(
         Instant sealVerifiedAt,
         Instant lastVerifiedAt,
         UUID lastVerifiedAuditId,
-        UUID replacesAssetId) {
+        UUID replacesAssetId,
+        String containerColor,
+        String unitDescription,
+        long version) {
 
     public static AssetResponse from(AssetView view) {
         return new AssetResponse(
@@ -55,6 +58,9 @@ public record AssetResponse(
                 view.sealVerifiedAt(),
                 view.lastVerifiedAt(),
                 view.lastVerifiedAuditId(),
-                view.replacesAssetId());
+                view.replacesAssetId(),
+                view.containerColor(),
+                view.unitDescription(),
+                view.version());
     }
 }

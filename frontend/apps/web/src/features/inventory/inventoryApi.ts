@@ -12,9 +12,13 @@ export type CustomFieldOptionRecord = Required<
   components["schemas"]["ModelCustomFieldOptionResponse"]
 >;
 export type AssetValueRecord = Required<components["schemas"]["AssetCustomFieldValueResponse"]>;
-export type AssetRecord = Omit<Required<components["schemas"]["AssetResponse"]>, "values"> & {
-  values: AssetValueRecord[];
-};
+export type AssetRecord = Omit<
+  Required<components["schemas"]["AssetResponse"]>,
+  "values" | "containerColor" | "unitDescription" | "version"
+> &
+  Pick<components["schemas"]["AssetResponse"], "containerColor" | "unitDescription" | "version"> & {
+    values: AssetValueRecord[];
+  };
 export type AssetHistoryRecord = Required<components["schemas"]["AssetStateChangeResponse"]>;
 export type StockBalanceRecord = Omit<
   Required<components["schemas"]["ConsumableStockResponse"]>,
@@ -372,6 +376,18 @@ export function setAssetValues(assetId: string, values: AssetValueInput[]) {
     apiClient.PUT("/api/v1/assets/{assetId}/values", {
       params: { path: { assetId } },
       body: values,
+    }),
+  );
+}
+
+export function setAssetPackingDetails(
+  assetId: string,
+  body: components["schemas"]["SetAssetPackingDetailsRequest"],
+) {
+  return read<AssetRecord>(() =>
+    apiClient.PUT("/api/v1/assets/{assetId}/packing-details", {
+      params: { path: { assetId } },
+      body,
     }),
   );
 }

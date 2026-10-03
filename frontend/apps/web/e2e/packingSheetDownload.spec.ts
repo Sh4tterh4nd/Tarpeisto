@@ -71,7 +71,9 @@ test("an owner downloads a container packing sheet", async ({ page }) => {
       return;
     }
     if (path === `/api/v1/assets/${assetId}`) {
-      await route.fulfill({ json: asset });
+      await route.fulfill({
+        json: { ...asset, containerColor: "#FFFFFF", unitDescription: null, version: 0 },
+      });
       return;
     }
     if (path === `/api/v1/assets/${assetId}/history`) {

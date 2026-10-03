@@ -161,7 +161,7 @@ Rules:
 - Category names are unique within an organization.
 - The UI automatically chooses readable foreground text for the selected color.
 - Archived categories remain visible on historical records but cannot be selected for new models.
-- Category color is used in badges and container packing sheets.
+- Category color is used in badges. Packing-sheet header colors belong to individual container assets.
 - An Owner or Deputy may create, edit, or archive a category. Only an Owner may hard-delete a category, and only when no asset model, including an archived model, references it.
 - Category deletion is an unreferenced setup-data deletion, not a way to remove historical records. It writes an immutable activity snapshot containing the category's former name, color, actor, and timestamp before the category row is removed.
 
@@ -296,6 +296,7 @@ Every reusable physical unit is represented individually.
 - Optional current parent container
 - Last verification timestamp and audit reference
 - Sealability and seal state when the asset is a container
+- Optional multiline description and packing-sheet header color when the asset is a container; the color defaults to white (`#FFFFFF`) and belongs to the individual asset, not its model or category
 - Optional archive timestamp
 - Created and updated timestamps
 
@@ -980,14 +981,16 @@ Container assets are excluded from the P-touch export.
 
 ### 23.4 Container packing sheets
 
-- A4 page split into two identical landscape A5-sized halves, including continuation pages.
+- A4 page split into two identical landscape A5-sized halves.
 - Each half starts with a separate black-bordered organization-name bar using the current organization name.
 - A separate black-bordered identity box below shows the current container display name and actual model name on the left, with the canonical-code QR and public code on the right.
+- Both the organization bar and the whole identity box use the individual container's header color, defaulting to white. Header text is white when grayscale blackness is strictly greater than 65%, otherwise black. Grayscale brightness is `(0.299 R + 0.587 G + 0.114 B) / 255`; blackness is one minus brightness. Borders remain black and the QR retains black modules on a white quiet-zone patch.
+- The individual container's optional description appears below its name and model name in the identity box. It is independent of the model description and preserves stored multiline plain text.
 - A black-bordered contents box below the identity box extends to the bottom margin of each A5 half. Its table has three columns: Quantity, Item, Code.
 - Required items list only direct active packing requirements, grouped by model and quantity. Specific requirements show quantity `1`, the required asset display name and its public code. Interchangeable requirements show the model name and leave Code blank.
 - Consumables preserve exact decimal amounts and stock units in the Quantity column, for example `2 rolls`, with the model name in Item and no individual code.
 - Supplemental immediate-child container identities remain under a clearly labeled `Nested containers (current)` section in the same table, with quantity `1` and their names/codes. Children already listed as exact requirements are not duplicated; grandchildren are never expanded.
-- Organization, identity and table headers repeat on every continuation page. Names and quantities use measured wrapping without overlapping the QR or neighboring cells; a requirement is never clipped or silently omitted.
+- Names, descriptions and quantities use measured wrapping without overlapping the QR or neighboring cells; an entry is never clipped or silently omitted.
 
 Example:
 
@@ -999,7 +1002,12 @@ Quantity   Item                     Code
 1          Controller AP            91TRQW
 ```
 
-The table starts at 12 pt, reduces incrementally to 8 pt only when necessary, and uses additional duplicated pages if the list still does not fit. The three semantic columns remain fixed rather than repeating lists in newspaper columns.
+Each A5 half provides space for 15 ordinary entries in one full-width Quantity/Item/Code table.
+For 16-30 entries, it uses left and right tables with those same three semantic columns, read down
+the left table then down the right, with up to 15 entries each. Longer lists retain two tables and
+scale the complete layout down to fit all entries within the A5 half. Measured wrapping may also
+require scaling for long text. The two A5 halves remain identical; density changes do not omit
+entries or add continuation pages.
 
 ## 23.5 Inventory navigation and detail presentation
 
@@ -1010,6 +1018,7 @@ The table starts at 12 pt, reduces incrementally to 8 pt only when necessary, an
 - Asset detail presents the title and compact model description first. Stored description lines are joined for display with a comma unless the preceding line ends in a full stop; storage and multiline editing retain the original text.
 - On desktop, an expanded public-code details card is on the left and reference/layout photographs remain on the right. The card shows purchase date, a two-column Condition/Lifecycle row, direct location and then parent container, container-only seal status, any open repair, and finally custom-field values. Empty custom-field and state-history sections are omitted.
 - Normal asset detail is read-only, with history available to every permanent role. An Owner/Deputy opens the card's three-dot menu for Edit, Open repair, or Archive; Archive requires explicit confirmation. Edit mode exposes name, purchase date, custom fields, placement and state controls. Containers also expose sealability and physical seal-state controls; verified state remains audit-derived. A sealable container's menu additionally offers Open seal.
+- Container asset Edit also exposes its own multiline description and packing-sheet header color, with a readable header preview and white default. These presentation settings do not change packing requirements, seal assertions or physical verification. They are absent from non-container asset editors and model editors; changes require Owner/Deputy authorization and retain activity history.
 - Asset-model detail presents the reference photograph on the right, category and unit-definition fields stacked on the left, and physical units at the bottom.
 - Container detail displays direct contents in a separate card below the identity/photos row. Exact requirements show linked asset names/codes. Interchangeable requirements show a model count and expand to linked individual asset codes. Extra, misplaced or inactive contents appear first in orange; missing requirements are red with an alert icon. Consumable quantities remain visible without individual asset codes. Packing/template management is available in Edit mode. Download packing sheet remains visible at the top of the contents card in both modes.
 

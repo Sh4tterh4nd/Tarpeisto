@@ -55,6 +55,8 @@ public class PackingSheetSnapshotService {
                 container.getModelName(),
                 container.getPublicCode(),
                 container.getOrganizationName(),
+                container.getContainerColor(),
+                container.getUnitDescription(),
                 requirements,
                 children);
     }

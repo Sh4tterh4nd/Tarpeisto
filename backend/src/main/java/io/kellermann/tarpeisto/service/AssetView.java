@@ -38,4 +38,7 @@ public record AssetView(
         Instant sealVerifiedAt,
         Instant lastVerifiedAt,
         UUID lastVerifiedAuditId,
-        UUID replacesAssetId) {}
+        UUID replacesAssetId,
+        String containerColor,
+        String unitDescription,
+        long version) {}

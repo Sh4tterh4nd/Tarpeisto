@@ -517,6 +517,47 @@ public class AssetService {
     }
 
     @Transactional
+    public AssetView setPackingDetails(
+            TarpeistoPrincipal principal, UUID assetId, String color, String description, long expectedVersion) {
+        if (principal != null) principal.requirePermanent();
+        requireOwnerOrDeputy(principal);
+        lockOrganization(principal.organizationId());
+        Asset asset = requireAsset(principal.organizationId(), assetId);
+        AssetModelView model = assetModelService.get(principal, asset.getAssetModelId());
+        if (!model.canContainAssets())
+            throw new ValidationFailedException("Packing details are available only for containers.");
+        if (expectedVersion < 0) throw new ValidationFailedException("Expected version must be nonnegative.");
+        if (asset.getVersion() != expectedVersion)
+            throw new io.kellermann.tarpeisto.exception.StalePackingDetailsVersionException();
+        String normalizedColor;
+        String normalizedDescription;
+        try {
+            normalizedColor = io.kellermann.tarpeisto.model.Category.normalizeColor(color);
+            normalizedDescription = Asset.normalizeUnitDescription(description);
+        } catch (IllegalArgumentException exception) {
+            throw new ValidationFailedException(exception.getMessage());
+        }
+        if (java.util.Objects.equals(asset.getContainerColor(), normalizedColor)
+                && java.util.Objects.equals(asset.getUnitDescription(), normalizedDescription))
+            return toView(asset, model.name());
+        Map<String, String> before = packingDetails(asset);
+        asset.setPackingDetails(normalizedColor, normalizedDescription, clock.instant());
+        try {
+            assetRepository.flush();
+        } catch (org.springframework.dao.OptimisticLockingFailureException exception) {
+            throw new io.kellermann.tarpeisto.exception.StalePackingDetailsVersionException();
+        }
+        activityLogService.record(
+                principal.organizationId(),
+                principal.userId(),
+                "ASSET_PACKING_DETAILS_UPDATED",
+                "ASSET",
+                assetId,
+                Map.of("before", before, "after", packingDetails(asset)));
+        return toView(asset, model.name());
+    }
+
+    @Transactional
     public AssetView changePurchaseDate(TarpeistoPrincipal principal, UUID assetId, LocalDate purchaseDate) {
         if (principal != null) principal.requirePermanent();
         requireOwnerOrDeputy(principal);
@@ -802,7 +843,10 @@ public class AssetService {
                 asset.getSealVerifiedAt(),
                 asset.getLastVerifiedAt(),
                 asset.getLastVerifiedAuditId(),
-                asset.getReplacesAssetId());
+                asset.getReplacesAssetId(),
+                asset.getContainerColor(),
+                asset.getUnitDescription(),
+                asset.getVersion());
     }
 
     private AssetCustomFieldValueView toValueView(UUID organizationId, AssetCustomFieldValue value) {
@@ -825,6 +869,13 @@ public class AssetService {
                 value.getDateValue(),
                 value.getOptionId(),
                 optionValue);
+    }
+
+    private static Map<String, String> packingDetails(Asset asset) {
+        Map<String, String> details = new java.util.LinkedHashMap<>();
+        details.put("containerColor", asset.getContainerColor());
+        details.put("unitDescription", asset.getUnitDescription());
+        return details;
     }
 
     private Asset requireAsset(UUID organizationId, UUID assetId) {

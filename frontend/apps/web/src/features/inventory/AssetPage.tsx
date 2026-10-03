@@ -377,6 +377,30 @@ function AssetDetail({ assetId, canManage }: { assetId: string; canManage: boole
                   <Typography variant="body2" color="text.secondary">
                     {asset.assetModelName} / Unit {asset.unitNumber}
                   </Typography>
+                  {model.canContainAssets ? (
+                    <Stack spacing={1}>
+                      <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+                        <Box
+                          aria-label="Packing header color"
+                          sx={{
+                            width: 20,
+                            height: 20,
+                            border: 1,
+                            borderColor: "divider",
+                            bgcolor: asset.containerColor ?? "#FFFFFF",
+                          }}
+                        />
+                        <Typography variant="body2">
+                          Packing header: {asset.containerColor ?? "#FFFFFF"}
+                        </Typography>
+                      </Stack>
+                      {asset.unitDescription ? (
+                        <Typography sx={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
+                          {asset.unitDescription}
+                        </Typography>
+                      ) : null}
+                    </Stack>
+                  ) : null}
                   {asset.purchaseDate ? (
                     <Typography>
                       <Box component="span" sx={{ color: "text.secondary" }}>

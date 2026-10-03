@@ -85,6 +85,11 @@ restoring an account leaves it disabled until an Owner explicitly enables it. Re
 include archived records and retained history; keep using PostgreSQL and object-storage backups for
 disaster recovery.
 
+The container packing-sheet personalization image applies additive Flyway V21 at startup during
+the normal backed-up upgrade. Existing containers receive white headers and no individual
+description. No new environment settings are required; deploy the matching backend and frontend
+together so the container editor and versioned packing-details API agree.
+
 ## Traefik deployment
 
 If Traefik owns the public endpoint, use `docker-stack.traefik.example.yml` as the starting point

@@ -77,6 +77,7 @@ For global user operations, the service first resolves the target membership in 
 | GET | /api/v1/assets/{assetId}/packing-sheet.pdf | PackingSheetController#pdf -> PackingSheetService.pdf | Y | Y | Y | Y | N | N | org | safe | none |
 | GET | /api/v1/assets/{assetId}/placement | AssetController#placement -> AssetPlacementService.get | Y | Y | Y | Y | N | N | org | safe | none |
 | PUT | /api/v1/assets/{assetId}/placement | AssetController#move -> AssetPlacementService.move | Y | Y | N | N | N | N | org | required | none |
+| PUT | /api/v1/assets/{assetId}/packing-details | AssetController#setPackingDetails -> AssetService.setPackingDetails | Y | Y | N | N | N | N | org | required | none |
 | PUT | /api/v1/assets/{assetId}/purchase-date | AssetController#changePurchaseDate -> AssetService.changePurchaseDate | Y | Y | N | N | N | N | org | required | none |
 | GET | /api/v1/assets/{assetId}/repairs | ReviewController#repairs -> ReviewService.repairs | Y | Y | Y | Y | N | N | org completed finding/reviewer or asset repair history | safe | none |
 | POST | /api/v1/assets/{assetId}/repairs | ReviewController#openRepair -> ReviewService.openRepair | Y | Y | N | N | N | N | org completed finding/reviewer or asset repair history | required | none |

@@ -760,6 +760,45 @@
         }
       }
     },
+    "/api/v1/assets/{assetId}/packing-details": {
+      "put": {
+        "tags": ["asset-controller"],
+        "operationId": "setPackingDetails",
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAssetPackingDetailsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/assets/{assetId}/name": {
       "put": {
         "tags": ["asset-controller"],
@@ -6825,6 +6864,16 @@
           "replacesAssetId": {
             "type": "string",
             "format": "uuid"
+          },
+          "containerColor": {
+            "type": "string"
+          },
+          "unitDescription": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -6891,6 +6940,26 @@
             "type": "string"
           }
         }
+      },
+      "SetAssetPackingDetailsRequest": {
+        "type": "object",
+        "properties": {
+          "containerColor": {
+            "type": "string",
+            "minLength": 1
+          },
+          "unitDescription": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        },
+        "required": ["containerColor", "expectedVersion"]
       },
       "RenameAssetRequest": {
         "type": "object",
